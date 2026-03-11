@@ -55,7 +55,7 @@ async function sbSignInGoogle() {
   const sb = getSB(); if (!sb) throw new Error('Supabase not initialised');
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options:  { redirectTo: window.location.origin + '/FLOWSTATEV1/dashboard.html' }
+    options:  { redirectTo: window.location.origin + 'https://bryson77.github.io/FLOWSTATEV1/dashboard.html' }
   });
   if (error) throw error;
 }
