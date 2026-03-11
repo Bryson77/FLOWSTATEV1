@@ -6,7 +6,7 @@
    values from: supabase.com → Settings → API
    ═══════════════════════════════════════════ */
 
-const SUPABASE_URL      = https://tyvwwgigdgcnpjceiavq.supabase.co;
+const SUPABASE_URL      = tyvwwgigdgcnpjceiavq.supabase.co;
 const SUPABASE_ANON_KEY = sb_publishable_d1aGAzmGSnc_scX9oy5pgQ_SXx00SDu;
 
 /* client singleton */
