@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow State · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<!-- ════ AUTH SCREEN ════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Flow <span>State</span></div>
+
+    <div id="auth-form">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to see your focus stats, streaks, and history across every device.</div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchTab('in')">Sign in</button>
+        <button class="auth-tab"        onclick="switchTab('up')">Create account</button>
+      </div>
+
+      <div id="tab-in">
+        <div class="auth-field">
+          <label class="auth-label">Email</label>
+          <input class="auth-input" id="si-email" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">Password</label>
+          <input class="auth-input" id="si-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="auth-btn" id="si-btn" onclick="doSignIn()">Sign in</button>
+      </div>
+
+      <div id="tab-up" style="display:none">
+        <div class="auth-field">
+          <label class="auth-label">Full name</label>
+          <input class="auth-input" id="su-name" type="text" placeholder="Your name" autocomplete="name">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">Email</label>
+          <input class="auth-input" id="su-email" type="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">Password</label>
+          <input class="auth-input" id="su-pass" type="password" placeholder="Min 8 characters" autocomplete="new-password">
+        </div>
+        <button class="auth-btn" id="su-btn" onclick="doSignUp()">Create account</button>
+      </div>
+
+      <div class="auth-divider"><span>or</span></div>
+      <button class="auth-google" onclick="doGoogle()">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-err" id="auth-err"></div>
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
+
+    <div id="auth-loading" style="display:none;padding:24px 0">
+      <div class="spinner"></div>
+      <p style="text-align:center;font-size:.72rem;color:var(--t2);margin-top:12px">Signing you in…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════ DASHBOARD ══════════════════════════ -->
+<div id="dashboard">
+  <header class="db-bar">
+    <div class="db-bar-left">
+      <a href="index.html" class="db-logo">Flow <span>State</span></a>
+      <a href="index.html" class="db-back">← Timer</a>
+    </div>
+    <div class="db-bar-right">
+      <button class="db-btn" onclick="toggleTheme()" id="th-btn">Dark</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="db-avatar" id="db-av">?</div>
+        <span class="db-uname" id="db-uname"></span>
+      </div>
+      <button class="db-btn" onclick="doSignOut()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="db-content">
+
+    <!-- profile -->
+    <div>
+      <div class="db-section-lbl">Profile</div>
+      <div class="db-hero">
+        <div class="db-hero-av" id="db-hero-av">?</div>
+        <div>
+          <div class="db-hero-name"   id="db-hero-name">—</div>
+          <div class="db-hero-email"  id="db-hero-email">—</div>
+          <div class="db-hero-joined" id="db-hero-joined"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- streak -->
+    <div>
+      <div class="db-section-lbl">Streak</div>
+      <div class="db-streak-card">
+        <div class="db-flame" id="db-flame">○</div>
+        <div class="db-streak-main">
+          <div class="db-streak-num" id="db-streak-num">0<em> day streak</em></div>
+          <div class="db-streak-sub">Best: <strong id="db-best">0</strong> days &nbsp;·&nbsp; This week: <strong id="db-week">0</strong></div>
+          <div class="db-badges" id="db-badges"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div>
+      <div class="db-section-lbl">Stats</div>
+      <div class="db-stats">
+        <div class="db-stat hi">
+          <div class="db-stat-val" id="db-total">0</div>
+          <div class="db-stat-lbl">Total sessions</div>
+        </div>
+        <div class="db-stat">
+          <div class="db-stat-val" id="db-hours">0m</div>
+          <div class="db-stat-lbl">Focus time</div>
+        </div>
+        <div class="db-stat">
+          <div class="db-stat-val" id="db-today">0</div>
+          <div class="db-stat-lbl">Today</div>
+        </div>
+        <div class="db-stat">
+          <div class="db-stat-val" id="db-tasks">0</div>
+          <div class="db-stat-lbl">Tasks done</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- heatmap -->
+    <div>
+      <div class="db-section-lbl">Activity</div>
+      <div class="db-hm-card">
+        <div class="db-hm-head">
+          <div class="db-hm-title">Last 24 weeks</div>
+          <div class="db-hm-legend">
+            <span>Less</span>
+            <div class="hm-cell lv0"></div><div class="hm-cell lv1"></div>
+            <div class="hm-cell lv2"></div><div class="hm-cell lv3"></div>
+            <div class="hm-cell lv4"></div>
+            <span>More</span>
+          </div>
+        </div>
+        <div id="db-month-row" class="db-month-row"></div>
+        <div class="db-heatmap" id="db-heatmap"></div>
+      </div>
+    </div>
+
+    <!-- history -->
+    <div>
+      <div class="db-section-lbl">Session history</div>
+      <div class="db-hist-card">
+        <div class="db-hist-head">
+          <div class="db-hist-title">All sessions</div>
+          <div class="db-hist-cnt" id="db-hist-cnt">—</div>
+        </div>
+        <div class="db-hist-list" id="db-hist-list">
+          <div class="db-empty">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- cloud CTA -->
+    <div id="db-cta" style="display:none">
+      <div class="db-cta">
+        <div class="db-cta-ico">☁</div>
+        <div class="db-cta-body">
+          <strong>Enable cloud sync</strong>
+          <span>Add your Supabase keys in supabase.js to sync across devices.</span>
+        </div>
+        <button class="db-cta-btn" onclick="window.open('https://supabase.com','_blank')">Set up →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="db-toast"></div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

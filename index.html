@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow State</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" data-mode="work">
+
+<!-- ── TOP BAR ── -->
+<header id="bar">
+  <div class="logo">Flow State</div>
+
+  <div class="mode-row">
+    <button class="mode-btn active" data-mode="work"  onclick="setMode('work')">Focus</button>
+    <button class="mode-btn"        data-mode="short" onclick="setMode('short')">Short Break</button>
+    <button class="mode-btn"        data-mode="long"  onclick="setMode('long')">Long Break</button>
+  </div>
+
+  <div class="bar-right">
+    <div class="tip-wrap">
+      <button class="tip-ico">?</button>
+      <div class="tip-box">
+        <div class="tip-hd">Shortcuts</div>
+        <div class="tip-row"><span>Start / Pause</span><kbd>Space</kbd></div>
+        <div class="tip-row"><span>Reset</span><kbd>R</kbd></div>
+        <div class="tip-row"><span>Skip break</span><kbd>S</kbd></div>
+        <div class="tip-row"><span>Add task</span><kbd>T</kbd></div>
+        <div class="tip-row"><span>Next session</span><kbd>N</kbd></div>
+      </div>
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <span id="th-lbl">Dark</span>
+      <div class="tt-track"><div class="tt-thumb"></div></div>
+    </div>
+    <button class="bar-btn" id="bar-signin-btn" onclick="handleSignIn()">Sign in</button>
+  </div>
+</header>
+
+<!-- ── LEFT NAV ── -->
+<nav id="nav">
+  <div class="ns">
+    <div class="ns-lbl">Menu</div>
+    <div class="ni on" onclick="showP('dash')"><span class="ni-ic">○</span>Dashboard</div>
+    <div class="ni"    onclick="showP('hist')"><span class="ni-ic">◷</span>History<span class="ni-badge" id="hi-badge">0</span></div>
+    <div class="ni"    onclick="showP('stats')"><span class="ni-ic">◈</span>Stats</div>
+    <div class="ni"    onclick="showP('settings')"><span class="ni-ic">◎</span>Settings</div>
+  </div>
+  <div class="sep"></div>
+
+  <!-- DASHBOARD -->
+  <div id="p-dash">
+
+    <!-- ── STREAK HERO ── -->
+    <div class="streak-hero">
+      <div class="streak-flame" id="streak-flame">○</div>
+      <div class="streak-info">
+        <div class="streak-num" id="streak-num">0<span> days</span></div>
+        <div class="streak-label">Day streak</div>
+        <div class="streak-best">Best: <strong id="streak-best-val">0</strong> days</div>
+      </div>
+    </div>
+
+    <!-- ── LAST 7 DAYS ── -->
+    <div class="streak-cal" id="streak-cal"></div>
+
+    <!-- ── QUICK STATS 2×2 ── -->
+    <div class="sg">
+      <div class="sc"><div class="sc-v" id="s-today">0</div><div class="sc-l">Today</div></div>
+      <div class="sc"><div class="sc-v" id="s-streak">0</div><div class="sc-l">Streak</div></div>
+      <div class="sc"><div class="sc-v" id="s-focus">0m</div><div class="sc-l">Focus</div></div>
+      <div class="sc"><div class="sc-v" id="s-done">0</div><div class="sc-l">Done</div></div>
+    </div>
+
+    <div class="ns"><div class="ns-lbl">Recent</div></div>
+    <div class="hl" id="hl-list">
+      <div style="font-size:.62rem;color:var(--t3);text-align:center;padding:14px 0">No sessions yet</div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="p-hist" style="display:none;flex:1;flex-direction:column">
+    <div class="ns"><div class="ns-lbl">All Sessions</div></div>
+    <div class="hl" id="hl-all"></div>
+  </div>
+
+  <!-- STATS -->
+  <div id="p-stats" style="display:none">
+    <div class="sg">
+      <div class="sc"><div class="sc-v" id="s-total">0</div><div class="sc-l">Total</div></div>
+      <div class="sc"><div class="sc-v" id="s-week">0</div><div class="sc-l">Week</div></div>
+      <div class="sc"><div class="sc-v" id="s-best">0</div><div class="sc-l">Best day</div></div>
+      <div class="sc"><div class="sc-v" id="s-rate">—</div><div class="sc-l">Rate</div></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="p-settings" style="display:none">
+    <div class="set-b">
+      <div class="sr"><span class="sl">Focus (min)</span><input type="number" class="si" id="si-f" value="45" min="1" max="90"></div>
+      <div class="sr"><span class="sl">Short break</span><input type="number" class="si" id="si-s" value="5"  min="1" max="30"></div>
+      <div class="sr"><span class="sl">Long break</span> <input type="number" class="si" id="si-l" value="15" min="1" max="60"></div>
+      <div class="sr"><span class="sl">Sessions</span>   <input type="number" class="si" id="si-n" value="4"  min="2" max="8"></div>
+      <button class="sv-btn" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN CENTER ── -->
+<main id="main">
+  <div class="main-body">
+
+    <!-- Motivation card (top-right) -->
+    <div class="mc" id="mc" onclick="nextMotive()">
+      <div class="mc-e" id="mc-e">🏎️</div>
+      <div class="mc-t" id="mc-t">do more.</div>
+      <div class="mc-s">tap to change</div>
+    </div>
+
+    <!-- Timer -->
+    <div class="timer-wrap">
+      <div class="timer-num" id="t-num" onclick="editTimer()" title="Click to edit">45:00</div>
+      <div class="timer-label" id="t-lbl">FOCUS SESSION</div>
+      <div class="sdots" id="sdots"></div>
+    </div>
+
+    <!-- Progress bar (counts up) -->
+    <div class="prog-wrap"><div class="prog" id="prog"></div></div>
+    <div class="prog-row">
+      <span class="prog-pct" id="prog-pct">0%</span>
+      <span class="prog-time-rem" id="prog-time-rem">45:00 left</span>
+    </div>
+
+    <!-- Motivational quote -->
+    <div class="motive" id="motive"><em>45 minutes won't hurt.</em></div>
+
+    <!-- Controls -->
+    <div class="ctrl">
+      <button class="btn-ic" onclick="resetTimer()" title="Reset (R)">↺</button>
+      <button class="btn-main" id="btn-main" onclick="toggleTimer()">
+        <span id="btn-lbl">▶ &nbsp;Start</span>
+      </button>
+      <button class="btn-ic" id="skip-btn" onclick="skipBreak()" style="display:none" title="Skip (S)">⏭</button>
+    </div>
+
+  </div>
+
+  <!-- Task panel -->
+  <div id="tasks">
+    <div class="task-prog-row">
+      <span class="task-prog-label">Tasks</span>
+      <span class="task-prog-frac" id="task-frac">0 / 0</span>
+    </div>
+    <div class="task-master-prog">
+      <div class="task-master-bar" id="task-master-bar"></div>
+    </div>
+    <div class="t-row" style="margin-top:4px">
+      <input type="text" class="t-inp" id="t-inp" placeholder="Add a task… (T to focus)" maxlength="120">
+      <select class="t-prio" id="t-prio">
+        <option value="low">Low</option>
+        <option value="medium" selected>Med</option>
+        <option value="high">High</option>
+      </select>
+      <button class="t-add" onclick="addTask()">Add</button>
+    </div>
+    <div class="t-list" id="t-list"></div>
+  </div>
+</main>
+
+<!-- ── RIGHT PANEL ── -->
+<aside id="panel">
+  <div class="ps">
+    <div class="pt">Spotify</div>
+    <div class="sp-row">
+      <input type="text" class="sp-inp" id="sp-url" placeholder="Paste playlist URL…">
+      <button class="sp-go" onclick="embedSpotify()">Load</button>
+    </div>
+    <div class="sp-frame" id="sp-frame">
+      <div class="sp-ph">
+        <div class="sp-ph-ico">♫</div>
+        <div class="sp-ph-txt">Paste a link or<br>pick a playlist below</div>
+      </div>
+    </div>
+  </div>
+  <div class="ps">
+    <div class="pt">Playlists</div>
+    <div class="pl-list">
+      <div class="pl-item" onclick="loadPL('37i9dQZF1DX8NTLI2TtZa6')"><span class="pl-ico">🧠</span><div><div class="pl-name">Deep Focus</div><div class="pl-sub">Spotify · concentration</div></div></div>
+      <div class="pl-item" onclick="loadPL('37i9dQZF1DWZeKCadgRdKQ')"><span class="pl-ico">☕</span><div><div class="pl-name">Lo-Fi Beats</div><div class="pl-sub">Spotify · chill study</div></div></div>
+      <div class="pl-item" onclick="loadPL('37i9dQZF1DX4sWSpwq3LiO')"><span class="pl-ico">🎹</span><div><div class="pl-name">Peaceful Piano</div><div class="pl-sub">Spotify · calm</div></div></div>
+      <div class="pl-item" onclick="loadPL('37i9dQZF1DWXLeA8Omikj7')"><span class="pl-ico">⚡</span><div><div class="pl-name">Brain Food</div><div class="pl-sub">Spotify · deep work</div></div></div>
+      <div class="pl-item" onclick="loadPL('37i9dQZF1DX3Ogo9pFvBkY')"><span class="pl-ico">🌊</span><div><div class="pl-name">Ambient Chill</div><div class="pl-sub">Spotify · background</div></div></div>
+      <div class="pl-item" onclick="loadPL('37i9dQZF1DX9tPFwDMOkiI')"><span class="pl-ico">🌿</span><div><div class="pl-name">Nature &amp; Noise</div><div class="pl-sub">Spotify · white noise</div></div></div>
+    </div>
+  </div>
+</aside>
+
+</div><!-- #app -->
+
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════
+     DASHBOARD OVERLAY
+     ═══════════════════════════════════════════ -->
+<div id="dash-overlay">
+  <div class="dov-inner">
+
+    <!-- header -->
+    <div class="dov-header">
+      <div class="dov-user">
+        <div class="dov-avatar" id="dov-avatar">?</div>
+        <div class="dov-user-info">
+          <div class="dov-name" id="dov-name">Guest</div>
+          <div class="dov-email" id="dov-email">Not signed in</div>
+        </div>
+      </div>
+      <button class="dov-close" onclick="closeDashboard()">✕</button>
+    </div>
+
+    <div class="dov-scroll">
+
+      <!-- streak + flame hero -->
+      <div class="dov-streak-hero">
+        <div class="dov-flame" id="dov-flame">○</div>
+        <div>
+          <div class="dov-streak-num"><span id="dov-streak">0</span> day streak</div>
+          <div class="dov-streak-sub">Best: <strong id="dov-best">0</strong> days &nbsp;·&nbsp; This week: <strong id="dov-week">0</strong></div>
+        </div>
+      </div>
+
+      <!-- 8-stat grid -->
+      <div class="dov-grid">
+        <div class="dov-card">
+          <div class="dov-card-val" id="dov-total">0</div>
+          <div class="dov-card-lbl">Total sessions</div>
+        </div>
+        <div class="dov-card">
+          <div class="dov-card-val" id="dov-hours">0m</div>
+          <div class="dov-card-lbl">Focus time</div>
+        </div>
+        <div class="dov-card">
+          <div class="dov-card-val" id="dov-today">0</div>
+          <div class="dov-card-lbl">Today</div>
+        </div>
+        <div class="dov-card">
+          <div class="dov-card-val" id="dov-tasks">0</div>
+          <div class="dov-card-lbl">Tasks done</div>
+        </div>
+        <div class="dov-card dov-card-wide">
+          <div class="dov-card-val" id="dov-rate">—</div>
+          <div class="dov-card-lbl">Task completion rate</div>
+        </div>
+      </div>
+
+      <!-- heatmap -->
+      <div class="dov-section-title">Activity — last 16 weeks</div>
+      <div class="dov-heatmap-wrap">
+        <div class="dov-heatmap" id="dov-heatmap"></div>
+        <div class="dov-heatmap-legend">
+          <span>Less</span>
+          <div class="hm-cell lv0"></div>
+          <div class="hm-cell lv1"></div>
+          <div class="hm-cell lv2"></div>
+          <div class="hm-cell lv3"></div>
+          <div class="hm-cell lv4"></div>
+          <span>More</span>
+        </div>
+      </div>
+
+      <!-- recent sessions -->
+      <div class="dov-section-title">Recent sessions</div>
+      <div class="dov-hist-list" id="dov-hist-list"></div>
+
+      <!-- supabase CTA -->
+      <div class="dov-cta" id="dov-cta">
+        <div class="dov-cta-icon">☁</div>
+        <div class="dov-cta-text">
+          <strong>Sync across devices</strong>
+          <span>Connect Supabase to save your streak and history everywhere.</span>
+        </div>
+        <button class="dov-cta-btn" onclick="toast('Supabase coming soon')">Connect</button>
+      </div>
+
+    </div><!-- dov-scroll -->
+  </div><!-- dov-inner -->
+</div><!-- dash-overlay -->
+
+<script src="app.js"></script>
+</body>
+</html>
