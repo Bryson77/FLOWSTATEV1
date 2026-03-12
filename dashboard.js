@@ -226,9 +226,10 @@ async function loadDashboard(user){
   const{stats:ls,hist:lh}=getLocal();
   fillStats(ls,lh);buildHeatmap(lh);buildHistory(lh);
 
-  /* cloud overlay */
+  /* cloud overlay — runs even if cloud returns empty (new account) */
   try{
     const[cs,csess]=await Promise.all([sbFetchStats(user.id),sbFetchSessions(user.id)]);
+    /* cs is null on a brand new account — that's fine, just use local */
     const merged={
       streak:   Math.max(ls.streak||0,   cs?.focus_streak||0),
       total:    Math.max(ls.total||0,    cs?.total_sessions||0),
@@ -237,16 +238,20 @@ async function loadDashboard(user){
       best:     Math.max(ls.best||0,     cs?.best_day||0),
       today:ls.today||0,week:ls.week||0,
     };
+    /* merge cloud sessions with local history, deduplicate */
     const combined=[...lh];
-    csess.forEach(s=>{
+    (csess||[]).forEach(s=>{
       if(!combined.some(h=>h.date?.slice(0,10)===s.date&&h.label===s.label))
         combined.push({date:s.date+'T00:00:00Z',label:s.label||'Focus session',mins:s.duration});
     });
     combined.sort((a,b)=>new Date(b.date)-new Date(a.date));
     fillStats(merged,combined);buildHeatmap(combined);buildHistory(combined);
   }catch(e){
-    document.getElementById('db-cta').style.display='';
-    console.warn('Cloud unavailable:',e.message);
+    /* only show CTA if it looks like a config/connection problem, not empty data */
+    if(e.message&&(e.message.includes('fetch')||e.message.includes('network')||e.message.includes('initialised'))){
+      document.getElementById('db-cta').style.display='';
+    }
+    console.warn('Cloud fetch issue:',e.message);
   }
 }
 

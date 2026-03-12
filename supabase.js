@@ -8,7 +8,6 @@
 
 const SUPABASE_URL      = "https://tyvwwgigdgcnpjceiavq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_d1aGAzmGSnc_scX9oy5pgQ_SXx00SDu";
-
 /* client singleton */
 function getSB() {
   if (typeof window.supabase === 'undefined') return null;
@@ -96,9 +95,11 @@ async function sbFetchSessions(userId) {
 
 async function sbFetchStats(userId) {
   const sb = getSB(); if (!sb) return null;
+  /* maybeSingle() returns null (not an error) when no row exists yet */
   const { data, error } = await sb.from('stats').select('*')
-    .eq('user_id', userId).single();
-  return error ? null : data;
+    .eq('user_id', userId).maybeSingle();
+  if (error) { console.error('sbFetchStats:', error.message); return null; }
+  return data;
 }
 
 /* ── SUPABASE SQL (run once in SQL editor) ───
