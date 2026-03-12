@@ -219,7 +219,7 @@ function buildHistory(hist){
 
 async function loadDashboard(user){
   document.getElementById('auth-screen').style.display='none';
-  document.getElementById('dashboard').style.display='';
+  document.getElementById('dashboard').style.display='block';
   fillProfile(user);
 
   /* local first */
@@ -261,7 +261,7 @@ async function init(){
   if(!configured){
     /* no keys — show local data, skip auth */
     document.getElementById('auth-screen').style.display='none';
-    document.getElementById('dashboard').style.display='';
+    document.getElementById('dashboard').style.display='block';
     document.getElementById('db-cta').style.display='';
     const{stats:ls,hist:lh}=getLocal();
     document.getElementById('db-av').textContent='?';
