@@ -105,6 +105,13 @@
       <div class="sr"><span class="sl">Short break</span><input type="number" class="si" id="si-s" value="5"  min="1" max="30"></div>
       <div class="sr"><span class="sl">Long break</span> <input type="number" class="si" id="si-l" value="15" min="1" max="60"></div>
       <div class="sr"><span class="sl">Sessions</span>   <input type="number" class="si" id="si-n" value="4"  min="2" max="8"></div>
+      <div class="sr"><span class="sl">Daily goal</span>   <input type="number" class="si" id="si-dg" value="4" min="1" max="20"></div>
+      <div class="sr si-check-row">
+        <label class="sl" for="si-email-optin">Weekly summary email</label>
+        <input type="checkbox" id="si-email-optin" class="si-check">
+      </div>
+      <button class="sv-btn si-btn-outline" onclick="requestNotifPermission()">Enable notifications</button>
+      <button class="sv-btn si-btn-outline" onclick="exportCSV()">Export CSV</button>
       <button class="sv-btn" onclick="saveSettings()">Save settings</button>
     </div>
   </div>
@@ -119,6 +126,17 @@
       <div class="mc-e" id="mc-e">🏎️</div>
       <div class="mc-t" id="mc-t">do more.</div>
       <div class="mc-s">tap to change</div>
+    </div>
+
+    <!-- Session goal display -->
+    <div class="session-goal-display" id="session-goal-display" style="display:none"></div>
+
+    <!-- Daily goal bar -->
+    <div class="daily-goal-wrap" id="daily-goal-wrap">
+      <div class="daily-goal-track">
+        <div class="daily-goal-fill" id="daily-goal-bar"></div>
+      </div>
+      <span class="daily-goal-lbl" id="daily-goal-lbl">0 / 4 sessions today</span>
     </div>
 
     <!-- Timer -->
@@ -168,6 +186,17 @@
       <button class="t-add" onclick="addTask()">Add</button>
     </div>
     <div class="t-list" id="t-list"></div>
+
+    <!-- Footer -->
+    <footer id="main-footer">
+      <span>© 2025 Flow State</span>
+      <div class="footer-links">
+        <a href="privacy.html"  target="_blank">Privacy Policy</a>
+        <a href="terms.html"    target="_blank">Terms of Service</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="mailto:lethabomabilo33@gmail.com">Contact</a>
+      </div>
+    </footer>
   </div>
 </main>
 
@@ -284,15 +313,49 @@
         </div>
         <button class="dov-cta-btn" onclick="toast('Supabase coming soon')">Connect</button>
       </div>
-      <!-- FOOTER -->
-      <footer style="text-align:center;padding:1rem 0;font-size:.85rem;color:var(--t3);">
-      <a href="privacy.html" style="margin-right:1rem;color:#1affd5;">Privacy Policy</a>
-      <a href="terms.html" style="color:#1affd5;">Terms of Service</a>
-</footer>
+
     </div><!-- dov-scroll -->
   </div><!-- dov-inner -->
 </div><!-- dash-overlay -->
 
+
+<!-- ═══════════════════════════════════════════
+     INTENTION MODAL
+     ═══════════════════════════════════════════ -->
+<div class="fs-modal" id="intention-modal">
+  <div class="fs-modal-box">
+    <div class="fs-modal-icon">🎯</div>
+    <div class="fs-modal-title">What's your focus?</div>
+    <div class="fs-modal-sub">Set an intention for this session. It will be added to your task list.</div>
+    <input type="text" class="fs-modal-inp" id="intention-inp"
+      placeholder="e.g. Finish chapter 3, Review notes, Write report…"
+      maxlength="100">
+    <div class="fs-modal-actions">
+      <button class="fs-modal-skip" onclick="closeIntentionModal(false); play()">Skip</button>
+      <button class="fs-modal-btn"  onclick="closeIntentionModal(true)">Start session →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     REFLECTION MODAL
+     ═══════════════════════════════════════════ -->
+<div class="fs-modal" id="reflection-modal">
+  <div class="fs-modal-box">
+    <div class="fs-modal-icon">✅</div>
+    <div class="fs-modal-title">Session complete!</div>
+    <div class="fs-modal-sub">You worked on: <strong id="reflection-goal">—</strong></div>
+    <textarea class="fs-modal-inp fs-modal-textarea" id="reflection-note" rows="3"
+      placeholder="How did it go? Any wins, blockers, or notes… (optional)"></textarea>
+    <div class="fs-modal-actions">
+      <button class="fs-modal-skip" onclick="closeReflectionModal(false)">Skip</button>
+      <button class="fs-modal-btn"  onclick="closeReflectionModal(true)">Save & take break →</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
