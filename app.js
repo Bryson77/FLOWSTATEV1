@@ -548,7 +548,7 @@ function logSession() {
   st.history.unshift({
     date:  now.toISOString(),
     label: st.sessionGoal || (active ? active.text : 'Focus session'),
-    mins:  cfg.work,
+    mins:  Math.round((st.total - st.left) / 60) || cfg.work,
     note:  ''
   });
 }
@@ -564,7 +564,7 @@ function updateStats() {
   }
   st.stats.today++;
   st.stats.total++;
-  st.stats.focusMins += cfg.work;
+  st.stats.focusMins += Math.round((st.total - st.left) / 60) || cfg.work;
   if (st.stats.today > st.stats.best) st.stats.best = st.stats.today;
   if (!st.stats.activeDays) st.stats.activeDays = [];
   if (!st.stats.activeDays.includes(todayISO)) st.stats.activeDays.push(todayISO);
