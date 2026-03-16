@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════ */
 
 /* ── STATE ───────────────────────────────── */
-let cfg = { work: 45, short: 5, long: 15, sessions: 4, dailyGoal: 4, autoBreak: false };
+let cfg = { work: 45, short: 5, long: 15, sessions: 4, dailyGoal: 4 };
 let st  = {
   mode: 'work', left: 45 * 60, total: 45 * 60,
   running: false, done: 0, iv: null,
@@ -89,8 +89,6 @@ function load() {
   document.getElementById('si-dg').value = cfg.dailyGoal;
   const optEl = document.getElementById('si-email-optin');
   if (optEl) optEl.checked = st.weeklyEmailOptIn;
-  const abEl2 = document.getElementById('si-autobreak');
-  if (abEl2) abEl2.checked = cfg.autoBreak;
   st.left  = cfg.work * 60;
   st.total = st.left;
   carryOverTasks();
@@ -160,9 +158,6 @@ function sessionEnd() {
       const next = st.done % cfg.sessions === 0 ? 'long' : 'short';
       setMode(next);
       document.getElementById('skip-btn').style.display = 'flex';
-      if (cfg.autoBreak) {
-        setTimeout(() => { play(); toast('Break started automatically'); }, 800);
-      }
     });
   } else {
     playDoneSound();
@@ -553,7 +548,7 @@ function logSession() {
   st.history.unshift({
     date:  now.toISOString(),
     label: st.sessionGoal || (active ? active.text : 'Focus session'),
-    mins:  Math.round((st.total - st.left) / 60) || cfg.work,
+    mins:  cfg.work,
     note:  ''
   });
 }
@@ -569,16 +564,14 @@ function updateStats() {
   }
   st.stats.today++;
   st.stats.total++;
-  st.stats.focusMins += Math.round((st.total - st.left) / 60) || cfg.work;
+  st.stats.focusMins += cfg.work;
   if (st.stats.today > st.stats.best) st.stats.best = st.stats.today;
   if (!st.stats.activeDays) st.stats.activeDays = [];
   if (!st.stats.activeDays.includes(todayISO)) st.stats.activeDays.push(todayISO);
   const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   st.stats.activeDays = st.stats.activeDays.filter(d => d >= cutoff);
   st.stats.week = st.history.filter(h => new Date(h.date).getTime() > Date.now() - 7 * 86400000).length;
-  const prevStreak = st.stats.streak - 1; /* streak was just incremented above */
   updateStatDisplay();
-  checkStreakMilestone(st.stats.streak, prevStreak);
   save();
 }
 
@@ -597,7 +590,6 @@ function updateStatDisplay() {
   renderStreakHero();
   renderStreakCal();
   updateDailyGoalBar();
-  renderBestHour();
 }
 
 /* ── STREAK HERO ─────────────────────────── */
@@ -673,15 +665,6 @@ function showP(name) {
   );
 }
 
-/* ── PANEL TABS ──────────────────────────── */
-function switchPanel(tab) {
-  document.getElementById('panel-spotify').style.display = tab === 'spotify' ? '' : 'none';
-  document.getElementById('panel-ambient').style.display = tab === 'ambient'  ? '' : 'none';
-  document.querySelectorAll('.panel-tab').forEach((b,i) =>
-    b.classList.toggle('active', (tab === 'spotify' && i === 0) || (tab === 'ambient' && i === 1))
-  );
-}
-
 /* ── SPOTIFY ─────────────────────────────── */
 function embedSpotify() {
   const url = document.getElementById('sp-url').value.trim();
@@ -723,169 +706,12 @@ function exportCSV() {
   toast('CSV downloaded ✓');
 }
 
-
-/* ── MOBILE DRAWERS ──────────────────────── */
-let _mobActive = null;
-
-function openMobDrawer(type) {
-  const drawer  = document.getElementById('mob-drawer');
-  const title   = document.getElementById('mob-drawer-title');
-  const content = document.getElementById('mob-drawer-content');
-
-  // update active nav button
-  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('on'));
-  const btnMap = { timer: 'mob-btn-timer', stats: 'mob-btn-stats',
-                   music: 'mob-btn-music', 'tasks-full': 'mob-btn-tasks',
-                   'settings-mob': 'mob-btn-settings' };
-  const activeBtn = document.getElementById(btnMap[type]);
-  if (activeBtn) activeBtn.classList.add('on');
-
-  if (type === 'timer') {
-    // just highlight timer, no drawer needed
-    closeMobDrawer(false);
-    document.getElementById('mob-btn-timer').classList.add('on');
-    return;
-  }
-
-  _mobActive = type;
-  content.innerHTML = '';
-
-  if (type === 'stats') {
-    title.textContent = 'Dashboard';
-    // clone the full left nav dash panel content
-    const dash = document.getElementById('p-dash');
-    if (dash) content.appendChild(dash.cloneNode(true));
-
-  } else if (type === 'music') {
-    title.textContent = 'Music';
-    // clone right panel content
-    const panel = document.getElementById('panel');
-    if (panel) content.appendChild(panel.cloneNode(true));
-
-  } else if (type === 'tasks-full') {
-    title.textContent = 'Tasks';
-    // render tasks in drawer
-    const taskHTML = document.getElementById('tasks');
-    if (taskHTML) {
-      const clone = taskHTML.cloneNode(true);
-      // re-wire onclick attributes don't survive clone for dynamic content
-      // so we just re-render into a wrapper
-      const wrap = document.createElement('div');
-      wrap.innerHTML = `
-        <div class="task-prog-row" style="margin-bottom:6px">
-          <span class="task-prog-label">Tasks</span>
-          <span class="task-prog-frac">${document.getElementById('task-frac').textContent}</span>
-        </div>
-        <div class="task-master-prog" style="margin-bottom:10px">
-          <div class="task-master-bar${st.tasks.filter(t=>t.done).length===st.tasks.length&&st.tasks.length?' complete':''}" 
-               style="width:${st.tasks.length?Math.round(st.tasks.filter(t=>t.done).length/st.tasks.length*100):0}%"></div>
-        </div>
-        <div class="t-row" style="margin-bottom:10px">
-          <input type="text" class="t-inp" id="mob-t-inp" placeholder="Add a task…" maxlength="120">
-          <select class="t-prio" id="mob-t-prio">
-            <option value="low">Low</option>
-            <option value="medium" selected>Med</option>
-            <option value="high">High</option>
-          </select>
-          <button class="t-add" onclick="addTaskMob()">Add</button>
-        </div>
-        <div id="mob-t-list"></div>`;
-      content.appendChild(wrap);
-      renderMobTasks();
-    }
-
-  } else if (type === 'settings-mob') {
-    title.textContent = 'Settings & More';
-    const set = document.getElementById('p-settings');
-    if (set) content.appendChild(set.cloneNode(true));
-    // also add nav links
-    const links = document.createElement('div');
-    links.style.cssText = 'padding:12px 0;display:flex;flex-direction:column;gap:8px';
-    links.innerHTML = `
-      <a href="dashboard.html" style="font-size:0.78rem;color:var(--blue-lt);text-decoration:none;padding:10px 12px;background:var(--c2);border-radius:8px;font-weight:600">
-        📊 Open Dashboard
-      </a>
-      <a href="privacy.html" target="_blank" style="font-size:0.72rem;color:var(--t2);text-decoration:none;padding:8px 12px;background:var(--c2);border-radius:8px">
-        Privacy Policy
-      </a>
-      <a href="terms.html" target="_blank" style="font-size:0.72rem;color:var(--t2);text-decoration:none;padding:8px 12px;background:var(--c2);border-radius:8px">
-        Terms of Service
-      </a>`;
-    content.appendChild(links);
-    // weekly report button
-    const wrBtn = document.createElement('button');
-    wrBtn.className = 'sv-btn';
-    wrBtn.style.cssText = 'margin-top:8px;width:100%';
-    wrBtn.textContent = '📊 Weekly Report Card';
-    wrBtn.onclick = () => { closeMobDrawer(); openWeeklyReport(); };
-    content.appendChild(wrBtn);
-    // export csv
-    const csvBtn = document.createElement('button');
-    csvBtn.className = 'sv-btn si-btn-outline';
-    csvBtn.style.cssText = 'margin-top:6px;width:100%';
-    csvBtn.textContent = 'Export CSV';
-    csvBtn.onclick = exportCSV;
-    content.appendChild(csvBtn);
-  }
-
-  drawer.classList.add('open');
-}
-
-function addTaskMob() {
-  const inp  = document.getElementById('mob-t-inp');
-  const psel = document.getElementById('mob-t-prio');
-  if (!inp) return;
-  const t = inp.value.trim(); const p = psel?.value || 'medium';
-  if (!t) return;
-  st.tasks.push({ id: Date.now(), text: t, prio: p, done: false, notes: '', due: '', createdDate: new Date().toISOString().slice(0,10) });
-  inp.value = '';
-  renderMobTasks(); renderTasks(); save();
-}
-
-function renderMobTasks() {
-  const list = document.getElementById('mob-t-list');
-  if (!list) return;
-  list.innerHTML = '';
-  if (!st.tasks.length) {
-    list.innerHTML = '<div style="font-size:.62rem;color:var(--t3);text-align:center;padding:16px 0">No tasks yet</div>';
-    return;
-  }
-  st.tasks.forEach(task => {
-    const item = document.createElement('div');
-    item.className = 't-item' + (task.done ? ' done' : '');
-    item.style.marginBottom = '4px';
-    item.innerHTML = `
-      <div class="t-chk${task.done ? ' on' : ''}" onclick="toggleTask(${task.id});renderMobTasks();renderTasks()"></div>
-      <div class="t-body">
-        <div class="t-top">
-          <span class="t-txt">${esc(task.text)}</span>
-          <span class="t-tag ${task.prio}">${task.prio}</span>
-          ${dueBadge(task.due)}
-        </div>
-      </div>
-      <button class="t-del" style="opacity:1" onclick="deleteTask(${task.id});renderMobTasks()">✕</button>`;
-    list.appendChild(item);
-  });
-}
-
-function closeMobDrawer(resetBtn = true) {
-  document.getElementById('mob-drawer')?.classList.remove('open');
-  _mobActive = null;
-  if (resetBtn) {
-    document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('on'));
-    document.getElementById('mob-btn-timer')?.classList.add('on');
-  }
-}
-
-/* close drawer on escape */
 /* ── KEYBOARD ────────────────────────────── */
 document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
   if (e.key === 'Escape') {
     document.getElementById('intention-modal')?.classList.remove('open');
     document.getElementById('reflection-modal')?.classList.remove('open');
-    document.getElementById('weekly-report-modal')?.classList.remove('open');
-    closeMobDrawer();
     return;
   }
   switch (e.key.toLowerCase()) {
@@ -951,9 +777,7 @@ function saveSettings() {
   cfg.short     = parseInt(document.getElementById('si-s').value)  || 5;
   cfg.long      = parseInt(document.getElementById('si-l').value)  || 15;
   cfg.sessions  = parseInt(document.getElementById('si-n').value)  || 4;
-  cfg.dailyGoal  = parseInt(document.getElementById('si-dg').value) || 4;
-  const abEl = document.getElementById('si-autobreak');
-  if (abEl) cfg.autoBreak = abEl.checked;
+  cfg.dailyGoal = parseInt(document.getElementById('si-dg').value) || 4;
   const optEl   = document.getElementById('si-email-optin');
   if (optEl) st.weeklyEmailOptIn = optEl.checked;
   save(); setMode(st.mode); renderDots(); updateDailyGoalBar();
@@ -961,216 +785,147 @@ function saveSettings() {
 }
 
 
-/* ── CONFETTI ────────────────────────────── */
-function launchConfetti() {
-  const canvas = document.getElementById('confetti-canvas');
-  if (!canvas) return;
-  canvas.style.display = 'block';
-  const ctx = canvas.getContext('2d');
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const pieces = Array.from({ length: 120 }, () => ({
-    x:   Math.random() * canvas.width,
-    y:   Math.random() * canvas.height - canvas.height,
-    r:   Math.random() * 6 + 3,
-    d:   Math.random() * 120,
-    color: `hsl(${Math.random()*360},80%,60%)`,
-    tilt: Math.random() * 10 - 10,
-    tiltAngle: 0, tiltSpeed: Math.random() * 0.1 + 0.05,
-    speed: Math.random() * 3 + 1,
-  }));
-  let frame = 0;
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    pieces.forEach(p => {
-      ctx.beginPath();
-      ctx.lineWidth = p.r;
-      ctx.strokeStyle = p.color;
-      ctx.moveTo(p.x + p.tilt + p.r / 3, p.y);
-      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
-      ctx.stroke();
-    });
-    pieces.forEach(p => {
-      p.tiltAngle += p.tiltSpeed;
-      p.y += p.speed;
-      p.tilt = Math.sin(p.tiltAngle) * 12;
-      if (p.y > canvas.height) { p.y = -10; p.x = Math.random() * canvas.width; }
-    });
-    frame++;
-    if (frame < 180) requestAnimationFrame(draw);
-    else { ctx.clearRect(0, 0, canvas.width, canvas.height); canvas.style.display = 'none'; }
+/* ═══════════════════════════════════════════
+   MOBILE TAB NAVIGATION
+   ═══════════════════════════════════════════ */
+
+function mobTab(tab) {
+  /* hide all screens, show selected */
+  document.querySelectorAll('.mob-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.mob-tab').forEach(b => b.classList.remove('on'));
+  const screen = document.getElementById('mob-screen-' + tab);
+  const btn    = document.getElementById('mob-tab-' + tab);
+  if (screen) screen.classList.add('active');
+  if (btn)    btn.classList.add('on');
+
+  /* refresh stats when opening stats tab */
+  if (tab === 'stats') refreshMobStats();
+  /* sync settings values when opening settings tab */
+  if (tab === 'settings') syncMobSettings();
+}
+
+function refreshMobStats() {
+  const s = st.stats, m = s.focusMins || 0;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('mob-s-today',  s.today  || 0);
+  set('mob-s-streak', s.streak || 0);
+  set('mob-s-focus',  m >= 60 ? Math.floor(m/60)+'h' : m+'m');
+  set('mob-s-done',   s.tasksDone || 0);
+  set('mob-s-total',  s.total  || 0);
+  set('mob-s-best',   s.best   || 0);
+
+  /* streak hero */
+  const flame = document.getElementById('mob-streak-flame');
+  const num   = document.getElementById('mob-streak-num');
+  const best  = document.getElementById('mob-streak-best');
+  const sk    = s.streak || 0;
+  if (flame) {
+    flame.textContent = sk>=7?'🔥':sk>=3?'⚡':sk>=1?'✦':'○';
+    flame.className   = 'streak-flame' + (sk>=3?' hot':'');
   }
-  draw();
-}
+  if (num)  num.innerHTML  = `${sk}<span> day${sk!==1?'s':''}</span>`;
+  if (best) best.textContent = s.best || 0;
 
-function checkStreakMilestone(streak, prev) {
-  const milestones = [7, 14, 30, 60, 100];
-  if (milestones.includes(streak) && streak > prev) {
-    launchConfetti();
-    toast(`🔥 ${streak}-day streak! Keep it up!`);
+  /* 7-day mini calendar */
+  const cal = document.getElementById('mob-streak-cal');
+  if (cal) {
+    cal.innerHTML = '';
+    const DAY_ABBR = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    const active   = s.activeDays || [];
+    const now      = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d   = new Date(now); d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0,10);
+      const wrap = document.createElement('div'); wrap.className = 'sc-day';
+      wrap.innerHTML = `
+        <div class="sc-dot${i===0?' today':active.includes(iso)?' active':''}"></div>
+        <div class="sc-lbl${i===0?' is-today':''}">${DAY_ABBR[d.getDay()]}</div>`;
+      cal.appendChild(wrap);
+    }
+  }
+
+  /* recent history */
+  const hl = document.getElementById('mob-hl-list');
+  if (hl) {
+    hl.innerHTML = '';
+    if (!st.history.length) {
+      hl.innerHTML = '<div style="font-size:.62rem;color:var(--t3);text-align:center;padding:14px 0">No sessions yet</div>';
+    } else {
+      st.history.slice(0,8).forEach(h => {
+        const d   = new Date(h.date);
+        const item = document.createElement('div'); item.className = 'hi';
+        item.innerHTML = `<div class="hd"></div><div>
+          <div class="hn">${esc(h.label)}</div>
+          <div class="hm">${h.mins}min · ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>`;
+        hl.appendChild(item);
+      });
+    }
   }
 }
 
-/* ── AMBIENT SOUND ───────────────────────── */
-let ambientCtx = null, ambientNodes = [], ambientPlaying = false;
-
-const AMBIENT_PRESETS = {
-  rain: { label: '🌧 Rain',   fn: makeRain   },
-  white:{ label: '⬜ White',  fn: makeWhite  },
-  cafe: { label: '☕ Café',   fn: makeCafe   },
-  off:  { label: '🔇 Off',    fn: null       },
-};
-
-function makeRain(ctx) {
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-  const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1400; filter.Q.value = 0.3;
-  const gain = ctx.createGain(); gain.gain.value = 0.18;
-  src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-  src.start(); return [src, gain];
+function syncMobSettings() {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('mob-si-f',  cfg.work);
+  set('mob-si-s',  cfg.short);
+  set('mob-si-l',  cfg.long);
+  set('mob-si-n',  cfg.sessions);
+  set('mob-si-dg', cfg.dailyGoal || 4);
+  const ab  = document.getElementById('mob-si-autobreak');  if (ab)  ab.checked  = cfg.autoBreak || false;
+  const opt = document.getElementById('mob-si-emailoptin'); if (opt) opt.checked = st.weeklyEmailOptIn || false;
 }
 
-function makeWhite(ctx) {
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-  const gain = ctx.createGain(); gain.gain.value = 0.08;
-  src.connect(gain); gain.connect(ctx.destination);
-  src.start(); return [src, gain];
-}
-
-function makeCafe(ctx) {
-  /* layered low hum + gentle noise bursts to simulate cafe */
-  const nodes = [];
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-  const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 600;
-  const gain = ctx.createGain(); gain.gain.value = 0.12;
-  src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-  src.start(); nodes.push(src, gain);
-  /* low hum oscillator */
-  const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 80;
-  const ogain = ctx.createGain(); ogain.gain.value = 0.04;
-  osc.connect(ogain); ogain.connect(ctx.destination); osc.start(); nodes.push(osc, ogain);
-  return nodes;
-}
-
-function setAmbient(type) {
-  /* stop current */
-  ambientNodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch(_){} });
-  ambientNodes = [];
-  if (type === 'off' || !AMBIENT_PRESETS[type]?.fn) {
-    ambientPlaying = false;
-    updateAmbientUI('off');
-    localStorage.setItem('fs4_ambient', 'off');
-    return;
-  }
-  try {
-    if (!ambientCtx) ambientCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ambientCtx.state === 'suspended') ambientCtx.resume();
-    ambientNodes = AMBIENT_PRESETS[type].fn(ambientCtx);
-    ambientPlaying = true;
-    updateAmbientUI(type);
-    localStorage.setItem('fs4_ambient', type);
-    toast(AMBIENT_PRESETS[type].label + ' playing');
-  } catch(e) { console.warn('Ambient audio:', e); }
-}
-
-function updateAmbientUI(active) {
-  document.querySelectorAll('.amb-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.amb === active);
+function saveMobSettings() {
+  const get = id => parseInt(document.getElementById(id)?.value);
+  cfg.work      = get('mob-si-f')  || cfg.work;
+  cfg.short     = get('mob-si-s')  || cfg.short;
+  cfg.long      = get('mob-si-l')  || cfg.long;
+  cfg.sessions  = get('mob-si-n')  || cfg.sessions;
+  cfg.dailyGoal = get('mob-si-dg') || cfg.dailyGoal;
+  const ab  = document.getElementById('mob-si-autobreak');  if (ab)  cfg.autoBreak        = ab.checked;
+  const opt = document.getElementById('mob-si-emailoptin'); if (opt) st.weeklyEmailOptIn  = opt.checked;
+  /* sync back to desktop inputs */
+  ['f','s','l','n','dg'].forEach(k => {
+    const map = {f:'work',s:'short',l:'long',n:'sessions',dg:'dailyGoal'};
+    const el = document.getElementById('si-'+k); if (el) el.value = cfg[map[k]];
   });
+  save(); setMode(st.mode); renderDots(); updateDailyGoalBar();
+  toast('Settings saved ✓');
 }
 
-function restoreAmbient() {
-  const saved = localStorage.getItem('fs4_ambient');
-  if (saved && saved !== 'off') setTimeout(() => setAmbient(saved), 500);
+/* Mobile music helpers */
+function mobMusicTab(tab, btn) {
+  document.getElementById('mob-spotify-sec').style.display = tab==='spotify' ? '' : 'none';
+  document.getElementById('mob-ambient-sec').style.display = tab==='ambient'  ? '' : 'none';
+  btn.parentElement.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
 }
 
-/* ── BEST TIME OF DAY ────────────────────── */
-function getBestHour() {
-  if (!st.history.length) return null;
-  const counts = {};
-  st.history.forEach(h => {
-    const hr = new Date(h.date).getHours();
-    counts[hr] = (counts[hr] || 0) + 1;
-  });
-  let best = 0, bestHr = null;
-  Object.entries(counts).forEach(([hr, n]) => { if (n > best) { best = n; bestHr = +hr; } });
-  if (bestHr === null) return null;
-  const label = bestHr < 12 ? 'morning' : bestHr < 17 ? 'afternoon' : 'evening';
-  const fmt = new Date(0,0,0,bestHr).toLocaleTimeString([],{hour:'numeric',hour12:true});
-  return { hr: bestHr, fmt, label, count: best };
+function mobEmbedSpotify() {
+  const url = document.getElementById('mob-sp-url')?.value.trim();
+  if (!url) return;
+  const m = url.match(/playlist\/([a-zA-Z0-9]+)/);
+  if (!m) { toast('Invalid Spotify URL'); return; }
+  mobLoadPL(m[1]);
 }
 
-function renderBestHour() {
-  const el = document.getElementById('s-besthour');
-  if (!el) return;
-  const b = getBestHour();
-  if (!b) { el.textContent = '—'; return; }
-  el.textContent = b.fmt;
-  const sub = document.getElementById('s-besthour-sub');
-  if (sub) sub.textContent = b.label + ' · ' + b.count + ' sessions';
+function mobLoadPL(id) {
+  const frame = document.getElementById('mob-sp-frame');
+  if (frame) frame.innerHTML = `<iframe
+    src="https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0"
+    width="100%" height="232" frameborder="0"
+    allow="autoplay;clipboard-write;encrypted-media;fullscreen;picture-in-picture"
+    loading="lazy"></iframe>`;
+  /* also load desktop panel if visible */
+  loadPL(id);
 }
 
-/* ── WEEKLY REPORT CARD ──────────────────── */
-function openWeeklyReport() {
-  const modal = document.getElementById('weekly-report-modal');
-  if (!modal) return;
-
-  const now   = Date.now();
-  const week  = st.history.filter(h => new Date(h.date).getTime() > now - 7*86400000);
-  const total = week.length;
-  const mins  = week.reduce((a,h) => a + (h.mins || cfg.work), 0);
-  const hrs   = mins >= 60 ? (mins/60).toFixed(1)+'h' : mins+'m';
-  const goal  = cfg.dailyGoal * 7;
-  const pct   = goal > 0 ? Math.min(100, Math.round(total/goal*100)) : 0;
-
-  /* grade */
-  let grade, color;
-  if      (pct >= 90) { grade = 'A'; color = '#22c55e'; }
-  else if (pct >= 70) { grade = 'B'; color = '#4f86f7'; }
-  else if (pct >= 50) { grade = 'C'; color = '#f59e0b'; }
-  else if (pct >= 30) { grade = 'D'; color = '#f97316'; }
-  else                { grade = 'F'; color = '#e05252'; }
-
-  /* days active */
-  const days = new Set(week.map(h => h.date?.slice(0,10))).size;
-
-  /* best day */
-  const dayCounts = {};
-  week.forEach(h => { const d = h.date?.slice(0,10); if(d) dayCounts[d] = (dayCounts[d]||0)+1; });
-  const bestDay = Object.entries(dayCounts).sort((a,b)=>b[1]-a[1])[0];
-  const bestDayStr = bestDay
-    ? new Date(bestDay[0]).toLocaleDateString([],{weekday:'long'}) + ' (' + bestDay[1] + ' sessions)'
-    : '—';
-
-  document.getElementById('wr-grade').textContent     = grade;
-  document.getElementById('wr-grade').style.color     = color;
-  document.getElementById('wr-sessions').textContent  = total;
-  document.getElementById('wr-focustime').textContent = hrs;
-  document.getElementById('wr-days').textContent      = days + ' / 7';
-  document.getElementById('wr-goal-pct').textContent  = pct + '%';
-  document.getElementById('wr-bestday').textContent   = bestDayStr;
-  document.getElementById('wr-streak').textContent    = st.stats.streak + ' day' + (st.stats.streak !== 1 ? 's' : '');
-
-  const tip = pct >= 90 ? 'Outstanding week. You're in a flow.' :
-              pct >= 70 ? 'Solid week. Keep building the habit.' :
-              pct >= 50 ? 'Good start. Aim for one more session daily.' :
-              pct >= 30 ? 'Room to grow. Even 1 session a day adds up.' :
-                          'Rough week — reset and go again tomorrow.';
-  document.getElementById('wr-tip').textContent = tip;
-
-  modal.classList.add('open');
-}
-
-function closeWeeklyReport() {
-  document.getElementById('weekly-report-modal')?.classList.remove('open');
+/* sync mobile theme label */
+const _origToggleTheme = toggleTheme;
+function toggleTheme() {
+  _origToggleTheme();
+  const lbl = document.getElementById('mob-th-lbl');
+  if (lbl) lbl.textContent = document.documentElement.dataset.theme === 'light' ? 'Light' : 'Dark';
 }
 
 /* ── INIT ────────────────────────────────── */
@@ -1188,9 +943,10 @@ function init() {
   updateStatDisplay();
   updateDailyGoalBar();
   updateGoalDisplay();
-  renderBestHour();
-  restoreAmbient();
   showP('dash');
+  /* sync mobile theme label */
+  const mobThLbl = document.getElementById('mob-th-lbl');
+  if (mobThLbl) mobThLbl.textContent = document.documentElement.dataset.theme === 'light' ? 'Light' : 'Dark';
   initAuth();
   setTimeout(() => {
     if ('Notification' in window && Notification.permission === 'default') {
