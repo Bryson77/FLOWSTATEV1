@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════
    FLOW STATE — supabase.js
    Auth + cloud data sync.
@@ -54,7 +55,7 @@ async function sbSignInGoogle() {
   const sb = getSB(); if (!sb) throw new Error('Supabase not initialised');
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options:  { redirectTo: window.location.origin + '/FLOWSTATEV1/dashboard.html' }
+    options:  { redirectTo: 'https://flowstateproductivity.xyz/dashboard.html' }
   });
   if (error) throw error;
 }
