@@ -23,149 +23,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<!-- ═══════════════════════════════════════════
-     MOBILE LAYOUT (≤720px only — hidden on desktop via CSS)
-     ═══════════════════════════════════════════ -->
-
-<!-- Mobile top bar -->
-<header id="mob-topbar">
-  <div class="mob-logo">Flow State</div>
-  <div class="mob-topbar-right">
-    <div class="mob-mode-pill">
-      <button class="mode-btn active" data-mode="work"  onclick="setMode('work')">Focus</button>
-      <button class="mode-btn"        data-mode="short" onclick="setMode('short')">Break</button>
-      <button class="mode-btn"        data-mode="long"  onclick="setMode('long')">Long</button>
-    </div>
-    <div class="theme-toggle" onclick="toggleTheme()">
-      <span id="mob-th-lbl">Dark</span>
-      <div class="tt-track"><div class="tt-thumb"></div></div>
-    </div>
-    <button class="bar-btn" onclick="handleSignIn()" style="font-size:0.62rem;padding:5px 10px">Sign in</button>
-  </div>
-</header>
-
-<!-- Mobile screens -->
-<!-- TIMER screen (default) -->
-<div class="mob-screen active" id="mob-screen-timer">
-  <!-- main-body and tasks will be moved here by CSS (display:contents on #main) -->
-</div>
-
-<!-- STATS screen -->
-<div class="mob-screen" id="mob-screen-stats">
-  <div id="mob-stats">
-    <div class="ns"><div class="ns-lbl">Stats</div></div>
-
-    <div class="streak-hero">
-      <div class="streak-flame" id="mob-streak-flame">○</div>
-      <div class="streak-info">
-        <div class="streak-num" id="mob-streak-num">0<span> days</span></div>
-        <div class="streak-best">Best: <strong id="mob-streak-best">0</strong> days</div>
-      </div>
-    </div>
-
-    <div class="streak-cal" id="mob-streak-cal"></div>
-
-    <div class="sg" style="padding:0 0 12px">
-      <div class="sc"><div class="sc-v" id="mob-s-today">0</div><div class="sc-l">Today</div></div>
-      <div class="sc"><div class="sc-v" id="mob-s-streak">0</div><div class="sc-l">Streak</div></div>
-      <div class="sc"><div class="sc-v" id="mob-s-focus">0m</div><div class="sc-l">Focus</div></div>
-      <div class="sc"><div class="sc-v" id="mob-s-done">0</div><div class="sc-l">Done</div></div>
-      <div class="sc"><div class="sc-v" id="mob-s-total">0</div><div class="sc-l">Total</div></div>
-      <div class="sc"><div class="sc-v" id="mob-s-best">0</div><div class="sc-l">Best day</div></div>
-    </div>
-
-    <div class="ns"><div class="ns-lbl">Recent</div></div>
-    <div class="hl" id="mob-hl-list" style="max-height:none;padding:0 0 10px"></div>
-
-    <button class="sv-btn" style="width:100%;margin-top:4px" onclick="openWeeklyReport()">📊 Weekly Report Card</button>
-    <a href="dashboard.html" style="display:block;margin-top:8px;text-align:center;font-size:0.75rem;color:var(--blue-lt);padding:12px;background:var(--c2);border-radius:8px;font-weight:600;text-decoration:none">Open full Dashboard →</a>
-  </div>
-</div>
-
-<!-- MUSIC screen -->
-<div class="mob-screen" id="mob-screen-music">
-  <div id="mob-music">
-    <div class="panel-tabs">
-      <button class="panel-tab active" onclick="mobMusicTab('spotify',this)">Spotify</button>
-      <button class="panel-tab"        onclick="mobMusicTab('ambient',this)">Ambient</button>
-    </div>
-    <div id="mob-spotify-sec">
-      <div class="sp-row">
-        <input type="text" class="sp-inp" id="mob-sp-url" placeholder="Paste playlist URL…">
-        <button class="sp-go" onclick="mobEmbedSpotify()">Load</button>
-      </div>
-      <div class="sp-frame" id="mob-sp-frame">
-        <div class="sp-ph"><div class="sp-ph-ico">♫</div><div class="sp-ph-txt">Paste a link or pick below</div></div>
-      </div>
-      <div class="pl-list" style="margin-top:10px">
-        <div class="pl-item" onclick="mobLoadPL('37i9dQZF1DX8NTLI2TtZa6')"><span class="pl-ico">🧠</span><div><div class="pl-name">Deep Focus</div><div class="pl-sub">concentration</div></div></div>
-        <div class="pl-item" onclick="mobLoadPL('37i9dQZF1DWZeKCadgRdKQ')"><span class="pl-ico">☕</span><div><div class="pl-name">Lo-Fi Beats</div><div class="pl-sub">chill study</div></div></div>
-        <div class="pl-item" onclick="mobLoadPL('37i9dQZF1DX4sWSpwq3LiO')"><span class="pl-ico">🎹</span><div><div class="pl-name">Peaceful Piano</div><div class="pl-sub">calm</div></div></div>
-        <div class="pl-item" onclick="mobLoadPL('37i9dQZF1DWXLeA8Omikj7')"><span class="pl-ico">⚡</span><div><div class="pl-name">Brain Food</div><div class="pl-sub">deep work</div></div></div>
-        <div class="pl-item" onclick="mobLoadPL('37i9dQZF1DX3Ogo9pFvBkY')"><span class="pl-ico">🌊</span><div><div class="pl-name">Ambient Chill</div><div class="pl-sub">background</div></div></div>
-        <div class="pl-item" onclick="mobLoadPL('37i9dQZF1DX9tPFwDMOkiI')"><span class="pl-ico">🌿</span><div><div class="pl-name">Nature &amp; Noise</div><div class="pl-sub">white noise</div></div></div>
-      </div>
-    </div>
-    <div id="mob-ambient-sec" style="display:none">
-      <div class="amb-grid">
-        <button class="amb-btn" data-amb="rain"  onclick="setAmbient('rain')">🌧<span>Rain</span></button>
-        <button class="amb-btn" data-amb="white" onclick="setAmbient('white')">⬜<span>White noise</span></button>
-        <button class="amb-btn" data-amb="cafe"  onclick="setAmbient('cafe')">☕<span>Café</span></button>
-        <button class="amb-btn active" data-amb="off" onclick="setAmbient('off')">🔇<span>Off</span></button>
-      </div>
-      <div class="amb-info">Loops while you focus.</div>
-    </div>
-  </div>
-</div>
-
-<!-- SETTINGS screen -->
-<div class="mob-screen" id="mob-screen-settings">
-  <div id="mob-settings">
-    <div class="ns"><div class="ns-lbl">Settings</div></div>
-    <div class="set-b">
-      <div class="sr"><span class="sl">Focus (min)</span><input type="number" class="si" id="mob-si-f" value="45" min="1" max="90"></div>
-      <div class="sr"><span class="sl">Short break</span><input type="number" class="si" id="mob-si-s" value="5"  min="1" max="30"></div>
-      <div class="sr"><span class="sl">Long break</span> <input type="number" class="si" id="mob-si-l" value="15" min="1" max="60"></div>
-      <div class="sr"><span class="sl">Sessions</span>   <input type="number" class="si" id="mob-si-n" value="4"  min="2" max="8"></div>
-      <div class="sr"><span class="sl">Daily goal</span> <input type="number" class="si" id="mob-si-dg" value="4" min="1" max="20"></div>
-      <div class="sr si-check-row">
-        <label class="sl">Auto-start breaks</label>
-        <input type="checkbox" class="si-check" id="mob-si-autobreak">
-      </div>
-      <div class="sr si-check-row">
-        <label class="sl">Weekly email</label>
-        <input type="checkbox" class="si-check" id="mob-si-emailoptin">
-      </div>
-      <button class="sv-btn" style="width:100%" onclick="saveMobSettings()">Save settings</button>
-      <button class="sv-btn si-btn-outline" style="width:100%;margin-top:6px" onclick="requestNotifPermission()">Enable notifications</button>
-      <button class="sv-btn si-btn-outline" style="width:100%;margin-top:6px" onclick="exportCSV()">Export CSV</button>
-    </div>
-    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
-      <a href="dashboard.html" style="display:block;text-align:center;font-size:0.78rem;color:var(--blue-lt);padding:12px;background:var(--c2);border-radius:8px;font-weight:600;text-decoration:none">📊 Open Dashboard</a>
-      <a href="privacy.html" target="_blank" style="display:block;text-align:center;font-size:0.72rem;color:var(--t2);padding:10px;background:var(--c2);border-radius:8px;text-decoration:none">Privacy Policy</a>
-      <a href="terms.html"   target="_blank" style="display:block;text-align:center;font-size:0.72rem;color:var(--t2);padding:10px;background:var(--c2);border-radius:8px;text-decoration:none">Terms of Service</a>
-    </div>
-  </div>
-</div>
-
-<!-- Mobile bottom tab bar -->
-<nav id="mob-bar">
-  <button class="mob-tab on" id="mob-tab-timer"    onclick="mobTab('timer')">
-    <span class="mob-ic">⏱</span>Timer
-  </button>
-  <button class="mob-tab"    id="mob-tab-stats"    onclick="mobTab('stats')">
-    <span class="mob-ic">📊</span>Stats
-  </button>
-  <button class="mob-tab"    id="mob-tab-music"    onclick="mobTab('music')">
-    <span class="mob-ic">♫</span>Music
-  </button>
-  <button class="mob-tab"    id="mob-tab-settings" onclick="mobTab('settings')">
-    <span class="mob-ic">◎</span>More
-  </button>
-</nav>
-
 <div id="app" data-mode="work">
-<canvas id="confetti-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:999;display:none"></canvas>
 
 <!-- ── TOP BAR ── -->
 <header id="bar">
@@ -246,18 +104,16 @@
 
   <!-- STATS -->
   <div id="p-stats" style="display:none">
+    <div class="wr-wrap" id="weekly-report"></div>
+    <div class="ns" style="margin-top:10px"><div class="ns-lbl">Best hour</div></div>
+    <div id="best-hour-wrap" class="best-hour-wrap"></div>
+
     <div class="sg">
       <div class="sc"><div class="sc-v" id="s-total">0</div><div class="sc-l">Total</div></div>
       <div class="sc"><div class="sc-v" id="s-week">0</div><div class="sc-l">Week</div></div>
       <div class="sc"><div class="sc-v" id="s-best">0</div><div class="sc-l">Best day</div></div>
       <div class="sc"><div class="sc-v" id="s-rate">—</div><div class="sc-l">Rate</div></div>
     </div>
-    <div class="best-hour-card">
-      <div class="bh-label">Peak focus time</div>
-      <div class="bh-val" id="s-besthour">—</div>
-      <div class="bh-sub" id="s-besthour-sub"></div>
-    </div>
-    <button class="sv-btn si-btn-outline" style="margin-top:10px" onclick="openWeeklyReport()">📊 Weekly report card</button>
   </div>
 
   <!-- SETTINGS -->
@@ -269,8 +125,12 @@
       <div class="sr"><span class="sl">Sessions</span>   <input type="number" class="si" id="si-n" value="4"  min="2" max="8"></div>
       <div class="sr"><span class="sl">Daily goal</span>   <input type="number" class="si" id="si-dg" value="4" min="1" max="20"></div>
       <div class="sr si-check-row">
-        <label class="sl" for="si-autobreak">Auto-start breaks</label>
-        <input type="checkbox" id="si-autobreak" class="si-check">
+        <label class="sl" for="si-autostart-breaks">Auto-start breaks</label>
+        <input type="checkbox" id="si-autostart-breaks" class="si-check">
+      </div>
+      <div class="sr si-check-row">
+        <label class="sl" for="si-autostart-work">Auto-start focus after break</label>
+        <input type="checkbox" id="si-autostart-work" class="si-check">
       </div>
       <div class="sr si-check-row">
         <label class="sl" for="si-email-optin">Weekly summary email</label>
@@ -360,7 +220,7 @@
         <a href="privacy.html"  target="_blank">Privacy Policy</a>
         <a href="terms.html"    target="_blank">Terms of Service</a>
         <a href="dashboard.html">Dashboard</a>
-        <a href="/cdn-cgi/l/email-protection#036f66776b62616c6e62616a6f6c303043646e626a6f2d606c6e">Contact</a>
+        <a href="/cdn-cgi/l/email-protection#f29e97869a93909d9f93909b9e9dc1c1b2959f939b9edc919d9f">Contact</a>
       </div>
     </footer>
   </div>
@@ -369,34 +229,16 @@
 <!-- ── RIGHT PANEL ── -->
 <aside id="panel">
   <div class="ps">
-    <div class="panel-tabs">
-      <button class="panel-tab active" onclick="switchPanel('spotify')">Spotify</button>
-      <button class="panel-tab" onclick="switchPanel('ambient')">Ambient</button>
+    <div class="pt">Spotify</div>
+    <div class="sp-row">
+      <input type="text" class="sp-inp" id="sp-url" placeholder="Paste playlist URL…">
+      <button class="sp-go" onclick="embedSpotify()">Load</button>
     </div>
-
-    <!-- Spotify section -->
-    <div id="panel-spotify">
-      <div class="sp-row">
-        <input type="text" class="sp-inp" id="sp-url" placeholder="Paste playlist URL…">
-        <button class="sp-go" onclick="embedSpotify()">Load</button>
+    <div class="sp-frame" id="sp-frame">
+      <div class="sp-ph">
+        <div class="sp-ph-ico">♫</div>
+        <div class="sp-ph-txt">Paste a link or<br>pick a playlist below</div>
       </div>
-      <div class="sp-frame" id="sp-frame">
-        <div class="sp-ph">
-          <div class="sp-ph-ico">♫</div>
-          <div class="sp-ph-txt">Paste a link or<br>pick a playlist below</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ambient section -->
-    <div id="panel-ambient" style="display:none">
-      <div class="amb-grid">
-        <button class="amb-btn" data-amb="rain"  onclick="setAmbient('rain')">🌧<span>Rain</span></button>
-        <button class="amb-btn" data-amb="white" onclick="setAmbient('white')">⬜<span>White noise</span></button>
-        <button class="amb-btn" data-amb="cafe"  onclick="setAmbient('cafe')">☕<span>Café</span></button>
-        <button class="amb-btn active" data-amb="off" onclick="setAmbient('off')">🔇<span>Off</span></button>
-      </div>
-      <div class="amb-info">Plays through your browser.<br>Loops while you focus.</div>
     </div>
   </div>
   <div class="ps">
@@ -408,6 +250,15 @@
       <div class="pl-item" onclick="loadPL('37i9dQZF1DWXLeA8Omikj7')"><span class="pl-ico">⚡</span><div><div class="pl-name">Brain Food</div><div class="pl-sub">Spotify · deep work</div></div></div>
       <div class="pl-item" onclick="loadPL('37i9dQZF1DX3Ogo9pFvBkY')"><span class="pl-ico">🌊</span><div><div class="pl-name">Ambient Chill</div><div class="pl-sub">Spotify · background</div></div></div>
       <div class="pl-item" onclick="loadPL('37i9dQZF1DX9tPFwDMOkiI')"><span class="pl-ico">🌿</span><div><div class="pl-name">Nature &amp; Noise</div><div class="pl-sub">Spotify · white noise</div></div></div>
+    </div>
+  </div>
+  <div class="ps">
+    <div class="pt">Ambient Sound</div>
+    <div class="amb-grid">
+      <button class="amb-btn active" data-amb="none"  onclick="setAmbient('none')">🔇 Off</button>
+      <button class="amb-btn"        data-amb="rain"  onclick="setAmbient('rain')">🌧 Rain</button>
+      <button class="amb-btn"        data-amb="cafe"  onclick="setAmbient('cafe')">☕ Cafe</button>
+      <button class="amb-btn"        data-amb="white" onclick="setAmbient('white')">🌊 White</button>
     </div>
   </div>
 </aside>
@@ -538,30 +389,4 @@
   </div>
 </div>
 
-<!-- ══ WEEKLY REPORT MODAL ══════════════════ -->
-<div class="fs-modal" id="weekly-report-modal">
-  <div class="fs-modal-box wr-box">
-    <div class="fs-modal-icon">📊</div>
-    <div class="fs-modal-title">Weekly Report</div>
-    <div class="wr-grade-row"><span class="wr-grade" id="wr-grade">—</span></div>
-    <div class="wr-grid">
-      <div class="wr-stat"><div class="wr-val" id="wr-sessions">0</div><div class="wr-lbl">Sessions</div></div>
-      <div class="wr-stat"><div class="wr-val" id="wr-focustime">0m</div><div class="wr-lbl">Focus time</div></div>
-      <div class="wr-stat"><div class="wr-val" id="wr-days">0/7</div><div class="wr-lbl">Active days</div></div>
-      <div class="wr-stat"><div class="wr-val" id="wr-goal-pct">0%</div><div class="wr-lbl">Goal hit</div></div>
-      <div class="wr-stat"><div class="wr-val" id="wr-streak">0</div><div class="wr-lbl">Streak</div></div>
-      <div class="wr-stat"><div class="wr-val" id="wr-bestday" style="font-size:0.7rem">—</div><div class="wr-lbl">Best day</div></div>
-    </div>
-    <div class="wr-tip" id="wr-tip"></div>
-    <div class="fs-modal-actions" style="justify-content:center;margin-top:16px">
-      <button class="fs-modal-btn" onclick="closeWeeklyReport()">Close</button>
-    </div>
-  </div>
-</div>
-
-</div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
-</body>
-</html>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><sc

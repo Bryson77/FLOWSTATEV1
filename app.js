@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════ */
 
 /* ── STATE ───────────────────────────────── */
-let cfg = { work: 45, short: 5, long: 15, sessions: 4, dailyGoal: 4 };
+let cfg = { work: 45, short: 5, long: 15, sessions: 4, dailyGoal: 4, autoStartBreaks: false, autoStartWork: false };
 let st  = {
   mode: 'work', left: 45 * 60, total: 45 * 60,
   running: false, done: 0, iv: null,
@@ -87,6 +87,10 @@ function load() {
   document.getElementById('si-l').value  = cfg.long;
   document.getElementById('si-n').value  = cfg.sessions;
   document.getElementById('si-dg').value = cfg.dailyGoal;
+  const asb = document.getElementById('si-autostart-breaks');
+  const asw = document.getElementById('si-autostart-work');
+  if (asb) asb.checked = cfg.autoStartBreaks;
+  if (asw) asw.checked = cfg.autoStartWork;
   const optEl = document.getElementById('si-email-optin');
   if (optEl) optEl.checked = st.weeklyEmailOptIn;
   st.left  = cfg.work * 60;
@@ -158,6 +162,7 @@ function sessionEnd() {
       const next = st.done % cfg.sessions === 0 ? 'long' : 'short';
       setMode(next);
       document.getElementById('skip-btn').style.display = 'flex';
+      if (cfg.autoStartBreaks) setTimeout(() => play(), 800);
     });
   } else {
     playDoneSound();
@@ -165,6 +170,7 @@ function sessionEnd() {
     setMode('work');
     st.sessionGoal = '';
     document.getElementById('skip-btn').style.display = 'none';
+    if (cfg.autoStartWork) setTimeout(() => play(), 800);
   }
 }
 
@@ -548,7 +554,7 @@ function logSession() {
   st.history.unshift({
     date:  now.toISOString(),
     label: st.sessionGoal || (active ? active.text : 'Focus session'),
-    mins:  cfg.work,
+    mins:  Math.round((st.total - st.left) / 60) || cfg.work,
     note:  ''
   });
 }
@@ -564,15 +570,29 @@ function updateStats() {
   }
   st.stats.today++;
   st.stats.total++;
-  st.stats.focusMins += cfg.work;
+  st.stats.focusMins += Math.round((st.total - st.left) / 60) || cfg.work;
   if (st.stats.today > st.stats.best) st.stats.best = st.stats.today;
   if (!st.stats.activeDays) st.stats.activeDays = [];
   if (!st.stats.activeDays.includes(todayISO)) st.stats.activeDays.push(todayISO);
   const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   st.stats.activeDays = st.stats.activeDays.filter(d => d >= cutoff);
   st.stats.week = st.history.filter(h => new Date(h.date).getTime() > Date.now() - 7 * 86400000).length;
+  checkStreakMilestone();
   updateStatDisplay();
   save();
+}
+
+function checkStreakMilestone() {
+  const s = st.stats.streak;
+  const prev = st.stats._lastMilestoneFired || 0;
+  const milestones = [3, 7, 14, 30, 60, 100];
+  const hit = milestones.filter(m => s >= m && prev < m);
+  if (hit.length) {
+    const top = hit[hit.length - 1];
+    st.stats._lastMilestoneFired = top;
+    const msgs = { 3:'3 day streak! 🔥', 7:'One week streak! 🔥🔥', 14:'Two weeks! Unstoppable. 🔥🔥🔥', 30:'30 days. Legend. 🏆', 60:'60 days. Absolute machine. 💎', 100:'100 days. Unreal. 🚀' };
+    setTimeout(() => { confetti(msgs[top]); }, 400);
+  }
 }
 
 function updateStatDisplay() {
@@ -590,6 +610,7 @@ function updateStatDisplay() {
   renderStreakHero();
   renderStreakCal();
   updateDailyGoalBar();
+  renderWeeklyReport();
 }
 
 /* ── STREAK HERO ─────────────────────────── */
@@ -706,6 +727,169 @@ function exportCSV() {
   toast('CSV downloaded ✓');
 }
 
+
+/* ── CONFETTI ────────────────────────────── */
+function confetti(msg) {
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+  document.body.appendChild(canvas);
+  const ctx2 = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pieces = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * 100,
+    r: 4 + Math.random() * 6,
+    d: 2 + Math.random() * 3,
+    color: ['#2563eb','#4f86f7','#22c55e','#f59e0b','#ec4899','#a78bfa'][Math.floor(Math.random()*6)],
+    tilt: Math.random() * 20 - 10,
+    tiltSpeed: 0.1 + Math.random() * 0.2,
+    angle: 0
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx2.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.y    += p.d;
+      p.angle += p.tiltSpeed;
+      p.tilt  = Math.sin(p.angle) * 12;
+      ctx2.beginPath();
+      ctx2.ellipse(p.x, p.y, p.r, p.r * 0.5, p.tilt * Math.PI / 180, 0, Math.PI * 2);
+      ctx2.fillStyle = p.color;
+      ctx2.fill();
+    });
+    frame++;
+    if (frame < 180) requestAnimationFrame(draw);
+    else canvas.remove();
+  }
+  draw();
+  toast(msg);
+}
+
+/* ── AMBIENT SOUND ───────────────────────── */
+let ambCtx = null, ambNodes = [], ambPlaying = false;
+
+const AMBIENT_TYPES = {
+  rain: { label: '🌧 Rain',     fn: makeRain   },
+  cafe: { label: '☕ Cafe',     fn: makeCafe   },
+  white:{ label: '🌊 White noise', fn: makeWhite },
+  none: { label: '🔇 Off',      fn: null       },
+};
+let ambCurrent = 'none';
+
+function makeRain(ctx) {
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const d   = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
+  const src  = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const lp   = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1200;
+  const hp   = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 200;
+  const gain = ctx.createGain(); gain.gain.value = 0.18;
+  src.connect(lp); lp.connect(hp); hp.connect(gain); gain.connect(ctx.destination);
+  src.start(); return [src, lp, hp, gain];
+}
+
+function makeCafe(ctx) {
+  // layered low-freq murmur + subtle clink
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const d   = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
+  const src  = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const lp   = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600;
+  const gain = ctx.createGain(); gain.gain.value = 0.12;
+  src.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
+  src.start(); return [src, lp, gain];
+}
+
+function makeWhite(ctx) {
+  const buf  = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const d    = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src  = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const gain = ctx.createGain(); gain.gain.value = 0.07;
+  src.connect(gain); gain.connect(ctx.destination);
+  src.start(); return [src, gain];
+}
+
+function setAmbient(type) {
+  /* stop current */
+  ambNodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch(_){} });
+  ambNodes = [];
+  ambPlaying = false;
+  ambCurrent = type;
+
+  /* update buttons */
+  document.querySelectorAll('.amb-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.amb === type)
+  );
+
+  if (type === 'none' || !AMBIENT_TYPES[type]?.fn) return;
+
+  if (!ambCtx) ambCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ambCtx.state === 'suspended') ambCtx.resume();
+  ambNodes  = AMBIENT_TYPES[type].fn(ambCtx);
+  ambPlaying = true;
+  toast(AMBIENT_TYPES[type].label + ' playing');
+}
+
+/* ── BEST TIME OF DAY ────────────────────── */
+function getBestHour() {
+  if (!st.history.length) return null;
+  const counts = {};
+  st.history.forEach(h => {
+    const hr = new Date(h.date).getHours();
+    counts[hr] = (counts[hr] || 0) + 1;
+  });
+  const best = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+  if (!best) return null;
+  const hr  = parseInt(best[0]);
+  const end = hr + 1;
+  const fmt = h => {
+    const suffix = h < 12 ? 'am' : 'pm';
+    const disp   = h % 12 || 12;
+    return disp + suffix;
+  };
+  return { label: `${fmt(hr)}–${fmt(end)}`, count: best[1], hr };
+}
+
+/* ── WEEKLY REPORT ───────────────────────── */
+function getWeeklyReport() {
+  const now      = Date.now();
+  const weekAgo  = now - 7 * 86400000;
+  const sessions = st.history.filter(h => new Date(h.date).getTime() > weekAgo);
+  const mins     = sessions.reduce((a, h) => a + (h.mins || 0), 0);
+  const days     = new Set(sessions.map(h => new Date(h.date).toDateString())).size;
+  const grade    = sessions.length >= 20 ? 'A' : sessions.length >= 14 ? 'B' : sessions.length >= 7 ? 'C' : sessions.length >= 3 ? 'D' : 'F';
+  const gradeMsg = { A:'Exceptional week.', B:'Solid effort.', C:'Getting there.', D:'Room to grow.', F:'Let's build the habit.' };
+  return { sessions: sessions.length, mins, days, grade, msg: gradeMsg[grade] };
+}
+
+function renderWeeklyReport() {
+  const el = document.getElementById('weekly-report');
+  if (!el) return;
+  const r   = getWeeklyReport();
+  const bh  = getBestHour();
+  const hrs = r.mins >= 60 ? (r.mins/60).toFixed(1)+'h' : r.mins+'m';
+  el.innerHTML = `
+    <div class="wr-grade grade-${r.grade}">${r.grade}</div>
+    <div class="wr-body">
+      <div class="wr-title">This week</div>
+      <div class="wr-stats">${r.sessions} sessions · ${hrs} · ${r.days} day${r.days!==1?'s':''}</div>
+      <div class="wr-msg">${r.msg}</div>
+    </div>`;
+  /* best hour */
+  const bhEl = document.getElementById('best-hour-wrap');
+  if (bhEl) {
+    if (bh) {
+      bhEl.innerHTML = `<span style="font-weight:700;color:var(--t1)">⏰ ${bh.label}</span> &nbsp;·&nbsp; ${bh.count} session${bh.count!==1?'s':''} at peak`;
+    } else {
+      bhEl.textContent = 'Complete sessions to see your peak focus hour.';
+    }
+  }
+}
+
 /* ── KEYBOARD ────────────────────────────── */
 document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
@@ -777,155 +961,15 @@ function saveSettings() {
   cfg.short     = parseInt(document.getElementById('si-s').value)  || 5;
   cfg.long      = parseInt(document.getElementById('si-l').value)  || 15;
   cfg.sessions  = parseInt(document.getElementById('si-n').value)  || 4;
-  cfg.dailyGoal = parseInt(document.getElementById('si-dg').value) || 4;
+  cfg.dailyGoal     = parseInt(document.getElementById('si-dg').value) || 4;
+  const asb2 = document.getElementById('si-autostart-breaks');
+  const asw2 = document.getElementById('si-autostart-work');
+  if (asb2) cfg.autoStartBreaks = asb2.checked;
+  if (asw2) cfg.autoStartWork   = asw2.checked;
   const optEl   = document.getElementById('si-email-optin');
   if (optEl) st.weeklyEmailOptIn = optEl.checked;
   save(); setMode(st.mode); renderDots(); updateDailyGoalBar();
   toast('Settings saved');
-}
-
-
-/* ═══════════════════════════════════════════
-   MOBILE TAB NAVIGATION
-   ═══════════════════════════════════════════ */
-
-function mobTab(tab) {
-  /* hide all screens, show selected */
-  document.querySelectorAll('.mob-screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.mob-tab').forEach(b => b.classList.remove('on'));
-  const screen = document.getElementById('mob-screen-' + tab);
-  const btn    = document.getElementById('mob-tab-' + tab);
-  if (screen) screen.classList.add('active');
-  if (btn)    btn.classList.add('on');
-
-  /* refresh stats when opening stats tab */
-  if (tab === 'stats') refreshMobStats();
-  /* sync settings values when opening settings tab */
-  if (tab === 'settings') syncMobSettings();
-}
-
-function refreshMobStats() {
-  const s = st.stats, m = s.focusMins || 0;
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('mob-s-today',  s.today  || 0);
-  set('mob-s-streak', s.streak || 0);
-  set('mob-s-focus',  m >= 60 ? Math.floor(m/60)+'h' : m+'m');
-  set('mob-s-done',   s.tasksDone || 0);
-  set('mob-s-total',  s.total  || 0);
-  set('mob-s-best',   s.best   || 0);
-
-  /* streak hero */
-  const flame = document.getElementById('mob-streak-flame');
-  const num   = document.getElementById('mob-streak-num');
-  const best  = document.getElementById('mob-streak-best');
-  const sk    = s.streak || 0;
-  if (flame) {
-    flame.textContent = sk>=7?'🔥':sk>=3?'⚡':sk>=1?'✦':'○';
-    flame.className   = 'streak-flame' + (sk>=3?' hot':'');
-  }
-  if (num)  num.innerHTML  = `${sk}<span> day${sk!==1?'s':''}</span>`;
-  if (best) best.textContent = s.best || 0;
-
-  /* 7-day mini calendar */
-  const cal = document.getElementById('mob-streak-cal');
-  if (cal) {
-    cal.innerHTML = '';
-    const DAY_ABBR = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-    const active   = s.activeDays || [];
-    const now      = new Date();
-    for (let i = 6; i >= 0; i--) {
-      const d   = new Date(now); d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0,10);
-      const wrap = document.createElement('div'); wrap.className = 'sc-day';
-      wrap.innerHTML = `
-        <div class="sc-dot${i===0?' today':active.includes(iso)?' active':''}"></div>
-        <div class="sc-lbl${i===0?' is-today':''}">${DAY_ABBR[d.getDay()]}</div>`;
-      cal.appendChild(wrap);
-    }
-  }
-
-  /* recent history */
-  const hl = document.getElementById('mob-hl-list');
-  if (hl) {
-    hl.innerHTML = '';
-    if (!st.history.length) {
-      hl.innerHTML = '<div style="font-size:.62rem;color:var(--t3);text-align:center;padding:14px 0">No sessions yet</div>';
-    } else {
-      st.history.slice(0,8).forEach(h => {
-        const d   = new Date(h.date);
-        const item = document.createElement('div'); item.className = 'hi';
-        item.innerHTML = `<div class="hd"></div><div>
-          <div class="hn">${esc(h.label)}</div>
-          <div class="hm">${h.mins}min · ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
-        </div>`;
-        hl.appendChild(item);
-      });
-    }
-  }
-}
-
-function syncMobSettings() {
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  set('mob-si-f',  cfg.work);
-  set('mob-si-s',  cfg.short);
-  set('mob-si-l',  cfg.long);
-  set('mob-si-n',  cfg.sessions);
-  set('mob-si-dg', cfg.dailyGoal || 4);
-  const ab  = document.getElementById('mob-si-autobreak');  if (ab)  ab.checked  = cfg.autoBreak || false;
-  const opt = document.getElementById('mob-si-emailoptin'); if (opt) opt.checked = st.weeklyEmailOptIn || false;
-}
-
-function saveMobSettings() {
-  const get = id => parseInt(document.getElementById(id)?.value);
-  cfg.work      = get('mob-si-f')  || cfg.work;
-  cfg.short     = get('mob-si-s')  || cfg.short;
-  cfg.long      = get('mob-si-l')  || cfg.long;
-  cfg.sessions  = get('mob-si-n')  || cfg.sessions;
-  cfg.dailyGoal = get('mob-si-dg') || cfg.dailyGoal;
-  const ab  = document.getElementById('mob-si-autobreak');  if (ab)  cfg.autoBreak        = ab.checked;
-  const opt = document.getElementById('mob-si-emailoptin'); if (opt) st.weeklyEmailOptIn  = opt.checked;
-  /* sync back to desktop inputs */
-  ['f','s','l','n','dg'].forEach(k => {
-    const map = {f:'work',s:'short',l:'long',n:'sessions',dg:'dailyGoal'};
-    const el = document.getElementById('si-'+k); if (el) el.value = cfg[map[k]];
-  });
-  save(); setMode(st.mode); renderDots(); updateDailyGoalBar();
-  toast('Settings saved ✓');
-}
-
-/* Mobile music helpers */
-function mobMusicTab(tab, btn) {
-  document.getElementById('mob-spotify-sec').style.display = tab==='spotify' ? '' : 'none';
-  document.getElementById('mob-ambient-sec').style.display = tab==='ambient'  ? '' : 'none';
-  btn.parentElement.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-function mobEmbedSpotify() {
-  const url = document.getElementById('mob-sp-url')?.value.trim();
-  if (!url) return;
-  const m = url.match(/playlist\/([a-zA-Z0-9]+)/);
-  if (!m) { toast('Invalid Spotify URL'); return; }
-  mobLoadPL(m[1]);
-}
-
-function mobLoadPL(id) {
-  const frame = document.getElementById('mob-sp-frame');
-  if (frame) frame.innerHTML = `<iframe
-    src="https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0"
-    width="100%" height="232" frameborder="0"
-    allow="autoplay;clipboard-write;encrypted-media;fullscreen;picture-in-picture"
-    loading="lazy"></iframe>`;
-  /* also load desktop panel if visible */
-  loadPL(id);
-}
-
-/* sync mobile theme label */
-const _origToggleTheme = toggleTheme;
-function toggleTheme() {
-  _origToggleTheme();
-  const lbl = document.getElementById('mob-th-lbl');
-  if (lbl) lbl.textContent = document.documentElement.dataset.theme === 'light' ? 'Light' : 'Dark';
 }
 
 /* ── INIT ────────────────────────────────── */
@@ -943,10 +987,8 @@ function init() {
   updateStatDisplay();
   updateDailyGoalBar();
   updateGoalDisplay();
+  renderWeeklyReport();
   showP('dash');
-  /* sync mobile theme label */
-  const mobThLbl = document.getElementById('mob-th-lbl');
-  if (mobThLbl) mobThLbl.textContent = document.documentElement.dataset.theme === 'light' ? 'Light' : 'Dark';
   initAuth();
   setTimeout(() => {
     if ('Notification' in window && Notification.permission === 'default') {
