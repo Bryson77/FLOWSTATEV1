@@ -22,7 +22,7 @@ const MOTIVES = [
   { e: '🏎️', t: 'do more.'                   },
   { e: '🚗',  t: 'floor it.'                  },
   { e: '🏁',  t: 'finish what you started.'   },
-  { e: '💡',  t: "don't overthink it."        },
+  { e: '💡',  t: "don\'t overthink it."        },
   { e: '🔥',  t: 'feel it.'                   },
   { e: '🎯',  t: 'one session closer.'        },
   { e: '⚡',  t: 'stay locked in.'            },
@@ -49,10 +49,10 @@ function nextMotive() {
 }
 
 const MSGS = {
-  work:  ["45 minutes won't hurt.", "stay locked in.", "one session closer.",
-          "feel it.", "do more.", "don't overthink it.", "deep work pays off.", "floor it."],
+  work:  ["45 minutes won’t hurt.", "stay locked in.", "one session closer.",
+          "feel it.", "do more.", "don’t overthink it.", "deep work pays off.", "floor it."],
   short: ["take a breath.", "you earned it.", "stretch and hydrate.", "clear your head."],
-  long:  ["great run. rest now.", "recharge completely.", "you've earned this.", "rest is productive."]
+  long:  ["great run. rest now.", "recharge completely.", "you’ve earned this.", "rest is productive."]
 };
 
 /* ── PERSIST ─────────────────────────────── */
@@ -862,7 +862,7 @@ function getWeeklyReport() {
   const mins     = sessions.reduce((a, h) => a + (h.mins || 0), 0);
   const days     = new Set(sessions.map(h => new Date(h.date).toDateString())).size;
   const grade    = sessions.length >= 20 ? 'A' : sessions.length >= 14 ? 'B' : sessions.length >= 7 ? 'C' : sessions.length >= 3 ? 'D' : 'F';
-  const gradeMsg = { A:'Exceptional week.', B:'Solid effort.', C:'Getting there.', D:'Room to grow.', F:'Let's build the habit.' };
+  const gradeMsg = { A:'Exceptional week.', B:'Solid effort.', C:'Getting there.', D:'Room to grow.', F:'Let\'s build the habit.' };
   return { sessions: sessions.length, mins, days, grade, msg: gradeMsg[grade] };
 }
 
