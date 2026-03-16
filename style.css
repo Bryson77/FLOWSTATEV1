@@ -383,12 +383,189 @@ body {
 
 /* ═══ RESPONSIVE ══════════════════════════════ */
 @media (max-width: 720px) {
+  /* ── Layout ── */
   body { overflow: auto; height: auto; }
-  #app { grid-template-columns: 1fr; grid-template-rows: 52px 1fr; grid-template-areas: "bar" "main"; height: auto; min-height: 100vh; }
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-rows: 52px 1fr;
+    grid-template-areas: "bar" "main";
+    height: auto; min-height: 100vh;
+  }
   #nav, #panel { display: none; }
   #main { overflow: visible; }
   #tasks { max-height: none; }
+
+  /* ── Top bar ── */
+  #bar { padding: 0 12px; }
+  .mode-row { gap: 2px; }
+  .mode-btn { padding: 5px 9px; font-size: 0.68rem; }
+  .tip-wrap { display: none; }
+  .mob-music-btn { display: flex !important; }
+
+  /* ── Main body ── */
+  .main-body { padding: 12px 16px 16px; }
+
+  /* ── Timer ── */
+  .timer-num { font-size: clamp(4rem, 22vw, 6rem); }
+
+  /* ── Motivation card ── */
+  .mc { top: 8px; right: 8px; padding: 7px 10px; }
+  .mc-e { font-size: 1rem; }
+  .mc-t { font-size: 0.65rem; }
+  .mc-s { display: none; }
+
+  /* ── Controls ── */
+  .ctrl { gap: 10px; margin-top: 16px; }
+  .btn-main { padding: 12px 32px; font-size: 0.82rem; }
+
+  /* ── Progress ── */
+  .prog-wrap { max-width: 100%; margin: 14px 0 0; }
+
+  /* ── Daily goal bar ── */
+  .daily-goal-wrap { margin-bottom: 8px; }
+
+  /* ── Tasks ── */
+  #tasks { padding: 14px 16px 100px; }
+  .t-inp { font-size: 0.82rem; }
+
+  /* ── Footer ── */
+  #main-footer { flex-direction: column; gap: 8px; text-align: center; padding: 16px; }
+  .footer-links { flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+  /* ── Bottom nav bar ── */
+  #mob-nav { display: flex; }
+
+  /* ── Mobile drawer ── */
+  #mob-drawer { display: flex; }
+
+  /* ── Mobile panel ── */
+  #mob-panel { display: flex; }
 }
+
+/* ── Desktop: hide mobile elements ── */
+@media (min-width: 721px) {
+  #mob-nav    { display: none !important; }
+  #mob-drawer { display: none !important; }
+  #mob-panel  { display: none !important; }
+  .mob-music-btn { display: none !important; }
+}
+
+/* ── MOBILE BOTTOM NAV ── */
+#mob-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 58px; z-index: 100;
+  background: var(--c1);
+  border-top: 1px solid var(--ln);
+  align-items: stretch;
+  safe-area-inset-bottom: env(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mob-tab {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; cursor: pointer;
+  color: var(--t3); transition: color 0.15s;
+  font-size: 0.55rem; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent;
+}
+.mob-tab.on { color: var(--blue-lt); }
+.mob-tab-ic { font-size: 1rem; line-height: 1; }
+.mob-tab-lbl { font-size: 0.52rem; }
+
+/* ── MOBILE DRAWER ── */
+#mob-drawer {
+  display: none;
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,0.5);
+  align-items: flex-end;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#mob-drawer.open { opacity: 1; pointer-events: all; }
+
+.mob-drawer-inner {
+  background: var(--c1);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--lnhi);
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 0 0 env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+#mob-drawer.open .mob-drawer-inner { transform: translateY(0); }
+
+.mob-drawer-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--ln);
+  font-size: 0.82rem; font-weight: 700; color: var(--t1);
+  position: sticky; top: 0; background: var(--c1); z-index: 1;
+}
+.mob-drawer-hd button {
+  background: transparent; border: none; color: var(--t2);
+  font-size: 1rem; cursor: pointer; padding: 4px 8px;
+  border-radius: var(--rad-sm);
+}
+.mob-drawer-hd button:hover { background: var(--c2); }
+
+/* drawer content inherits nav panel styles, just needs padding */
+.mob-drawer-inner .set-b,
+.mob-drawer-inner .sg,
+.mob-drawer-inner .hl,
+.mob-drawer-inner .streak-hero,
+.mob-drawer-inner .streak-cal,
+.mob-drawer-inner .wr-wrap,
+.mob-drawer-inner .best-hour-wrap { margin: 12px 16px; }
+.mob-drawer-inner .ns-lbl { padding-left: 16px; }
+.mob-drawer-inner .hi { padding: 8px 16px; }
+
+/* ── MOBILE SPOTIFY PANEL ── */
+#mob-panel {
+  display: none;
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,0.5);
+  align-items: flex-end;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#mob-panel.open { opacity: 1; pointer-events: all; }
+
+.mob-panel-inner {
+  background: var(--c1);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--lnhi);
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+#mob-panel.open .mob-panel-inner { transform: translateY(0); }
+
+.mob-panel-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--ln);
+  font-size: 0.82rem; font-weight: 700; color: var(--t1);
+  position: sticky; top: 0; background: var(--c1); z-index: 1;
+}
+.mob-panel-hd button {
+  background: transparent; border: none; color: var(--t2);
+  font-size: 1rem; cursor: pointer; padding: 4px 8px;
+  border-radius: var(--rad-sm);
+}
+
+/* music button in top bar — hidden on desktop */
+.mob-music-btn { display: none; }
 
 /* ═══ LOAD ANIMATIONS ═════════════════════════ */
 #bar   { animation: fadeDown 0.35s ease both; }

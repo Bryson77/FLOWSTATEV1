@@ -52,6 +52,7 @@
       <span id="th-lbl">Dark</span>
       <div class="tt-track"><div class="tt-thumb"></div></div>
     </div>
+    <button class="bar-btn mob-music-btn" id="mob-music-btn" onclick="toggleMobilePanel()" title="Music">♫</button>
     <button class="bar-btn" id="bar-signin-btn" onclick="handleSignIn()">Sign in</button>
   </div>
 </header>
@@ -209,7 +210,7 @@
         <a href="privacy.html"  target="_blank">Privacy Policy</a>
         <a href="terms.html"    target="_blank">Terms of Service</a>
         <a href="dashboard.html">Dashboard</a>
-        <a href="mailto:lethabomabilo33@gmail.com">Contact</a>
+        <a href="/cdn-cgi/l/email-protection#d2beb7a6bab3b0bdbfb3b0bbbebde1e192b5bfb3bbbefcb1bdbf">Contact</a>
       </div>
     </footer>
   </div>
@@ -243,6 +244,67 @@
   </div>
 </aside>
 
+
+<!-- ── MOBILE BOTTOM NAV ── -->
+<nav id="mob-nav">
+  <div class="mob-tab on" onclick="mobShowP('dash')">
+    <span class="mob-tab-ic">○</span>
+    <span class="mob-tab-lbl">Dashboard</span>
+  </div>
+  <div class="mob-tab" onclick="mobShowP('hist')">
+    <span class="mob-tab-ic">◷</span>
+    <span class="mob-tab-lbl">History</span>
+  </div>
+  <div class="mob-tab" onclick="mobShowP('stats')">
+    <span class="mob-tab-ic">◈</span>
+    <span class="mob-tab-lbl">Stats</span>
+  </div>
+  <div class="mob-tab" onclick="mobShowP('settings')">
+    <span class="mob-tab-ic">◎</span>
+    <span class="mob-tab-lbl">Settings</span>
+  </div>
+</nav>
+
+<!-- ── MOBILE NAV DRAWER ── -->
+<div id="mob-drawer">
+  <div class="mob-drawer-inner" id="mob-drawer-inner">
+    <!-- content injected by JS -->
+  </div>
+</div>
+
+<!-- ── MOBILE PANEL (Spotify) ── -->
+<div id="mob-panel">
+  <div class="mob-panel-inner">
+    <div class="mob-panel-hd">
+      <span>Music</span>
+      <button onclick="toggleMobilePanel()">✕</button>
+    </div>
+    <div class="ps">
+      <div class="pt">Spotify</div>
+      <div class="sp-row">
+        <input type="text" class="sp-inp" id="mob-sp-url" placeholder="Paste playlist URL…">
+        <button class="sp-go" onclick="embedSpotifyMob()">Load</button>
+      </div>
+      <div class="sp-frame" id="mob-sp-frame">
+        <div class="sp-ph">
+          <div class="sp-ph-ico">♫</div>
+          <div class="sp-ph-txt">Paste a link or<br>pick a playlist below</div>
+        </div>
+      </div>
+    </div>
+    <div class="ps">
+      <div class="pt">Playlists</div>
+      <div class="pl-list">
+        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX8NTLI2TtZa6')"><span class="pl-ico">🧠</span><div><div class="pl-name">Deep Focus</div><div class="pl-sub">Spotify · concentration</div></div></div>
+        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DWZeKCadgRdKQ')"><span class="pl-ico">☕</span><div><div class="pl-name">Lo-Fi Beats</div><div class="pl-sub">Spotify · chill study</div></div></div>
+        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX4sWSpwq3LiO')"><span class="pl-ico">🎹</span><div><div class="pl-name">Peaceful Piano</div><div class="pl-sub">Spotify · calm</div></div></div>
+        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DWXLeA8Omikj7')"><span class="pl-ico">⚡</span><div><div class="pl-name">Brain Food</div><div class="pl-sub">Spotify · deep work</div></div></div>
+        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX3Ogo9pFvBkY')"><span class="pl-ico">🌊</span><div><div class="pl-name">Ambient Chill</div><div class="pl-sub">Spotify · background</div></div></div>
+        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX9tPFwDMOkiI')"><span class="pl-ico">🌿</span><div><div class="pl-name">Nature &amp; Noise</div><div class="pl-sub">Spotify · white noise</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
 </div><!-- #app -->
 
 <div id="toast"></div>
@@ -368,6 +430,67 @@
     </div>
   </div>
 </div>
+
+<script>
+/* ── MOBILE NAV ── */
+const MOB_PANELS = {
+  dash:     document.getElementById('p-dash'),
+  hist:     document.getElementById('p-hist'),
+  stats:    document.getElementById('p-stats'),
+  settings: document.getElementById('p-settings'),
+};
+const PANEL_LABELS = { dash:'Dashboard', hist:'History', stats:'Stats', settings:'Settings' };
+
+function mobShowP(name) {
+  showP(name);
+  const drawer = document.getElementById('mob-drawer-inner');
+  const panel  = MOB_PANELS[name];
+  if (!panel) return;
+  drawer.innerHTML = '';
+  const hd = document.createElement('div');
+  hd.className = 'mob-drawer-hd';
+  hd.innerHTML = '<span>' + PANEL_LABELS[name] + '</span><button onclick="closeMobDrawer()">&#x2715;</button>';
+  drawer.appendChild(hd);
+  const clone = panel.cloneNode(true);
+  clone.style.display = '';
+  drawer.appendChild(clone);
+  document.getElementById('mob-drawer').classList.add('open');
+  document.querySelectorAll('.mob-tab').forEach(function(t,i) {
+    t.classList.toggle('on', ['dash','hist','stats','settings'][i] === name);
+  });
+}
+
+function closeMobDrawer() {
+  document.getElementById('mob-drawer').classList.remove('open');
+}
+
+document.getElementById('mob-drawer').addEventListener('click', function(e) {
+  if (e.target === this) closeMobDrawer();
+});
+
+/* ── MOBILE SPOTIFY PANEL ── */
+var mobPanelOpen = false;
+function toggleMobilePanel() {
+  mobPanelOpen = !mobPanelOpen;
+  document.getElementById('mob-panel').classList.toggle('open', mobPanelOpen);
+}
+document.getElementById('mob-panel').addEventListener('click', function(e) {
+  if (e.target === this) { mobPanelOpen = false; this.classList.remove('open'); }
+});
+
+function embedSpotifyMob() {
+  var url = document.getElementById('mob-sp-url').value.trim();
+  if (!url) return;
+  var m = url.match(/playlist\/([a-zA-Z0-9]+)/);
+  if (!m) { toast('Invalid Spotify URL'); return; }
+  loadPLMob(m[1]);
+}
+function loadPLMob(id) {
+  document.getElementById('mob-sp-frame').innerHTML =
+    '<iframe src="https://open.spotify.com/embed/playlist/' + id + '?utm_source=generator&theme=0" width="100%" height="232" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+  toast('Playlist loaded');
+}
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
