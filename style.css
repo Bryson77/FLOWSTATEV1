@@ -436,10 +436,8 @@ body {
   #mob-nav { display: flex; }
 
   /* ── Mobile drawer ── */
-  #mob-drawer { display: flex; }
 
   /* ── Mobile panel ── */
-  #mob-panel { display: flex; }
 }
 
 /* ── Desktop: hide mobile elements ── */
@@ -476,16 +474,16 @@ body {
 
 /* ── MOBILE DRAWER ── */
 #mob-drawer {
-  display: none;
   position: fixed; inset: 0; z-index: 150;
   background: rgba(0,0,0,0.5);
-  align-items: flex-end;
+  display: flex; align-items: flex-end;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   opacity: 0; pointer-events: none;
   transition: opacity 0.25s ease;
+  visibility: hidden;
 }
-#mob-drawer.open { opacity: 1; pointer-events: all; }
+#mob-drawer.open { opacity: 1; pointer-events: all; visibility: visible; }
 
 .mob-drawer-inner {
   background: var(--c1);
@@ -527,16 +525,16 @@ body {
 
 /* ── MOBILE SPOTIFY PANEL ── */
 #mob-panel {
-  display: none;
   position: fixed; inset: 0; z-index: 150;
   background: rgba(0,0,0,0.5);
-  align-items: flex-end;
+  display: flex; align-items: flex-end;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   opacity: 0; pointer-events: none;
   transition: opacity 0.25s ease;
+  visibility: hidden;
 }
-#mob-panel.open { opacity: 1; pointer-events: all; }
+#mob-panel.open { opacity: 1; pointer-events: all; visibility: visible; }
 
 .mob-panel-inner {
   background: var(--c1);
