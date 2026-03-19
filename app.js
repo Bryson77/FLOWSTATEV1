@@ -106,7 +106,9 @@ function toggleTheme() {
 /* ── TIMER ───────────────────────────────── */
 function toggleTimer() {
   if (st.running) { pause(); return; }
-  if (st.mode === 'work' && !st.sessionGoal) {
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const needsGoal = st.mode === 'work' && (!st.sessionGoal || st.goalDate !== todayISO);
+  if (needsGoal) {
     openIntentionModal();
   } else {
     play();
@@ -163,7 +165,7 @@ function sessionEnd() {
     playDoneSound();
     toast('Break over');
     setMode('work');
-    st.sessionGoal = '';
+    /* keep sessionGoal — user set it for the day */
     document.getElementById('skip-btn').style.display = 'none';
   }
 }
@@ -171,7 +173,7 @@ function sessionEnd() {
 function skipBreak() {
   if (st.mode !== 'work') {
     setMode('work');
-    st.sessionGoal = '';
+    /* keep sessionGoal — user set it for the day */
     document.getElementById('skip-btn').style.display = 'none';
     toast('Break skipped');
   }
@@ -232,9 +234,13 @@ function rotateMotive() {
 function renderDots() {
   const c = document.getElementById('sdots');
   c.innerHTML = '';
+  const completed = st.done % cfg.sessions;
+  /* if completed === 0 and we've done at least one session this round,
+     show all dots filled (full round just finished) */
+  const filled = completed === 0 && st.done > 0 ? cfg.sessions : completed;
   for (let i = 0; i < cfg.sessions; i++) {
     const d = document.createElement('div');
-    d.className = 'sdot' + (i < (st.done % cfg.sessions) ? ' on' : '');
+    d.className = 'sdot' + (i < filled ? ' on' : '');
     c.appendChild(d);
   }
 }
@@ -285,6 +291,7 @@ function closeIntentionModal(start) {
   m.classList.remove('open');
   if (start) {
     st.sessionGoal = inp.value.trim() || 'Focus session';
+    st.goalDate    = new Date().toISOString().slice(0, 10);
     if (st.sessionGoal !== 'Focus session' &&
         !st.tasks.some(t => t.text === st.sessionGoal)) {
       st.tasks.unshift({
@@ -331,7 +338,7 @@ function closeReflectionModal(saveNote) {
     const note = document.getElementById('reflection-note').value.trim();
     if (note && st.history[0]) { st.history[0].note = note; save(); }
   }
-  st.sessionGoal = '';
+  /* keep sessionGoal for the rest of the day — don't clear it */
   updateGoalDisplay();
   if (_reflCb) { _reflCb(); _reflCb = null; }
 }
@@ -706,6 +713,54 @@ function exportCSV() {
   toast('CSV downloaded ✓');
 }
 
+
+/* ── SYNC FROM CLOUD TO LOCAL ────────────────
+   Called on init when user is signed in.
+   Merges cloud data into local st so the
+   homepage always shows up-to-date stats.
+─────────────────────────────────────────── */
+async function syncFromCloud() {
+  try {
+    const user = await sbGetUser();
+    if (!user) return;
+    const [cs, csess] = await Promise.all([
+      sbFetchStats(user.id),
+      sbFetchSessions(user.id)
+    ]);
+
+    /* merge stats — take highest value */
+    if (cs) {
+      st.stats.streak    = Math.max(st.stats.streak    || 0, cs.focus_streak    || 0);
+      st.stats.total     = Math.max(st.stats.total     || 0, cs.total_sessions  || 0);
+      st.stats.focusMins = Math.max(st.stats.focusMins || 0, cs.total_focus_time|| 0);
+      st.stats.tasksDone = Math.max(st.stats.tasksDone || 0, cs.tasks_done      || 0);
+      st.stats.best      = Math.max(st.stats.best      || 0, cs.best_day        || 0);
+    }
+
+    /* merge history — deduplicate by date+label */
+    if (csess && csess.length) {
+      csess.forEach(s => {
+        if (!st.history.some(h => h.date?.slice(0,10) === s.date && h.label === s.label)) {
+          st.history.unshift({
+            date:  s.date + 'T00:00:00Z',
+            label: s.label || 'Focus session',
+            mins:  s.duration,
+            note:  ''
+          });
+        }
+      });
+      st.history.sort((a, b) => new Date(b.date) - new Date(a.date));
+      st.history = st.history.slice(0, 100);
+    }
+
+    save();
+    updateStatDisplay();
+    renderHist();
+  } catch (e) {
+    console.warn('syncFromCloud:', e.message);
+  }
+}
+
 /* ── KEYBOARD ────────────────────────────── */
 document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
@@ -801,6 +856,7 @@ function init() {
   updateGoalDisplay();
   showP('dash');
   initAuth();
+  syncFromCloud();
   setTimeout(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
