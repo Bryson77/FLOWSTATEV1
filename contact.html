@@ -220,7 +220,7 @@ async function submitContact() {
   btn.textContent = 'Sending…';
 
   try {
-    const res = await fetch('https://flowstate-worker.YOUR-SUBDOMAIN.workers.dev/contact', {
+    const res = await fetch('https://bryson.lethabomabilo53.workers.dev/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, subject, message })
