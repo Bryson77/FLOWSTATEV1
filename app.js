@@ -91,6 +91,12 @@ function load() {
   if (optEl) optEl.checked = st.weeklyEmailOptIn;
   st.left  = cfg.work * 60;
   st.total = st.left;
+  /* Reset today count if it's a new day since last save */
+  const _now = new Date();
+  const _todayKey = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-' + String(_now.getDate()).padStart(2,'0');
+  if (st.stats.lastDate && st.stats.lastDate !== _todayKey && st.stats.lastDate !== new Date().toDateString()) {
+    st.stats.today = 0;
+  }
   carryOverTasks();
 }
 
@@ -116,31 +122,58 @@ function toggleTimer() {
 }
 
 function play() {
-  st.running = true;
+  st.running   = true;
+  st.startedAt = Date.now();          /* wall-clock start time */
+  if (!st.sessionStartedAt) st.sessionStartedAt = Date.now(); /* track full session wall time */
+  st.leftAtStart = st.left;           /* seconds remaining when we started */
   document.getElementById('btn-lbl').textContent = '⏸  Pause';
-  st.iv = setInterval(tick, 1000);
+  st.iv = setInterval(tick, 500);     /* poll every 500ms for responsiveness */
   rotateMotive();
+  /* handle tab visibility — recalculate when user returns */
+  document.addEventListener('visibilitychange', onVisibility);
 }
 
 function pause() {
   st.running = false;
-  document.getElementById('btn-lbl').textContent = '▶  Resume';
   clearInterval(st.iv);
+  document.removeEventListener('visibilitychange', onVisibility);
+  /* snapshot the actual remaining time based on wall clock */
+  if (st.startedAt) {
+    const elapsed = Math.floor((Date.now() - st.startedAt) / 1000);
+    st.left = Math.max(0, st.leftAtStart - elapsed);
+  }
+  document.getElementById('btn-lbl').textContent = '▶  Resume';
+  updateDisplay();
+}
+
+function onVisibility() {
+  if (!st.running) return;
+  if (!document.hidden) {
+    /* tab became visible — recalculate remaining time */
+    const elapsed = Math.floor((Date.now() - st.startedAt) / 1000);
+    st.left = Math.max(0, st.leftAtStart - elapsed);
+    updateDisplay();
+    if (st.left <= 0) sessionEnd();
+  }
 }
 
 function resetTimer() {
   pause();
   document.getElementById('btn-lbl').textContent = '▶  Start';
   const k = st.mode === 'work' ? 'work' : st.mode === 'short' ? 'short' : 'long';
-  st.left  = cfg[k] * 60;
-  st.total = st.left;
+  st.left      = cfg[k] * 60;
+  st.total     = st.left;
+  st.startedAt = null;
   updateDisplay();
 }
 
 function tick() {
-  if (st.left <= 0) { sessionEnd(); return; }
-  st.left--;
+  if (!st.running) return;
+  /* recalculate from wall clock — immune to throttling */
+  const elapsed = Math.floor((Date.now() - st.startedAt) / 1000);
+  st.left = Math.max(0, st.leftAtStart - elapsed);
   updateDisplay();
+  if (st.left <= 0) sessionEnd();
 }
 
 function sessionEnd() {
@@ -191,6 +224,7 @@ function setMode(mode) {
   document.querySelectorAll('.mode-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.mode === mode)
   );
+  st.sessionStartedAt = null; /* reset wall-clock tracker on mode change */
   const labels = { work: 'FOCUS SESSION', short: 'SHORT BREAK', long: 'LONG BREAK' };
   document.getElementById('t-lbl').textContent = labels[mode];
   document.getElementById('skip-btn').style.display = mode !== 'work' ? 'flex' : 'none';
@@ -555,37 +589,45 @@ function logSession() {
   st.history.unshift({
     date:  now.toISOString(),
     label: st.sessionGoal || (active ? active.text : 'Focus session'),
-    mins:  Math.round((st.total - st.left) / 60) || cfg.work,
+    mins:  st.sessionStartedAt ? Math.round((Date.now() - st.sessionStartedAt) / 60000) || cfg.work : cfg.work,
     note:  ''
   });
 }
 
 function updateStats() {
-  const today    = new Date().toDateString();
-  const todayISO = new Date().toISOString().slice(0, 10);
+  /* Use local date string to avoid UTC timezone mismatch */
+  const now2      = new Date();
+  const today     = now2.getFullYear() + '-' + String(now2.getMonth()+1).padStart(2,'0') + '-' + String(now2.getDate()).padStart(2,'0');
+  const todayISO  = today;
   if (st.stats.lastDate !== today) {
     st.stats.today = 0;
-    const yest = new Date(Date.now() - 86400000).toDateString();
+    const yest2 = new Date(now2 - 86400000);
+    const yest  = yest2.getFullYear() + '-' + String(yest2.getMonth()+1).padStart(2,'0') + '-' + String(yest2.getDate()).padStart(2,'0');
     st.stats.streak  = (st.stats.lastDate === yest) ? st.stats.streak + 1 : 1;
     st.stats.lastDate = today;
   }
   st.stats.today++;
   st.stats.total++;
-  st.stats.focusMins += Math.round((st.total - st.left) / 60) || cfg.work;
+  st.stats.focusMins += st.sessionStartedAt ? Math.round((Date.now() - st.sessionStartedAt) / 60000) || cfg.work : cfg.work;
   if (st.stats.today > st.stats.best) st.stats.best = st.stats.today;
   if (!st.stats.activeDays) st.stats.activeDays = [];
   if (!st.stats.activeDays.includes(todayISO)) st.stats.activeDays.push(todayISO);
   const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
   st.stats.activeDays = st.stats.activeDays.filter(d => d >= cutoff);
   st.stats.week = st.history.filter(h => new Date(h.date).getTime() > Date.now() - 7 * 86400000).length;
+  st.sessionStartedAt = null; /* reset for next session */
   updateStatDisplay();
   save();
 }
 
 function updateStatDisplay() {
   const s = st.stats, m = s.focusMins;
-  document.getElementById('s-today').textContent  = s.today;
+  /* s-today now shows live clock — updated by startClock() */
+  startClock();
   document.getElementById('s-streak').textContent = s.streak;
+  /* update today label to show date */
+  const todayLbl = document.getElementById('sc-l-today');
+  if (todayLbl) { const d = new Date(); todayLbl.textContent = d.toLocaleDateString([], { month:'short', day:'numeric' }); }
   document.getElementById('s-focus').textContent  = m >= 60 ? `${Math.floor(m / 60)}h` : `${m}m`;
   document.getElementById('s-done').textContent   = s.tasksDone;
   document.getElementById('s-total').textContent  = s.total;
@@ -683,7 +725,7 @@ function embedSpotify() {
 function loadPL(id) {
   document.getElementById('sp-frame').innerHTML = `<iframe
     src="https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0"
-    width="100%" height="232" frameborder="0"
+    width="100%" height="352" frameborder="0"
     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
     loading="lazy"></iframe>`;
   toast('Playlist loaded');
@@ -759,6 +801,24 @@ async function syncFromCloud() {
   } catch (e) {
     console.warn('syncFromCloud:', e.message);
   }
+}
+
+
+/* ── LIVE CLOCK (replaces "Today" stat) ─────── */
+let _clockIv = null;
+function startClock() {
+  const el = document.getElementById('s-today');
+  if (!el) return;
+  if (_clockIv) return; /* already running */
+  function updateClock() {
+    const now = new Date();
+    const h   = now.getHours().toString().padStart(2,'0');
+    const m   = now.getMinutes().toString().padStart(2,'0');
+    el.textContent = h + ':' + m;
+    el.title = now.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
+  }
+  updateClock();
+  _clockIv = setInterval(updateClock, 1000);
 }
 
 /* ── KEYBOARD ────────────────────────────── */

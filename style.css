@@ -364,8 +364,8 @@ body {
 .sp-inp:focus { border-color: var(--blue); }
 .sp-go { background: var(--blue); color: #fff; border: none; border-radius: var(--rad-sm); padding: 7px 13px; font-family: 'Geist', sans-serif; font-size: 0.68rem; font-weight: 700; cursor: pointer; transition: opacity var(--tr); }
 .sp-go:hover { opacity: 0.85; }
-.sp-frame { border-radius: var(--rad-sm); overflow: hidden; border: 1px solid var(--ln); min-height: 80px; }
-.sp-frame iframe { width: 100%; border: none; display: block; }
+.sp-frame { border-radius: var(--rad-sm); overflow: hidden; border: 1px solid var(--ln); min-height: 352px; display: flex; flex-direction: column; }
+.sp-frame iframe { width: 100%; border: none; display: block; flex: 1; min-height: 352px; }
 .sp-ph { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 110px; gap: 7px; }
 .sp-ph-ico { font-size: 1.4rem; opacity: 0.3; }
 .sp-ph-txt { font-size: 0.62rem; color: var(--t3); text-align: center; line-height: 1.6; }

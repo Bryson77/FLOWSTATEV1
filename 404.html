@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 — Flow State</title>
+<link rel="icon" href="Logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root { --blue:#2563eb; --blue-lt:#4f86f7; }
+[data-theme="dark"] {
+  --bg:#0e0e0e; --c1:#161616; --c2:#1e1e1e;
+  --ln:rgba(255,255,255,0.07); --lnhi:rgba(255,255,255,0.13);
+  --t1:#ededed; --t2:#999; --t3:#4a4a4a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Geist',system-ui,sans-serif;
+  background:var(--bg);color:var(--t1);
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  -webkit-font-smoothing:antialiased;
+  padding:24px;text-align:center;
+}
+.num{
+  font-size:clamp(6rem,20vw,10rem);font-weight:900;
+  letter-spacing:-0.06em;line-height:1;
+  color:var(--t1);opacity:0.08;
+  user-select:none;margin-bottom:0;
+}
+.icon{font-size:3rem;margin-bottom:16px;margin-top:-20px;}
+h1{
+  font-size:1.4rem;font-weight:900;
+  letter-spacing:-0.03em;color:var(--t1);
+  margin-bottom:8px;
+}
+p{font-size:0.82rem;color:var(--t2);margin-bottom:32px;line-height:1.6;max-width:360px;}
+.btn{
+  display:inline-block;padding:12px 28px;
+  border-radius:8px;background:var(--t1);color:var(--bg);
+  font-family:'Geist',sans-serif;font-size:0.82rem;font-weight:800;
+  text-decoration:none;transition:opacity 0.15s;margin:0 6px;
+}
+.btn:hover{opacity:0.85;}
+.btn.outline{
+  background:transparent;color:var(--t2);
+  border:1px solid var(--ln);
+}
+.btn.outline:hover{border-color:var(--lnhi);color:var(--t1);}
+</style>
+</head>
+<body>
+  <div class="num">404</div>
+  <div class="icon">🎯</div>
+  <h1>Page not found</h1>
+  <p>Looks like this page doesn't exist. You might have followed a broken link or typed the wrong URL.</p>
+  <div>
+    <a href="index.html" class="btn">Back to timer</a>
+    <a href="dashboard.html" class="btn outline">Dashboard</a>
+  </div>
+</body>
+</html>
