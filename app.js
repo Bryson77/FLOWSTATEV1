@@ -79,7 +79,7 @@ function load() {
     if (opt) st.weeklyEmailOptIn = JSON.parse(opt);
     if (th) {
       document.documentElement.dataset.theme = th;
-      document.getElementById('th-lbl').textContent = th === 'light' ? 'Light' : 'Dark';
+      document.getElementById('th-lbl').textContent = th === 'light' ? 'Dark' : 'Light';
     }
   } catch (_) {}
   document.getElementById('si-f').value  = cfg.work;
@@ -105,7 +105,7 @@ function toggleTheme() {
   const html    = document.documentElement;
   const isLight = html.dataset.theme === 'light';
   html.dataset.theme = isLight ? 'dark' : 'light';
-  document.getElementById('th-lbl').textContent = isLight ? 'Dark' : 'Light';
+  document.getElementById('th-lbl').textContent = isLight ? 'Light' : 'Dark';
   localStorage.setItem('fs4_theme', html.dataset.theme);
 }
 
@@ -622,8 +622,7 @@ function updateStats() {
 
 function updateStatDisplay() {
   const s = st.stats, m = s.focusMins;
-  /* s-today now shows live clock — updated by startClock() */
-  startClock();
+  /* s-today shows live clock — startClock() handles this */
   document.getElementById('s-streak').textContent = s.streak;
   /* update today label to show date */
   const todayLbl = document.getElementById('sc-l-today');
@@ -807,7 +806,8 @@ async function syncFromCloud() {
 /* ── LIVE CLOCK (replaces "Today" stat) ─────── */
 let _clockIv = null;
 function startClock() {
-  const el = document.getElementById('s-today');
+  const el  = document.getElementById('s-today');
+  const lbl = document.getElementById('sc-l-today');
   if (!el) return;
   if (_clockIv) return; /* already running */
   function updateClock() {
@@ -815,10 +815,11 @@ function startClock() {
     const h   = now.getHours().toString().padStart(2,'0');
     const m   = now.getMinutes().toString().padStart(2,'0');
     el.textContent = h + ':' + m;
+    if (lbl) lbl.textContent = now.toLocaleDateString([], { month:'short', day:'numeric' });
     el.title = now.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
   }
   updateClock();
-  _clockIv = setInterval(updateClock, 1000);
+  _clockIv = setInterval(updateClock, 60000); /* update every minute */
 }
 
 /* ── KEYBOARD ────────────────────────────── */
@@ -914,6 +915,7 @@ function init() {
   updateStatDisplay();
   updateDailyGoalBar();
   updateGoalDisplay();
+  startClock();
   showP('dash');
   initAuth();
   syncFromCloud();
