@@ -2,12 +2,13 @@
 const html = document.documentElement;
 (()=>{
   const t=localStorage.getItem('fs4_theme');
-  if(t){html.dataset.theme=t;const b=document.getElementById('th-btn');if(b)b.textContent=t==='light'?'Light':'Dark';}
+  if(t){html.dataset.theme=t;const b=document.getElementById('th-btn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
 })();
 function toggleTheme(){
   const is=html.dataset.theme==='light';
   html.dataset.theme=is?'dark':'light';
-  document.getElementById('th-btn').textContent=is?'Dark':'Light';
+  const btn=document.getElementById('th-btn');
+  if(btn)btn.textContent=is?'🌙':'☀️';
   localStorage.setItem('fs4_theme',html.dataset.theme);
 }
 
@@ -82,7 +83,44 @@ async function doSignOut(){
   if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')doSignUp();});
 });
 
-/* ── local data ── */
+/* ── FILTER STATE ── */
+let _histFilter = 'all'; /* 'all' | '30d' | '7d' */
+
+function setFilter(f) {
+  _histFilter = f;
+  document.querySelectorAll('.db-filter-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.f === f)
+  );
+  /* re-render with current data */
+  const {stats: ls, hist: lh} = getLocal();
+  const filtered = filterSessions(lh);
+  buildHeatmap(filtered);
+  buildHistory(filtered);
+  updateFilteredStats(filtered, ls);
+}
+
+function filterSessions(hist) {
+  if (_histFilter === 'all') return hist;
+  const days = _histFilter === '7d' ? 7 : 30;
+  /* Use local midnight as boundary to avoid timezone edge issues */
+  const boundary = new Date();
+  boundary.setHours(0, 0, 0, 0);
+  boundary.setDate(boundary.getDate() - days);
+  return hist.filter(h => new Date(h.date) >= boundary);
+}
+
+function updateFilteredStats(filtered, baseStats) {
+  /* Update today and week counts based on filter */
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const weekAgo  = new Date(now - 7 * 86400000);
+  const todayCount = filtered.filter(h => (h.date || '').slice(0, 10) === todayStr).length;
+  const weekCount  = filtered.filter(h => new Date(h.date) >= weekAgo).length;
+  const el = document.getElementById('db-today');
+  if (el) el.textContent = todayCount;
+  const el2 = document.getElementById('db-week-count');
+  if (el2) el2.textContent = weekCount;
+}
 function getLocal(){
   try{
     return{
@@ -147,10 +185,21 @@ function buildHeatmap(hist){
 
   const WEEKS=24;
   const now=new Date();
-  const counts={};
-  hist.forEach(h=>{const d=(h.date||'').slice(0,10);if(d)counts[d]=(counts[d]||0)+1;});
 
+  /* Build counts using LOCAL date strings to avoid UTC-offset bugs */
+  const counts={};
+  hist.forEach(h=>{
+    const raw=h.date||'';
+    /* parse as local date if it's a plain date string, else let Date parse it */
+    const d=raw.length===10?new Date(raw+'T00:00:00'):new Date(raw);
+    if(isNaN(d))return;
+    const localISO=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    counts[localISO]=(counts[localISO]||0)+1;
+  });
+
+  /* Start from the Sunday of (WEEKS-1) weeks ago */
   const start=new Date(now);
+  start.setHours(0,0,0,0);
   start.setDate(start.getDate()-start.getDay()-(WEEKS-1)*7);
 
   /* day label col */
@@ -161,7 +210,7 @@ function buildHeatmap(hist){
   });
   hm.appendChild(lblCol);
 
-  /* month labels */
+  /* month labels — one per column, blank if same month as previous */
   let lastM=-1;
   for(let w=0;w<WEEKS;w++){
     const d=new Date(start);d.setDate(d.getDate()+w*7);
@@ -172,18 +221,19 @@ function buildHeatmap(hist){
   }
 
   /* week cols */
-  const todayISO=now.toISOString().slice(0,10);
+  const todayLocal=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   for(let w=0;w<WEEKS;w++){
     const col=document.createElement('div');col.className='hm-col';
     for(let d=0;d<7;d++){
       const date=new Date(start);date.setDate(date.getDate()+w*7+d);
       const cell=document.createElement('div');
-      if(date>now){cell.className='hm-cell';cell.style.background='transparent';}
-      else{
-        const iso=date.toISOString().slice(0,10);
+      if(date>now&&date.toDateString()!==now.toDateString()){
+        cell.className='hm-cell';cell.style.background='transparent';
+      } else {
+        const iso=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
         const cnt=counts[iso]||0;
         const lvl=cnt===0?0:cnt===1?1:cnt<=3?2:cnt<=5?3:4;
-        cell.className=`hm-cell lv${lvl}${iso===todayISO?' today-cell':''}`;
+        cell.className=`hm-cell lv${lvl}${iso===todayLocal?' today-cell':''}`;
         cell.title=iso+(cnt?` · ${cnt} session${cnt>1?'s':''}`:'');
       }
       col.appendChild(cell);
@@ -224,12 +274,12 @@ async function loadDashboard(user){
 
   /* local first */
   const{stats:ls,hist:lh}=getLocal();
-  fillStats(ls,lh);buildHeatmap(lh);buildHistory(lh);
+  const filteredLocal=filterSessions(lh);
+  fillStats(ls,filteredLocal);buildHeatmap(filteredLocal);buildHistory(filteredLocal);
 
-  /* cloud overlay — runs even if cloud returns empty (new account) */
+  /* cloud overlay */
   try{
     const[cs,csess]=await Promise.all([sbFetchStats(user.id),sbFetchSessions(user.id)]);
-    /* cs is null on a brand new account — that's fine, just use local */
     const merged={
       streak:   Math.max(ls.streak||0,   cs?.focus_streak||0),
       total:    Math.max(ls.total||0,    cs?.total_sessions||0),
@@ -242,12 +292,12 @@ async function loadDashboard(user){
     const combined=[...lh];
     (csess||[]).forEach(s=>{
       if(!combined.some(h=>h.date?.slice(0,10)===s.date&&h.label===s.label))
-        combined.push({date:s.date+'T00:00:00Z',label:s.label||'Focus session',mins:s.duration});
+        combined.push({date:s.date+'T00:00:00',label:s.label||'Focus session',mins:s.duration});
     });
     combined.sort((a,b)=>new Date(b.date)-new Date(a.date));
-    fillStats(merged,combined);buildHeatmap(combined);buildHistory(combined);
+    const filteredCloud=filterSessions(combined);
+    fillStats(merged,filteredCloud);buildHeatmap(filteredCloud);buildHistory(filteredCloud);
   }catch(e){
-    /* only show CTA if it looks like a config/connection problem, not empty data */
     if(e.message&&(e.message.includes('fetch')||e.message.includes('network')||e.message.includes('initialised'))){
       document.getElementById('db-cta').style.display='';
     }
@@ -270,7 +320,8 @@ async function init(){
     document.getElementById('db-hero-name').textContent='Guest (not signed in)';
     document.getElementById('db-hero-email').textContent='Add Supabase keys to enable auth';
     document.getElementById('db-hero-joined').textContent='';
-    fillStats(ls,lh);buildHeatmap(lh);buildHistory(lh);
+    const filtered=filterSessions(lh);
+    fillStats(ls,filtered);buildHeatmap(filtered);buildHistory(filtered);
     return;
   }
 

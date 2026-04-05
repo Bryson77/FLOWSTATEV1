@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════ */
 
 /* ── STATE ───────────────────────────────── */
-let cfg = { work: 45, short: 5, long: 15, sessions: 4, dailyGoal: 4 };
+let cfg = { work: 45, short: 5, long: 15, sessions: 4, dailyGoal: 4, autoBreak: true };
 let st  = {
   mode: 'work', left: 45 * 60, total: 45 * 60,
   running: false, done: 0, iv: null,
@@ -62,6 +62,19 @@ function save() {
   localStorage.setItem('fs4_hist',       JSON.stringify(st.history.slice(-100)));
   localStorage.setItem('fs4_stats',      JSON.stringify(st.stats));
   localStorage.setItem('fs4_emailoptin', JSON.stringify(st.weeklyEmailOptIn));
+  /* persist live timer state so it survives navigation & refresh */
+  localStorage.setItem('fs4_timer', JSON.stringify({
+    mode:         st.mode,
+    running:      st.running,
+    startedAt:    st.startedAt    || null,
+    leftAtStart:  st.leftAtStart  || null,
+    left:         st.left,
+    total:        st.total,
+    done:         st.done,
+    sessionGoal:  st.sessionGoal  || '',
+    goalDate:     st.goalDate     || '',
+    autoBreak:    cfg.autoBreak,
+  }));
 }
 
 function load() {
@@ -72,6 +85,7 @@ function load() {
     const s   = localStorage.getItem('fs4_stats');
     const th  = localStorage.getItem('fs4_theme');
     const opt = localStorage.getItem('fs4_emailoptin');
+    const tmr = localStorage.getItem('fs4_timer');
     if (c)   cfg                = { ...cfg,      ...JSON.parse(c) };
     if (t)   st.tasks           = JSON.parse(t);
     if (h)   st.history         = JSON.parse(h);
@@ -79,9 +93,42 @@ function load() {
     if (opt) st.weeklyEmailOptIn = JSON.parse(opt);
     if (th) {
       document.documentElement.dataset.theme = th;
-      document.getElementById('th-lbl').textContent = th === 'light' ? 'Dark' : 'Light';
+      /* icon toggle — set correct icon */
+      const thBtn = document.getElementById('th-btn');
+      if (thBtn) thBtn.textContent = th === 'light' ? '☀️' : '🌙';
     }
-  } catch (_) {}
+
+    if (tmr) {
+      const saved = JSON.parse(tmr);
+      st.mode        = saved.mode        || 'work';
+      st.done        = saved.done        || 0;
+      st.sessionGoal = saved.sessionGoal || '';
+      st.goalDate    = saved.goalDate    || '';
+      if (saved.autoBreak !== undefined) cfg.autoBreak = saved.autoBreak;
+
+      if (saved.running && saved.startedAt && saved.leftAtStart != null) {
+        /* timer was running — recalculate remaining time from wall clock */
+        const elapsed = Math.floor((Date.now() - saved.startedAt) / 1000);
+        const remaining = Math.max(0, saved.leftAtStart - elapsed);
+        st.left        = remaining;
+        st.total       = saved.total || saved.leftAtStart;
+        st.leftAtStart = saved.leftAtStart;
+        st.startedAt   = saved.startedAt;
+        /* flag to re-start interval after DOM is ready */
+        st._resumeAfterLoad = remaining > 0;
+      } else {
+        st.left  = saved.left  != null ? saved.left  : cfg.work * 60;
+        st.total = saved.total != null ? saved.total : st.left;
+      }
+    } else {
+      st.left  = cfg.work * 60;
+      st.total = st.left;
+    }
+  } catch (_) {
+    st.left  = cfg.work * 60;
+    st.total = st.left;
+  }
+
   document.getElementById('si-f').value  = cfg.work;
   document.getElementById('si-s').value  = cfg.short;
   document.getElementById('si-l').value  = cfg.long;
@@ -89,8 +136,11 @@ function load() {
   document.getElementById('si-dg').value = cfg.dailyGoal;
   const optEl = document.getElementById('si-email-optin');
   if (optEl) optEl.checked = st.weeklyEmailOptIn;
-  st.left  = cfg.work * 60;
-  st.total = st.left;
+
+  /* update auto-break toggle UI if present */
+  const abEl = document.getElementById('si-autobreak');
+  if (abEl) abEl.checked = cfg.autoBreak !== false;
+
   /* Reset today count if it's a new day since last save */
   const _now = new Date();
   const _todayKey = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-' + String(_now.getDate()).padStart(2,'0');
@@ -105,7 +155,8 @@ function toggleTheme() {
   const html    = document.documentElement;
   const isLight = html.dataset.theme === 'light';
   html.dataset.theme = isLight ? 'dark' : 'light';
-  document.getElementById('th-lbl').textContent = isLight ? 'Light' : 'Dark';
+  const btn = document.getElementById('th-btn');
+  if (btn) btn.textContent = isLight ? '🌙' : '☀️';
   localStorage.setItem('fs4_theme', html.dataset.theme);
 }
 
@@ -129,6 +180,7 @@ function play() {
   document.getElementById('btn-lbl').textContent = '⏸  Pause';
   st.iv = setInterval(tick, 500);     /* poll every 500ms for responsiveness */
   rotateMotive();
+  save(); /* persist running state immediately */
   /* handle tab visibility — recalculate when user returns */
   document.addEventListener('visibilitychange', onVisibility);
 }
@@ -144,6 +196,7 @@ function pause() {
   }
   document.getElementById('btn-lbl').textContent = '▶  Resume';
   updateDisplay();
+  save(); /* persist paused state */
 }
 
 function onVisibility() {
@@ -193,13 +246,21 @@ function sessionEnd() {
       const next = st.done % cfg.sessions === 0 ? 'long' : 'short';
       setMode(next);
       document.getElementById('skip-btn').style.display = 'flex';
+      /* auto-start break if enabled */
+      if (cfg.autoBreak !== false) {
+        setTimeout(() => { if (!st.running) play(); }, 800);
+      }
     });
   } else {
     playDoneSound();
-    toast('Break over');
+    toast('Break over — ready to focus?');
     setMode('work');
     /* keep sessionGoal — user set it for the day */
     document.getElementById('skip-btn').style.display = 'none';
+    /* auto-start next focus if autoBreak is on */
+    if (cfg.autoBreak !== false) {
+      setTimeout(() => { if (!st.running) toggleTimer(); }, 800);
+    }
   }
 }
 
@@ -622,11 +683,8 @@ function updateStats() {
 
 function updateStatDisplay() {
   const s = st.stats, m = s.focusMins;
-  /* s-today shows live clock — startClock() handles this */
+  /* streak hero + calendar */
   document.getElementById('s-streak').textContent = s.streak;
-  /* update today label to show date */
-  const todayLbl = document.getElementById('sc-l-today');
-  if (todayLbl) { const d = new Date(); todayLbl.textContent = d.toLocaleDateString([], { month:'short', day:'numeric' }); }
   document.getElementById('s-focus').textContent  = m >= 60 ? `${Math.floor(m / 60)}h` : `${m}m`;
   document.getElementById('s-done').textContent   = s.tasksDone;
   document.getElementById('s-total').textContent  = s.total;
@@ -635,9 +693,96 @@ function updateStatDisplay() {
   const tot = st.tasks.length, dn = st.tasks.filter(t => t.done).length;
   document.getElementById('s-rate').textContent   = tot ? `${Math.round(dn / tot * 100)}%` : '—';
   document.getElementById('hi-badge').textContent = s.total;
+
+  /* ── HIGH-SIGNAL LEFT PANEL STATS ── */
+  /* Today sessions */
+  const todayEl = document.getElementById('ins-today');
+  if (todayEl) todayEl.textContent = s.today || 0;
+
+  /* This week sessions */
+  const weekEl = document.getElementById('ins-week');
+  if (weekEl) weekEl.textContent = s.week || 0;
+
+  /* Avg session length */
+  const avgEl = document.getElementById('ins-avg');
+  if (avgEl) {
+    const avg = s.total > 0 && m > 0 ? Math.round(m / s.total) : (cfg.work || 45);
+    avgEl.textContent = avg + 'm';
+  }
+
+  /* Consistency score: active days in last 7 */
+  const consEl = document.getElementById('ins-cons');
+  if (consEl) {
+    const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    const activeLast7 = (s.activeDays || []).filter(d => d >= cutoff).length;
+    consEl.textContent = activeLast7 + '/7';
+    const bar = document.getElementById('ins-cons-bar');
+    if (bar) bar.style.width = Math.round(activeLast7 / 7 * 100) + '%';
+  }
+
+  /* Peak focus hour */
+  const peakEl = document.getElementById('ins-peak');
+  if (peakEl) {
+    const hourCounts = {};
+    st.history.forEach(h => {
+      const hr = new Date(h.date).getHours();
+      hourCounts[hr] = (hourCounts[hr] || 0) + 1;
+    });
+    const peakHour = Object.keys(hourCounts).reduce((a, b) => hourCounts[a] > hourCounts[b] ? a : b, null);
+    if (peakHour !== null) {
+      const h = parseInt(peakHour);
+      const label = h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm';
+      peakEl.textContent = label;
+    } else {
+      peakEl.textContent = '—';
+    }
+  }
+
+  /* ── SMART INSIGHT ── */
+  const insightEl = document.getElementById('ins-smart');
+  if (insightEl) {
+    const insight = computeSmartInsight(s);
+    insightEl.textContent = insight;
+  }
+
   renderStreakHero();
   renderStreakCal();
   updateDailyGoalBar();
+}
+
+function computeSmartInsight(s) {
+  /* Peak hour insight */
+  const hourCounts = {};
+  st.history.forEach(h => {
+    const hr = new Date(h.date).getHours();
+    hourCounts[hr] = (hourCounts[hr] || 0) + 1;
+  });
+  const peakHour = Object.keys(hourCounts).reduce((a, b) => hourCounts[a] > hourCounts[b] ? a : b, null);
+
+  /* Week-over-week change */
+  const thisWeek = st.history.filter(h => new Date(h.date) > new Date(Date.now() - 7 * 86400000)).length;
+  const lastWeek = st.history.filter(h => {
+    const d = new Date(h.date).getTime();
+    return d > Date.now() - 14 * 86400000 && d <= Date.now() - 7 * 86400000;
+  }).length;
+
+  if (peakHour !== null && st.history.length >= 3) {
+    const h = parseInt(peakHour);
+    const label = h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm';
+    if (lastWeek > 0 && thisWeek > lastWeek) {
+      const pct = Math.round((thisWeek - lastWeek) / lastWeek * 100);
+      return `You focus best at ${label} · +${pct}% this week`;
+    }
+    return `You focus best at ${label}`;
+  }
+  if (s.streak >= 3) return `${s.streak}-day streak — keep going!`;
+  if (s.total === 0) return 'Start your first session to see insights';
+  if (thisWeek > 0 && lastWeek > 0 && thisWeek > lastWeek) {
+    const pct = Math.round((thisWeek - lastWeek) / lastWeek * 100);
+    return `+${pct}% more sessions than last week`;
+  }
+  if (s.today >= (cfg.dailyGoal || 4)) return `Daily goal crushed! ${s.today} sessions today 🎉`;
+  return `${s.total} sessions and counting`;
 }
 
 /* ── STREAK HERO ─────────────────────────── */
@@ -896,6 +1041,8 @@ function saveSettings() {
   cfg.dailyGoal = parseInt(document.getElementById('si-dg').value) || 4;
   const optEl   = document.getElementById('si-email-optin');
   if (optEl) st.weeklyEmailOptIn = optEl.checked;
+  const abEl    = document.getElementById('si-autobreak');
+  if (abEl) cfg.autoBreak = abEl.checked;
   save(); setMode(st.mode); renderDots(); updateDailyGoalBar();
   toast('Settings saved');
 }
@@ -907,6 +1054,16 @@ function init() {
   const m = MOTIVES[mIdx];
   document.getElementById('mc-e').textContent = m.e;
   document.getElementById('mc-t').textContent = m.t;
+
+  /* restore mode UI from persisted state */
+  document.getElementById('app').dataset.mode = st.mode;
+  document.querySelectorAll('.mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === st.mode)
+  );
+  const labels = { work: 'FOCUS SESSION', short: 'SHORT BREAK', long: 'LONG BREAK' };
+  document.getElementById('t-lbl').textContent = labels[st.mode] || 'FOCUS SESSION';
+  document.getElementById('skip-btn').style.display = st.mode !== 'work' ? 'flex' : 'none';
+
   updateDisplay();
   rotateMotive();
   renderDots();
@@ -919,6 +1076,27 @@ function init() {
   showP('dash');
   initAuth();
   syncFromCloud();
+
+  /* resume timer if it was running before navigation/refresh */
+  if (st._resumeAfterLoad) {
+    st._resumeAfterLoad = false;
+    if (st.left > 0) {
+      /* re-attach interval without resetting startedAt */
+      st.running = true;
+      document.getElementById('btn-lbl').textContent = '⏸  Pause';
+      st.iv = setInterval(tick, 500);
+      document.addEventListener('visibilitychange', onVisibility);
+      toast('Timer resumed ▶');
+    } else {
+      /* time elapsed while away — trigger session end */
+      sessionEnd();
+    }
+  } else if (!st.running) {
+    /* show correct button label based on whether time was paused mid-session */
+    const isPaused = st.left < st.total && st.left > 0;
+    document.getElementById('btn-lbl').textContent = isPaused ? '▶  Resume' : '▶  Start';
+  }
+
   setTimeout(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();

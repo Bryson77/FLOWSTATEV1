@@ -30,7 +30,28 @@ body{
   transition:background var(--tr-m),color var(--tr-m);
 }
 
-/* ── AUTH ─── */
+/* ── FILTER TABS ── */
+.db-filter-row {
+  display: flex; gap: 4px;
+}
+.db-filter-btn {
+  padding: 4px 12px; border-radius: var(--rad-pill);
+  border: 1px solid var(--ln); background: transparent;
+  color: var(--t3); font-family: 'Geist', sans-serif;
+  font-size: 0.65rem; font-weight: 600;
+  cursor: pointer; transition: all var(--tr);
+}
+.db-filter-btn:hover { border-color: var(--lnhi); color: var(--t2); }
+.db-filter-btn.active { background: var(--t1); border-color: var(--t1); color: var(--bg); }
+
+/* ── ICON THEME TOGGLE ── */
+.icon-toggle-db {
+  font-size: 1rem; padding: 0;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--tr), transform 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.icon-toggle-db:hover { transform: scale(1.15) rotate(15deg); border-color: var(--lnhi); }
 #auth-screen{
   min-height:100vh;display:flex;
   align-items:center;justify-content:center;padding:24px;

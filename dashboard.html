@@ -95,7 +95,7 @@
       <a href="index.html" class="db-back">← Timer</a>
     </div>
     <div class="db-bar-right">
-      <button class="db-btn" onclick="toggleTheme()" id="th-btn">Dark</button>
+      <button class="db-btn icon-toggle-db" onclick="toggleTheme()" id="th-btn" title="Toggle theme">🌙</button>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="db-avatar" id="db-av">?</div>
         <span class="db-uname" id="db-uname"></span>
@@ -157,7 +157,14 @@
 
     <!-- heatmap -->
     <div>
-      <div class="db-section-lbl">Activity</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="db-section-lbl" style="margin-bottom:0">Activity</div>
+        <div class="db-filter-row">
+          <button class="db-filter-btn active" data-f="all" onclick="setFilter('all')">All time</button>
+          <button class="db-filter-btn" data-f="30d" onclick="setFilter('30d')">30d</button>
+          <button class="db-filter-btn" data-f="7d"  onclick="setFilter('7d')">7d</button>
+        </div>
+      </div>
       <div class="db-hm-card">
         <div class="db-hm-head">
           <div class="db-hm-title">Last 24 weeks</div>
@@ -208,3 +215,4 @@
 <script src="dashboard.js"></script>
 </body>
 </html>
+    

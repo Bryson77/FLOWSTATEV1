@@ -18,7 +18,7 @@
 <link rel="icon" href="Logo.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flow State</title>
+<title>Flow State — Focus Timer & Deep Work Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -48,10 +48,7 @@
         <div class="tip-row"><span>Next session</span><kbd>N</kbd></div>
       </div>
     </div>
-    <div class="theme-toggle" onclick="toggleTheme()">
-      <span id="th-lbl">Light</span>
-      <div class="tt-track"><div class="tt-thumb"></div></div>
-    </div>
+    <button class="theme-toggle icon-toggle" onclick="toggleTheme()" id="th-btn" title="Toggle theme">🌙</button>
     <button class="bar-btn mob-music-btn" id="mob-music-btn" onclick="toggleMobilePanel()" title="Music">♫</button>
     <button class="bar-btn" id="bar-signin-btn" onclick="handleSignIn()">Sign in</button>
   </div>
@@ -84,12 +81,41 @@
     <!-- ── LAST 7 DAYS ── -->
     <div class="streak-cal" id="streak-cal"></div>
 
-    <!-- ── QUICK STATS 2×2 ── -->
-    <div class="sg">
-      <div class="sc"><div class="sc-v" id="s-today">--:--</div><div class="sc-l" id="sc-l-today">Today</div></div>
-      <div class="sc"><div class="sc-v" id="s-streak">0</div><div class="sc-l">Streak</div></div>
-      <div class="sc"><div class="sc-v" id="s-focus">0m</div><div class="sc-l">Focus</div></div>
-      <div class="sc"><div class="sc-v" id="s-done">0</div><div class="sc-l">Done</div></div>
+    <!-- ── QUICK STATS (high-signal) ── -->
+    <div class="sg ins-grid">
+      <div class="sc ins-card">
+        <div class="sc-v ins-val" id="ins-today">0</div>
+        <div class="sc-l">Today</div>
+      </div>
+      <div class="sc ins-card">
+        <div class="sc-v ins-val" id="ins-week">0</div>
+        <div class="sc-l">This week</div>
+      </div>
+      <div class="sc ins-card">
+        <div class="sc-v ins-val" id="ins-avg">—</div>
+        <div class="sc-l">Avg session</div>
+      </div>
+      <div class="sc ins-card">
+        <div class="sc-v ins-val" id="ins-peak">—</div>
+        <div class="sc-l">Peak hour</div>
+      </div>
+    </div>
+
+    <!-- ── CONSISTENCY BAR ── -->
+    <div class="ins-cons-wrap">
+      <div class="ins-cons-row">
+        <span class="ins-cons-lbl">Consistency</span>
+        <span class="ins-cons-val" id="ins-cons">0/7</span>
+      </div>
+      <div class="ins-cons-track">
+        <div class="ins-cons-fill" id="ins-cons-bar"></div>
+      </div>
+    </div>
+
+    <!-- ── SMART INSIGHT ── -->
+    <div class="ins-smart-wrap">
+      <span class="ins-smart-ico">✦</span>
+      <span class="ins-smart" id="ins-smart">Start your first session to see insights</span>
     </div>
 
     <div class="ns"><div class="ns-lbl">Recent</div></div>
@@ -122,6 +148,10 @@
       <div class="sr"><span class="sl">Long break</span> <input type="number" class="si" id="si-l" value="15" min="1" max="60"></div>
       <div class="sr"><span class="sl">Sessions</span>   <input type="number" class="si" id="si-n" value="4"  min="2" max="8"></div>
       <div class="sr"><span class="sl">Daily goal</span>   <input type="number" class="si" id="si-dg" value="4" min="1" max="20"></div>
+      <div class="sr si-check-row">
+        <label class="sl" for="si-autobreak">Auto-start breaks</label>
+        <input type="checkbox" id="si-autobreak" class="si-check" checked>
+      </div>
       <div class="sr si-check-row">
         <label class="sl" for="si-email-optin">Weekly summary email</label>
         <input type="checkbox" id="si-email-optin" class="si-check">
@@ -496,5 +526,4 @@ function loadPLMob(id) {
 <script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>
-</html>
-     
+</html>     
