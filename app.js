@@ -141,10 +141,11 @@ function load() {
   const abEl = document.getElementById('si-autobreak');
   if (abEl) abEl.checked = cfg.autoBreak !== false;
 
-  /* Reset today count if it's a new day since last save */
+  /* FIX #8: Reset today count if it's a new day since last save.
+     Use consistent ISO format only — comparing against toDateString() was a mismatch. */
   const _now = new Date();
   const _todayKey = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-' + String(_now.getDate()).padStart(2,'0');
-  if (st.stats.lastDate && st.stats.lastDate !== _todayKey && st.stats.lastDate !== new Date().toDateString()) {
+  if (st.stats.lastDate && st.stats.lastDate !== _todayKey) {
     st.stats.today = 0;
   }
   carryOverTasks();
@@ -242,11 +243,24 @@ function sessionEnd() {
     renderDots();
     renderHist();
     updateDailyGoalBar();
+    /* FIX #2: Fire auto-break fallback OUTSIDE the modal callback.
+       If the user ignores the modal, break still auto-starts after 5s. */
+    const nextBreakMode = st.done % cfg.sessions === 0 ? 'long' : 'short';
+    let _reflectionDismissed = false;
+    if (cfg.autoBreak !== false) {
+      setTimeout(() => {
+        if (!_reflectionDismissed && !st.running) {
+          document.getElementById('reflection-modal')?.classList.remove('open');
+          setMode(nextBreakMode);
+          document.getElementById('skip-btn').style.display = 'flex';
+          play();
+        }
+      }, 5000);
+    }
     openReflectionModal(() => {
-      const next = st.done % cfg.sessions === 0 ? 'long' : 'short';
-      setMode(next);
+      _reflectionDismissed = true;
+      setMode(nextBreakMode);
       document.getElementById('skip-btn').style.display = 'flex';
-      /* auto-start break if enabled */
       if (cfg.autoBreak !== false) {
         setTimeout(() => { if (!st.running) play(); }, 800);
       }
@@ -1084,8 +1098,14 @@ function init() {
   updateDailyGoalBar();
   updateGoalDisplay();
   showP('dash');
-  initAuth();
-  syncFromCloud();
+  /* FIX #1 & #4: Wrap initAuth in try/catch so Supabase CDN load failure
+     doesn't abort timer resume. Retry after delay if getSB() was null. */
+  try { initAuth(); } catch (_) { console.warn('initAuth deferred'); }
+  try { syncFromCloud(); } catch (_) { console.warn('syncFromCloud deferred'); }
+  /* Retry auth after Supabase CDN may have finished loading */
+  setTimeout(() => {
+    try { initAuth(); syncFromCloud(); } catch (_) {}
+  }, 2000);
 
   /* resume timer if it was running before navigation/refresh */
   if (st._resumeAfterLoad) {

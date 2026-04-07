@@ -1,9 +1,10 @@
 /* ── theme ── */
+/* FIX #7: Wrap theme IIFE in DOMContentLoaded so DOM is ready */
 const html = document.documentElement;
-(()=>{
+document.addEventListener('DOMContentLoaded', () => {
   const t=localStorage.getItem('fs4_theme');
   if(t){html.dataset.theme=t;const b=document.getElementById('th-btn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
-})();
+});
 function toggleTheme(){
   const is=html.dataset.theme==='light';
   html.dataset.theme=is?'dark':'light';
@@ -85,18 +86,20 @@ async function doSignOut(){
 
 /* ── FILTER STATE ── */
 let _histFilter = 'all'; /* 'all' | '30d' | '7d' */
+/* FIX #5: Store merged sessions globally so setFilter() doesn't lose cloud data */
+let _mergedHist = [];
+let _mergedStats = {};
 
 function setFilter(f) {
   _histFilter = f;
   document.querySelectorAll('.db-filter-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.f === f)
   );
-  /* re-render with current data */
-  const {stats: ls, hist: lh} = getLocal();
-  const filtered = filterSessions(lh);
+  /* re-render with merged data (cloud-inclusive) */
+  const filtered = filterSessions(_mergedHist);
   buildHeatmap(filtered);
   buildHistory(filtered);
-  updateFilteredStats(filtered, ls);
+  updateFilteredStats(filtered, _mergedStats);
 }
 
 function filterSessions(hist) {
@@ -118,7 +121,8 @@ function updateFilteredStats(filtered, baseStats) {
   const weekCount  = filtered.filter(h => new Date(h.date) >= weekAgo).length;
   const el = document.getElementById('db-today');
   if (el) el.textContent = todayCount;
-  const el2 = document.getElementById('db-week-count');
+  /* FIX #6: HTML element is "db-week", not "db-week-count" */
+  const el2 = document.getElementById('db-week');
   if (el2) el2.textContent = weekCount;
 }
 function getLocal(){
@@ -274,6 +278,9 @@ async function loadDashboard(user){
 
   /* local first */
   const{stats:ls,hist:lh}=getLocal();
+  /* FIX #5: Store in global so setFilter() can access */
+  _mergedHist = lh;
+  _mergedStats = ls;
   const filteredLocal=filterSessions(lh);
   fillStats(ls,filteredLocal);buildHeatmap(filteredLocal);buildHistory(filteredLocal);
 
@@ -295,6 +302,9 @@ async function loadDashboard(user){
         combined.push({date:s.date+'T00:00:00',label:s.label||'Focus session',mins:s.duration});
     });
     combined.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    /* FIX #5: Update globals with cloud-merged data */
+    _mergedHist = combined;
+    _mergedStats = merged;
     const filteredCloud=filterSessions(combined);
     fillStats(merged,filteredCloud);buildHeatmap(filteredCloud);buildHistory(filteredCloud);
   }catch(e){
@@ -314,6 +324,9 @@ async function init(){
     document.getElementById('dashboard').style.display='block';
     document.getElementById('db-cta').style.display='';
     const{stats:ls,hist:lh}=getLocal();
+    /* FIX #5: populate globals for filter */
+    _mergedHist = lh;
+    _mergedStats = ls;
     document.getElementById('db-av').textContent='?';
     document.getElementById('db-uname').textContent='Guest';
     document.getElementById('db-hero-av').textContent='?';
