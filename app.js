@@ -683,16 +683,17 @@ function updateStats() {
 
 function updateStatDisplay() {
   const s = st.stats, m = s.focusMins;
-  /* streak hero + calendar */
-  document.getElementById('s-streak').textContent = s.streak;
-  document.getElementById('s-focus').textContent  = m >= 60 ? `${Math.floor(m / 60)}h` : `${m}m`;
-  document.getElementById('s-done').textContent   = s.tasksDone;
-  document.getElementById('s-total').textContent  = s.total;
-  document.getElementById('s-week').textContent   = s.week;
-  document.getElementById('s-best').textContent   = s.best;
+  /* stats panel elements (may not exist on all pages) */
+  const safe = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  safe('s-streak', s.streak);
+  safe('s-focus',  m >= 60 ? `${Math.floor(m / 60)}h` : `${m}m`);
+  safe('s-done',   s.tasksDone);
+  safe('s-total',  s.total);
+  safe('s-week',   s.week);
+  safe('s-best',   s.best);
   const tot = st.tasks.length, dn = st.tasks.filter(t => t.done).length;
-  document.getElementById('s-rate').textContent   = tot ? `${Math.round(dn / tot * 100)}%` : '—';
-  document.getElementById('hi-badge').textContent = s.total;
+  safe('s-rate',   tot ? `${Math.round(dn / tot * 100)}%` : '—');
+  safe('hi-badge', s.total);
 
   /* ── HIGH-SIGNAL LEFT PANEL STATS ── */
   /* Today sessions */
@@ -909,6 +910,7 @@ async function syncFromCloud() {
   try {
     const user = await sbGetUser();
     if (!user) return;
+
     const [cs, csess] = await Promise.all([
       sbFetchStats(user.id),
       sbFetchSessions(user.id)
@@ -928,7 +930,7 @@ async function syncFromCloud() {
       csess.forEach(s => {
         if (!st.history.some(h => h.date?.slice(0,10) === s.date && h.label === s.label)) {
           st.history.unshift({
-            date:  s.date + 'T00:00:00Z',
+            date:  s.date + 'T00:00:00',
             label: s.label || 'Focus session',
             mins:  s.duration,
             note:  ''
@@ -939,33 +941,30 @@ async function syncFromCloud() {
       st.history = st.history.slice(0, 100);
     }
 
+    /* recalculate derived stats from merged history */
+    const now = new Date();
+    const todayKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    st.stats.today = st.history.filter(h => (h.date||'').slice(0,10) === todayKey).length;
+    st.stats.week  = st.history.filter(h => new Date(h.date) > new Date(now - 7*86400000)).length;
+    /* rebuild activeDays from full history */
+    const adSet = new Set(st.history.map(h => (h.date||'').slice(0,10)).filter(Boolean));
+    const cutoff = new Date(now - 30*86400000).toISOString().slice(0,10);
+    st.stats.activeDays = [...adSet].filter(d => d >= cutoff);
+
     save();
     updateStatDisplay();
     renderHist();
   } catch (e) {
-    console.warn('syncFromCloud:', e.message);
+    const msg = e?.message || String(e);
+    console.warn('syncFromCloud error:', msg);
+    /* Surface auth/RLS errors in insight panel so they're visible during dev */
+    const insEl = document.getElementById('ins-smart');
+    if (insEl && msg && (msg.includes('JWT') || msg.includes('policy') || msg.includes('auth'))) {
+      insEl.textContent = 'Auth error — try signing out and back in';
+    }
   }
 }
 
-
-/* ── LIVE CLOCK (replaces "Today" stat) ─────── */
-let _clockIv = null;
-function startClock() {
-  const el  = document.getElementById('s-today');
-  const lbl = document.getElementById('sc-l-today');
-  if (!el) return;
-  if (_clockIv) return; /* already running */
-  function updateClock() {
-    const now = new Date();
-    const h   = now.getHours().toString().padStart(2,'0');
-    const m   = now.getMinutes().toString().padStart(2,'0');
-    el.textContent = h + ':' + m;
-    if (lbl) lbl.textContent = now.toLocaleDateString([], { month:'short', day:'numeric' });
-    el.title = now.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-  }
-  updateClock();
-  _clockIv = setInterval(updateClock, 60000); /* update every minute */
-}
 
 /* ── KEYBOARD ────────────────────────────── */
 document.addEventListener('keydown', e => {
@@ -1005,23 +1004,35 @@ async function cloudSync() {
 }
 
 async function initAuth() {
-  const user = await sbGetUser().catch(() => null);
-  const btn  = document.getElementById('bar-signin-btn');
+  const btn = document.getElementById('bar-signin-btn');
   if (!btn) return;
-  if (user) {
-    const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Account';
-    btn.textContent = name.split(' ')[0];
-    btn.onclick     = () => window.location.href = 'dashboard.html';
-  }
-  sbOnAuthChange((event, user) => {
-    if (!btn) return;
+
+  /* Helper — update button for a given user (or null) */
+  function applyUser(user) {
     if (user) {
       const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Account';
       btn.textContent = name.split(' ')[0];
+      btn.title       = 'Go to dashboard';
+      btn.onclick     = () => window.location.href = 'dashboard.html';
     } else {
       btn.textContent = 'Sign in';
+      btn.title       = '';
+      btn.onclick     = handleSignIn;
     }
+  }
+
+  /* 1. Subscribe first so we never miss an event */
+  sbOnAuthChange((event, user) => {
+    applyUser(user);
+    /* If user just signed in, pull fresh cloud data */
+    if (user && event === 'SIGNED_IN') syncFromCloud();
   });
+
+  /* 2. Immediately resolve current session — don't wait for event */
+  try {
+    const user = await sbGetUser();
+    applyUser(user);
+  } catch (_) { applyUser(null); }
 }
 
 let toastTimer;
@@ -1072,7 +1083,6 @@ function init() {
   updateStatDisplay();
   updateDailyGoalBar();
   updateGoalDisplay();
-  startClock();
   showP('dash');
   initAuth();
   syncFromCloud();
@@ -1081,21 +1091,22 @@ function init() {
   if (st._resumeAfterLoad) {
     st._resumeAfterLoad = false;
     if (st.left > 0) {
-      /* re-attach interval without resetting startedAt */
       st.running = true;
       document.getElementById('btn-lbl').textContent = '⏸  Pause';
       st.iv = setInterval(tick, 500);
       document.addEventListener('visibilitychange', onVisibility);
       toast('Timer resumed ▶');
     } else {
-      /* time elapsed while away — trigger session end */
       sessionEnd();
     }
   } else if (!st.running) {
-    /* show correct button label based on whether time was paused mid-session */
     const isPaused = st.left < st.total && st.left > 0;
     document.getElementById('btn-lbl').textContent = isPaused ? '▶  Resume' : '▶  Start';
   }
+
+  /* show loading hint in insight area until cloud resolves */
+  const insightEl = document.getElementById('ins-smart');
+  if (insightEl && st.stats.total === 0) insightEl.textContent = 'Syncing data…';
 
   setTimeout(() => {
     if ('Notification' in window && Notification.permission === 'default') {

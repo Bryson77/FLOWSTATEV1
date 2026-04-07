@@ -9,8 +9,8 @@
   --blue-dim:  rgba(37,99,235,0.10);
   --green:     #22c55e;
   --green-dim: rgba(34,197,94,0.12);
-  --tr:        0.15s ease;
-  --tr-m:      0.3s ease;
+  --tr:        0.08s ease;
+  --tr-m:      0.2s ease;
   --rad:       10px;
   --rad-sm:    6px;
   --rad-pill:  999px;
