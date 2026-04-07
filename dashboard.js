@@ -3,13 +3,13 @@
 const html = document.documentElement;
 document.addEventListener('DOMContentLoaded', () => {
   const t=localStorage.getItem('fs4_theme');
-  if(t){html.dataset.theme=t;const b=document.getElementById('th-btn');if(b)b.textContent=t==='light'?'☀️':'🌙';}
+  if(t){html.dataset.theme=t;const b=document.getElementById('th-btn');if(b)b.textContent=t==='light'?'🌙':'☀️';}
 });
 function toggleTheme(){
   const is=html.dataset.theme==='light';
   html.dataset.theme=is?'dark':'light';
   const btn=document.getElementById('th-btn');
-  if(btn)btn.textContent=is?'🌙':'☀️';
+  if(btn)btn.textContent=is?'☀️':'🌙';
   localStorage.setItem('fs4_theme',html.dataset.theme);
 }
 
@@ -105,11 +105,13 @@ function setFilter(f) {
 function filterSessions(hist) {
   if (_histFilter === 'all') return hist;
   const days = _histFilter === '7d' ? 7 : 30;
-  /* Use local midnight as boundary to avoid timezone edge issues */
-  const boundary = new Date();
-  boundary.setHours(0, 0, 0, 0);
-  boundary.setDate(boundary.getDate() - days);
-  return hist.filter(h => new Date(h.date) >= boundary);
+  const now = new Date();
+  const boundary = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+  return hist.filter(h => {
+    let dStr = h.date || '';
+    let d = dStr.length === 10 ? new Date(dStr + 'T00:00:00') : new Date(dStr);
+    return isNaN(d) ? false : d >= boundary;
+  });
 }
 
 function updateFilteredStats(filtered, baseStats) {
@@ -154,10 +156,39 @@ function fillStats(s,hist){
   document.getElementById('db-streak-num').innerHTML=`${streak}<em> day streak</em>`;
   document.getElementById('db-best').textContent=s.best||0;
   document.getElementById('db-week').textContent=s.week||0;
-  document.getElementById('db-total').textContent=s.total||0;
-  document.getElementById('db-hours').textContent=hrs;
-  document.getElementById('db-today').textContent=s.today||0;
-  document.getElementById('db-tasks').textContent=s.tasksDone||0;
+
+  const hCons = document.getElementById('db-cons');
+  const hDwc  = document.getElementById('db-dwc');
+  const hPeak = document.getElementById('db-peak');
+  const hHrs  = document.getElementById('db-hours');
+
+  if (hHrs) hHrs.textContent=hrs;
+
+  const now = new Date();
+  const c7 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  const activeSet = new Set(hist.filter(h => {
+    let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
+    return d > c7;
+  }).map(h => (h.date||'').slice(0, 10)));
+  if (hCons) hCons.textContent = activeSet.size + '/7';
+
+  const dwSessions = hist.filter(h => h.mins >= 45).length;
+  if (hDwc) hDwc.textContent = hist.length ? Math.round(dwSessions / hist.length * 100) + '%' : '0%';
+
+  const hc = {};
+  hist.forEach(h => {
+    let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
+    if (!isNaN(d)) hc[d.getHours()] = (hc[d.getHours()] || 0) + 1;
+  });
+  const peak = Object.keys(hc).reduce((a,b) => hc[a] > hc[b] ? a : b, null);
+  if (hPeak) {
+    if (peak !== null) {
+      const h = parseInt(peak);
+      hPeak.textContent = h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm';
+    } else {
+      hPeak.textContent = '—';
+    }
+  }
 
   /* flame */
   const fl=document.getElementById('db-flame');

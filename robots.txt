@@ -1,5 +1,3 @@
 User-agent: *
 Allow: /
-Disallow: /dashboard.html
-
 Sitemap: https://flowstateproductivity.xyz/sitemap.xml

@@ -9,13 +9,17 @@ let st  = {
   running: false, done: 0, iv: null,
   tasks: [], history: [],
   sessionGoal: '',
+  startedAt: null, leftAtStart: null, // Add explicit trackers
   weeklyEmailOptIn: false,
+  waitingForBreak: false, nextBreakMode: 'short',
   stats: {
     total: 0, today: 0, lastDate: '', streak: 0,
     focusMins: 0, tasksDone: 0, week: 0, best: 0,
     activeDays: []
   }
 };
+
+window.addEventListener('beforeunload', save);
 
 /* ── MOTIVES ─────────────────────────────── */
 const MOTIVES = [
@@ -74,6 +78,8 @@ function save() {
     sessionGoal:  st.sessionGoal  || '',
     goalDate:     st.goalDate     || '',
     autoBreak:    cfg.autoBreak,
+    waitingForBreak: st.waitingForBreak || false,
+    nextBreakMode: st.nextBreakMode || 'short',
   }));
 }
 
@@ -93,9 +99,9 @@ function load() {
     if (opt) st.weeklyEmailOptIn = JSON.parse(opt);
     if (th) {
       document.documentElement.dataset.theme = th;
-      /* icon toggle — set correct icon */
+      /* icon toggle — set correct icon (Moon for light, Sun for dark) */
       const thBtn = document.getElementById('th-btn');
-      if (thBtn) thBtn.textContent = th === 'light' ? '☀️' : '🌙';
+      if (thBtn) thBtn.textContent = th === 'light' ? '🌙' : '☀️';
     }
 
     if (tmr) {
@@ -105,6 +111,8 @@ function load() {
       st.sessionGoal = saved.sessionGoal || '';
       st.goalDate    = saved.goalDate    || '';
       if (saved.autoBreak !== undefined) cfg.autoBreak = saved.autoBreak;
+      st.waitingForBreak = saved.waitingForBreak || false;
+      st.nextBreakMode   = saved.nextBreakMode   || 'short';
 
       if (saved.running && saved.startedAt && saved.leftAtStart != null) {
         /* timer was running — recalculate remaining time from wall clock */
@@ -157,7 +165,7 @@ function toggleTheme() {
   const isLight = html.dataset.theme === 'light';
   html.dataset.theme = isLight ? 'dark' : 'light';
   const btn = document.getElementById('th-btn');
-  if (btn) btn.textContent = isLight ? '🌙' : '☀️';
+  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
   localStorage.setItem('fs4_theme', html.dataset.theme);
 }
 
@@ -245,13 +253,17 @@ function sessionEnd() {
     updateDailyGoalBar();
     /* FIX #2: Fire auto-break fallback OUTSIDE the modal callback.
        If the user ignores the modal, break still auto-starts after 5s. */
-    const nextBreakMode = st.done % cfg.sessions === 0 ? 'long' : 'short';
+    st.nextBreakMode = st.done % cfg.sessions === 0 ? 'long' : 'short';
+    st.waitingForBreak = true;
+    save();
+
     let _reflectionDismissed = false;
     if (cfg.autoBreak !== false) {
       setTimeout(() => {
-        if (!_reflectionDismissed && !st.running) {
+        if (!_reflectionDismissed && st.waitingForBreak) {
           document.getElementById('reflection-modal')?.classList.remove('open');
-          setMode(nextBreakMode);
+          st.waitingForBreak = false;
+          setMode(st.nextBreakMode);
           document.getElementById('skip-btn').style.display = 'flex';
           play();
         }
@@ -259,7 +271,8 @@ function sessionEnd() {
     }
     openReflectionModal(() => {
       _reflectionDismissed = true;
-      setMode(nextBreakMode);
+      st.waitingForBreak = false;
+      setMode(st.nextBreakMode);
       document.getElementById('skip-btn').style.display = 'flex';
       if (cfg.autoBreak !== false) {
         setTimeout(() => { if (!st.running) play(); }, 800);
@@ -1020,6 +1033,7 @@ async function cloudSync() {
 async function initAuth() {
   const btn = document.getElementById('bar-signin-btn');
   if (!btn) return;
+  if (btn.textContent.trim() === 'Sign in') btn.textContent = '…';
 
   /* Helper — update button for a given user (or null) */
   function applyUser(user) {
@@ -1119,6 +1133,28 @@ function init() {
     } else {
       sessionEnd();
     }
+  } else if (st.waitingForBreak) {
+    let _reflectionDismissed = false;
+    if (cfg.autoBreak !== false) {
+      setTimeout(() => {
+        if (!_reflectionDismissed && st.waitingForBreak) {
+          document.getElementById('reflection-modal')?.classList.remove('open');
+          st.waitingForBreak = false;
+          setMode(st.nextBreakMode);
+          document.getElementById('skip-btn').style.display = 'flex';
+          play();
+        }
+      }, 5000);
+    }
+    openReflectionModal(() => {
+      _reflectionDismissed = true;
+      st.waitingForBreak = false;
+      setMode(st.nextBreakMode);
+      document.getElementById('skip-btn').style.display = 'flex';
+      if (cfg.autoBreak !== false) {
+        setTimeout(() => { if (!st.running) play(); }, 800);
+      }
+    });
   } else if (!st.running) {
     const isPaused = st.left < st.total && st.left > 0;
     document.getElementById('btn-lbl').textContent = isPaused ? '▶  Resume' : '▶  Start';

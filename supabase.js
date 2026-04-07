@@ -10,23 +10,44 @@
 const SUPABASE_URL      = "https://tyvwwgigdgcnpjceiavq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_d1aGAzmGSnc_scX9oy5pgQ_SXx00SDu";
 /* client singleton */
+let _sbCheck = false;
+let _sbInit = false;
 function getSB() {
-  if (typeof window.supabase === 'undefined') return null;
-  if (!window._sb) window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (typeof window.supabase === 'undefined') {
+    if (!_sbCheck) { console.warn('Supabase not loaded yet'); _sbCheck = true; }
+    return null;
+  }
+  if (!window._sb && !_sbInit) {
+    try {
+      _sbInit = true;
+      window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      _sbInit = false;
+    } catch(e) {
+      console.error('Supabase init error:', e);
+      _sbInit = false;
+      return null;
+    }
+  }
   return window._sb;
 }
 
 /* ── AUTH ─────────────────────────────────── */
 async function sbGetUser() {
-  const sb = getSB(); if (!sb) return null;
-  const { data: { user } } = await sb.auth.getUser();
-  return user;
+  try {
+    const sb = getSB(); if (!sb) return null;
+    const { data: { user }, error } = await sb.auth.getUser();
+    if (error) { console.error('sbGetUser:', error.message); return null; }
+    return user;
+  } catch(e) { console.error('sbGetUser raw error:', e); return null; }
 }
 
 async function sbGetSession() {
-  const sb = getSB(); if (!sb) return null;
-  const { data: { session } } = await sb.auth.getSession();
-  return session;
+  try {
+    const sb = getSB(); if (!sb) return null;
+    const { data: { session }, error } = await sb.auth.getSession();
+    if (error) { console.error('sbGetSession:', error.message); return null; }
+    return session;
+  } catch(e) { console.error('sbGetSession raw error:', e); return null; }
 }
 
 function sbOnAuthChange(cb) {
