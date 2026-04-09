@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <link rel="icon" href="Logo.svg">
   <meta name="description" content="Flow State — a distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration to help you do deep work.">
@@ -23,12 +23,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.43/build/spline-viewer.js"></script>
 </head>
 <body>
-<div class="spline-bg-wrap">
-  <spline-viewer url="https://prod.spline.design/6Wq1Q7YGyUk1SnN7/scene.splinecode"></spline-viewer>
-</div>
+<div class="mesh-bg"></div>
 <div id="app" data-mode="work">
 
 <!-- ── TOP BAR ── -->
@@ -53,7 +50,9 @@
         <div class="tip-row"><span>Next session</span><kbd>N</kbd></div>
       </div>
     </div>
-    <button class="theme-toggle icon-toggle" onclick="toggleTheme()" id="th-btn" title="Toggle theme">🌙</button>
+    <button class="theme-toggle icon-toggle" onclick="toggleTheme()" id="th-btn" title="Toggle theme">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+    </button>
     <button class="bar-btn mob-music-btn" id="mob-music-btn" onclick="toggleMobilePanel()" title="Music">♫</button>
     <button class="bar-btn" id="bar-signin-btn" onclick="handleSignIn()">Sign in</button>
   </div>

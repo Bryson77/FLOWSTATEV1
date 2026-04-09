@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta name="description" content="Your Flow State dashboard — view focus streaks, session history, productivity stats, and sync your data across devices.">
 <meta name="author" content="Flow State">
@@ -21,12 +21,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 <link rel="stylesheet" href="dashboard.css">
-<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.43/build/spline-viewer.js"></script>
 </head>
 <body>
-<div class="spline-bg-wrap">
-  <spline-viewer url="https://prod.spline.design/6Wq1Q7YGyUk1SnN7/scene.splinecode"></spline-viewer>
-</div><!-- ════ AUTH SCREEN ════════════════════════ -->
+<div class="mesh-bg"></div><!-- ════ AUTH SCREEN ════════════════════════ -->
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-logo">Flow <span>State</span></div>
@@ -98,7 +95,9 @@
       <a href="index.html" class="db-back">← Timer</a>
     </div>
     <div class="db-bar-right">
-      <button class="db-btn icon-toggle-db" onclick="toggleTheme()" id="th-btn" title="Toggle theme">🌙</button>
+      <button class="db-btn icon-toggle-db" onclick="toggleTheme()" id="th-btn" title="Toggle theme">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </button>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="db-avatar" id="db-av">?</div>
         <span class="db-uname" id="db-uname"></span>
