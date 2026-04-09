@@ -176,7 +176,7 @@ function fillStats(s,hist){
 
   // Average Session Length
   const avgMins = hist.length > 0 ? Math.round(hist.reduce((sum, h) => sum + Number(h.mins||45), 0) / hist.length) : 0;
-  if (hAvgSession) hAvgSession.textContent = avgMins ? avgMins + 'm' : '—';
+  if (hAvgSession) hAvgSession.textContent = avgMins ? avgMins + 'm' : '0m';
 
   // Most Productive Day (by total minutes)
   const dayCounts = {};
@@ -189,7 +189,7 @@ function fillStats(s,hist){
   });
   const dayKeys = Object.keys(dayCounts);
   const bestDay = dayKeys.length ? dayKeys.reduce((a,b) => dayCounts[a] > dayCounts[b] ? a : b) : null;
-  if (hBestDayName) hBestDayName.textContent = bestDay || '—';
+  if (hBestDayName) hBestDayName.textContent = bestDay || 'N/A';
 
   /* flame */
   const fl=document.getElementById('db-flame');
