@@ -99,7 +99,7 @@ function setFilter(f) {
   const filtered = filterSessions(_mergedHist);
   buildHeatmap(filtered);
   buildHistory(filtered);
-  fillStats(_mergedStats, filtered);
+  fillStats(_mergedStats, _mergedHist);
 }
 
 function filterSessions(hist) {
@@ -170,8 +170,13 @@ function fillStats(s,hist){
   if (hWeekHrs) hWeekHrs.textContent = weekMins >= 60 ? (weekMins/60).toFixed(1)+'h' : weekMins+'m';
 
   // Sessions Today
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-  const todayCount = hist.filter(h => (h.date||'').slice(0, 10) === todayStr).length;
+  const todayStr = String(now.getFullYear()) + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const todayCount = hist.filter(h => {
+    let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
+    if(isNaN(d)) return false;
+    const localIso = String(d.getFullYear()) + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return localIso === todayStr;
+  }).length;
   if (hTodayCount) hTodayCount.textContent = todayCount;
 
   // Average Session Length
@@ -314,7 +319,7 @@ async function loadDashboard(user){
   _mergedHist = lh;
   _mergedStats = ls;
   const filteredLocal=filterSessions(lh);
-  fillStats(ls,filteredLocal);buildHeatmap(filteredLocal);buildHistory(filteredLocal);
+  fillStats(ls, lh);buildHeatmap(filteredLocal);buildHistory(filteredLocal);
 
   /* cloud overlay */
   try{
@@ -338,7 +343,7 @@ async function loadDashboard(user){
     _mergedHist = combined;
     _mergedStats = merged;
     const filteredCloud=filterSessions(combined);
-    fillStats(merged,filteredCloud);buildHeatmap(filteredCloud);buildHistory(filteredCloud);
+    fillStats(merged, combined);buildHeatmap(filteredCloud);buildHistory(filteredCloud);
   }catch(e){
     if(e.message&&(e.message.includes('fetch')||e.message.includes('network')||e.message.includes('initialised'))){
       document.getElementById('db-cta').style.display='';
@@ -366,7 +371,7 @@ async function init(){
     document.getElementById('db-hero-email').textContent='Add Supabase keys to enable auth';
     document.getElementById('db-hero-joined').textContent='';
     const filtered=filterSessions(lh);
-    fillStats(ls,filtered);buildHeatmap(filtered);buildHistory(filtered);
+    fillStats(ls, lh);buildHeatmap(filtered);buildHistory(filtered);
     return;
   }
 
