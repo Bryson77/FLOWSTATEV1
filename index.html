@@ -60,7 +60,6 @@
     <div class="ns-lbl">Menu</div>
     <div class="ni on" onclick="showP('dash')"><span class="ni-ic">○</span>Dashboard</div>
     <div class="ni"    onclick="showP('hist')"><span class="ni-ic">◷</span>History<span class="ni-badge" id="hi-badge">0</span></div>
-    <div class="ni"    onclick="showP('stats')"><span class="ni-ic">◈</span>Stats</div>
     <div class="ni"    onclick="showP('settings')"><span class="ni-ic">◎</span>Settings</div>
   </div>
   <div class="sep"></div>
@@ -128,16 +127,6 @@
   <div id="p-hist" style="display:none;flex:1;flex-direction:column">
     <div class="ns"><div class="ns-lbl">All Sessions</div></div>
     <div class="hl" id="hl-all"></div>
-  </div>
-
-  <!-- STATS -->
-  <div id="p-stats" style="display:none">
-    <div class="sg">
-      <div class="sc"><div class="sc-v" id="s-total">0</div><div class="sc-l">Total</div></div>
-      <div class="sc"><div class="sc-v" id="s-week">0</div><div class="sc-l">Week</div></div>
-      <div class="sc"><div class="sc-v" id="s-best">0</div><div class="sc-l">Best day</div></div>
-      <div class="sc"><div class="sc-v" id="s-rate">—</div><div class="sc-l">Rate</div></div>
-    </div>
   </div>
 
   <!-- SETTINGS -->
@@ -285,10 +274,7 @@
     <span class="mob-tab-ic">◷</span>
     <span class="mob-tab-lbl">History</span>
   </div>
-  <div class="mob-tab" onclick="mobShowP('stats')">
-    <span class="mob-tab-ic">◈</span>
-    <span class="mob-tab-lbl">Stats</span>
-  </div>
+
   <div class="mob-tab" onclick="mobShowP('settings')">
     <span class="mob-tab-ic">◎</span>
     <span class="mob-tab-lbl">Settings</span>
@@ -466,10 +452,9 @@
 const MOB_PANELS = {
   dash:     document.getElementById('p-dash'),
   hist:     document.getElementById('p-hist'),
-  stats:    document.getElementById('p-stats'),
   settings: document.getElementById('p-settings'),
 };
-const PANEL_LABELS = { dash:'Dashboard', hist:'History', stats:'Stats', settings:'Settings' };
+const PANEL_LABELS = { dash:'Dashboard', hist:'History', settings:'Settings' };
 
 function mobShowP(name) {
   showP(name);
@@ -486,7 +471,7 @@ function mobShowP(name) {
   drawer.appendChild(clone);
   document.getElementById('mob-drawer').classList.add('open');
   document.querySelectorAll('.mob-tab').forEach(function(t,i) {
-    t.classList.toggle('on', ['dash','hist','stats','settings'][i] === name);
+    t.classList.toggle('on', ['dash','hist','settings'][i] === name);
   });
 }
 

@@ -166,7 +166,7 @@ function fillStats(s,hist){
   const weekMins = hist.filter(h => {
     let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
     return d > c7;
-  }).reduce((sum, h) => sum + (h.mins || 45), 0);
+  }).reduce((sum, h) => sum + Number(h.mins || 45), 0);
   if (hWeekHrs) hWeekHrs.textContent = weekMins >= 60 ? (weekMins/60).toFixed(1)+'h' : weekMins+'m';
 
   // Sessions Today
@@ -175,7 +175,7 @@ function fillStats(s,hist){
   if (hTodayCount) hTodayCount.textContent = todayCount;
 
   // Average Session Length
-  const avgMins = hist.length > 0 ? Math.round(hist.reduce((sum, h) => sum + (h.mins||45), 0) / hist.length) : 0;
+  const avgMins = hist.length > 0 ? Math.round(hist.reduce((sum, h) => sum + Number(h.mins||45), 0) / hist.length) : 0;
   if (hAvgSession) hAvgSession.textContent = avgMins ? avgMins + 'm' : '—';
 
   // Most Productive Day (by total minutes)
@@ -184,10 +184,11 @@ function fillStats(s,hist){
     let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
     if (!isNaN(d)) {
       const dayName = d.toLocaleDateString('en-US', {weekday: 'long'});
-      dayCounts[dayName] = (dayCounts[dayName] || 0) + (h.mins || 45);
+      dayCounts[dayName] = (dayCounts[dayName] || 0) + Number(h.mins || 45);
     }
   });
-  const bestDay = Object.keys(dayCounts).reduce((a,b) => dayCounts[a] > dayCounts[b] ? a : b, null);
+  const dayKeys = Object.keys(dayCounts);
+  const bestDay = dayKeys.length ? dayKeys.reduce((a,b) => dayCounts[a] > dayCounts[b] ? a : b) : null;
   if (hBestDayName) hBestDayName.textContent = bestDay || '—';
 
   /* flame */
