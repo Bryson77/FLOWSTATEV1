@@ -99,7 +99,7 @@ function setFilter(f) {
   const filtered = filterSessions(_mergedHist);
   buildHeatmap(filtered);
   buildHistory(filtered);
-  updateFilteredStats(filtered, _mergedStats);
+  fillStats(_mergedStats, filtered);
 }
 
 function filterSessions(hist) {
@@ -114,19 +114,7 @@ function filterSessions(hist) {
   });
 }
 
-function updateFilteredStats(filtered, baseStats) {
-  /* Update today and week counts based on filter */
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const weekAgo  = new Date(now - 7 * 86400000);
-  const todayCount = filtered.filter(h => (h.date || '').slice(0, 10) === todayStr).length;
-  const weekCount  = filtered.filter(h => new Date(h.date) >= weekAgo).length;
-  const el = document.getElementById('db-today');
-  if (el) el.textContent = todayCount;
-  /* FIX #6: HTML element is "db-week", not "db-week-count" */
-  const el2 = document.getElementById('db-week');
-  if (el2) el2.textContent = weekCount;
-}
+
 function getLocal(){
   try{
     return{
@@ -158,8 +146,10 @@ function fillStats(s,hist){
   document.getElementById('db-week').textContent=s.week||0;
 
   const hCons = document.getElementById('db-cons');
-  const hDwc  = document.getElementById('db-dwc');
-  const hPeak = document.getElementById('db-peak');
+  const hWeekHrs = document.getElementById('db-week-hours');
+  const hTodayCount = document.getElementById('db-today-count');
+  const hAvgSession = document.getElementById('db-avg-session');
+  const hBestDayName = document.getElementById('db-best-dayname');
   const hHrs  = document.getElementById('db-hours');
 
   if (hHrs) hHrs.textContent=hrs;
@@ -172,23 +162,33 @@ function fillStats(s,hist){
   }).map(h => (h.date||'').slice(0, 10)));
   if (hCons) hCons.textContent = activeSet.size + '/7';
 
-  const dwSessions = hist.filter(h => h.mins >= 45).length;
-  if (hDwc) hDwc.textContent = hist.length ? Math.round(dwSessions / hist.length * 100) + '%' : '0%';
+  // Weekly Focus Time
+  const weekMins = hist.filter(h => {
+    let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
+    return d > c7;
+  }).reduce((sum, h) => sum + (h.mins || 45), 0);
+  if (hWeekHrs) hWeekHrs.textContent = weekMins >= 60 ? (weekMins/60).toFixed(1)+'h' : weekMins+'m';
 
-  const hc = {};
+  // Sessions Today
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const todayCount = hist.filter(h => (h.date||'').slice(0, 10) === todayStr).length;
+  if (hTodayCount) hTodayCount.textContent = todayCount;
+
+  // Average Session Length
+  const avgMins = hist.length > 0 ? Math.round(hist.reduce((sum, h) => sum + (h.mins||45), 0) / hist.length) : 0;
+  if (hAvgSession) hAvgSession.textContent = avgMins ? avgMins + 'm' : '—';
+
+  // Most Productive Day (by total minutes)
+  const dayCounts = {};
   hist.forEach(h => {
     let d = (h.date||'').length===10?new Date((h.date||'')+'T00:00:00'):new Date(h.date);
-    if (!isNaN(d)) hc[d.getHours()] = (hc[d.getHours()] || 0) + 1;
-  });
-  const peak = Object.keys(hc).reduce((a,b) => hc[a] > hc[b] ? a : b, null);
-  if (hPeak) {
-    if (peak !== null) {
-      const h = parseInt(peak);
-      hPeak.textContent = h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm';
-    } else {
-      hPeak.textContent = '—';
+    if (!isNaN(d)) {
+      const dayName = d.toLocaleDateString('en-US', {weekday: 'long'});
+      dayCounts[dayName] = (dayCounts[dayName] || 0) + (h.mins || 45);
     }
-  }
+  });
+  const bestDay = Object.keys(dayCounts).reduce((a,b) => dayCounts[a] > dayCounts[b] ? a : b, null);
+  if (hBestDayName) hBestDayName.textContent = bestDay || '—';
 
   /* flame */
   const fl=document.getElementById('db-flame');
