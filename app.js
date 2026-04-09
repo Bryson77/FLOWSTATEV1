@@ -530,21 +530,21 @@ function addTask(text, prio, notes, due) {
     createdDate: new Date().toISOString().slice(0, 10)
   });
   inp.value = '';
-  renderTasks(); save();
+  renderTasks(); save(); cloudSync();
 }
 
 function toggleTask(id) {
   const tk = st.tasks.find(t => t.id === id);
   if (!tk) return;
   tk.done = !tk.done;
-  if (tk.done) { st.stats.tasksDone++; toast('✓ Task complete'); cloudSync(); }
+  if (tk.done) { st.stats.tasksDone++; toast('✓ Task complete'); }
   else if (st.stats.tasksDone > 0) { st.stats.tasksDone--; }
-  renderTasks(); updateStatDisplay(); save();
+  renderTasks(); updateStatDisplay(); save(); cloudSync();
 }
 
 function deleteTask(id) {
   st.tasks = st.tasks.filter(t => t.id !== id);
-  renderTasks(); save();
+  renderTasks(); save(); cloudSync();
 }
 
 function toggleTaskExpand(id) {
@@ -557,12 +557,12 @@ function toggleTaskExpand(id) {
 
 function saveTaskNotes(id, val) {
   const tk = st.tasks.find(t => t.id === id);
-  if (tk) { tk.notes = val; save(); }
+  if (tk) { tk.notes = val; save(); cloudSync(); }
 }
 
 function saveTaskDue(id, val) {
   const tk = st.tasks.find(t => t.id === id);
-  if (tk) { tk.due = val; save(); renderTasks(); }
+  if (tk) { tk.due = val; save(); renderTasks(); cloudSync(); }
 }
 
 function carryOverTasks() {
@@ -938,12 +938,24 @@ async function syncFromCloud() {
     const user = await sbGetUser();
     if (!user) return;
 
-    const [cs, csess] = await Promise.all([
+    const [cs, csess, ctasks] = await Promise.all([
       sbFetchStats(user.id),
-      sbFetchSessions(user.id)
+      sbFetchSessions(user.id),
+      sbFetchTasks(user.id)
     ]);
 
-    /* merge stats — take highest value */
+    /* 1. Merge settings (cfg) */
+    if (cs && cs.config && Object.keys(cs.config).length) {
+      cfg = { ...cfg, ...cs.config };
+      /* update UI inputs to match new cloud cfg */
+      const ids = { 'si-f':'work', 'si-s':'short', 'si-l':'long', 'si-n':'sessions', 'si-dg':'dailyGoal' };
+      Object.entries(ids).forEach(([id, k]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = cfg[k];
+      });
+    }
+
+    /* 2. Merge stats — take highest value */
     if (cs) {
       st.stats.streak    = Math.max(st.stats.streak    || 0, cs.focus_streak    || 0);
       st.stats.total     = Math.max(st.stats.total     || 0, cs.total_sessions  || 0);
@@ -952,7 +964,7 @@ async function syncFromCloud() {
       st.stats.best      = Math.max(st.stats.best      || 0, cs.best_day        || 0);
     }
 
-    /* merge history — deduplicate by date+label */
+    /* 3. Merge history — deduplicate by date+label */
     if (csess && csess.length) {
       csess.forEach(s => {
         if (!st.history.some(h => h.date?.slice(0,10) === s.date && h.label === s.label)) {
@@ -966,6 +978,24 @@ async function syncFromCloud() {
       });
       st.history.sort((a, b) => new Date(b.date) - new Date(a.date));
       st.history = st.history.slice(0, 100);
+    }
+
+    /* 4. Merge tasks — deduplicate by text (simple match) */
+    if (ctasks && ctasks.length) {
+      ctasks.forEach(ct => {
+        if (!st.tasks.some(lt => lt.text === ct.text)) {
+          st.tasks.push({
+            id: Date.now() + Math.random(),
+            text: ct.text,
+            prio: ct.prio || 'medium',
+            done: ct.done || false,
+            notes: ct.notes || '',
+            due: ct.due || '',
+            createdDate: ct.created_at ? ct.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
+          });
+        }
+      });
+      renderTasks();
     }
 
     /* recalculate derived stats from merged history */
@@ -984,7 +1014,6 @@ async function syncFromCloud() {
   } catch (e) {
     const msg = e?.message || String(e);
     console.warn('syncFromCloud error:', msg);
-    /* Surface auth/RLS errors in insight panel so they're visible during dev */
     const insEl = document.getElementById('ins-smart');
     if (insEl && msg && (msg.includes('JWT') || msg.includes('policy') || msg.includes('auth'))) {
       insEl.textContent = 'Auth error — try signing out and back in';
@@ -1024,7 +1053,12 @@ async function cloudSync() {
     if (!user) return;
     const latest = st.history[0];
     if (latest) await sbSaveSession(user.id, latest);
-    await sbSaveStats(user.id, st.stats);
+    
+    /* Push settings, stats, and tasks in one swoop */
+    await Promise.all([
+      sbSaveStats(user.id, st.stats, cfg),
+      sbSaveTasks(user.id, st.tasks)
+    ]);
   } catch (e) {
     console.warn('cloudSync:', e.message);
   }
@@ -1083,6 +1117,7 @@ function saveSettings() {
   const abEl    = document.getElementById('si-autobreak');
   if (abEl) cfg.autoBreak = abEl.checked;
   save(); setMode(st.mode); renderDots(); updateDailyGoalBar();
+  cloudSync(); /* ensure settings are pushed to cloud */
   toast('Settings saved');
 }
 

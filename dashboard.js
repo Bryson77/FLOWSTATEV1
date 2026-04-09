@@ -323,12 +323,22 @@ async function loadDashboard(user){
 
   /* cloud overlay */
   try{
-    const[cs,csess]=await Promise.all([sbFetchStats(user.id),sbFetchSessions(user.id)]);
+    const[cs,csess,ctasks]=await Promise.all([
+      sbFetchStats(user.id),
+      sbFetchSessions(user.id),
+      sbFetchTasks(user.id)
+    ]);
+    
+    /* 1. Merge settings (cfg) */
+    if (cs && cs.config) {
+      localStorage.setItem('fs4_cfg', JSON.stringify(cs.config));
+    }
+
     const merged={
       streak:   Math.max(ls.streak||0,   cs?.focus_streak||0),
       total:    Math.max(ls.total||0,    cs?.total_sessions||0),
       focusMins:Math.max(ls.focusMins||0,cs?.total_focus_time||0),
-      tasksDone:Math.max(ls.tasksDone||0,cs?.tasks_done||0),
+      tasks_done:Math.max(ls.tasksDone||0,cs?.tasks_done||0),
       best:     Math.max(ls.best||0,     cs?.best_day||0),
       today:ls.today||0,week:ls.week||0,
     };
@@ -339,9 +349,30 @@ async function loadDashboard(user){
         combined.push({date:s.date+'T00:00:00',label:s.label||'Focus session',mins:s.duration});
     });
     combined.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+    /* 2. Merge tasks (to ensure local storage is warm) */
+    const localTasks = JSON.parse(localStorage.getItem('fs4_tasks') || '[]');
+    const finalTasks = [...localTasks];
+    if (ctasks && ctasks.length) {
+      ctasks.forEach(ct => {
+        if (!finalTasks.some(lt => lt.text === ct.text)) {
+          finalTasks.push({
+            id: Date.now() + Math.random(),
+            text: ct.text, prio: ct.prio || 'medium', done: ct.done || false,
+            notes: ct.notes || '', due: ct.due || '',
+            createdDate: ct.created_at ? ct.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
+          });
+        }
+      });
+      localStorage.setItem('fs4_tasks', JSON.stringify(finalTasks));
+    }
+
     /* FIX #5: Update globals with cloud-merged data */
     _mergedHist = combined;
     _mergedStats = merged;
+    localStorage.setItem('fs4_stats', JSON.stringify(merged));
+    localStorage.setItem('fs4_hist', JSON.stringify(combined.slice(0, 100)));
+
     const filteredCloud=filterSessions(combined);
     fillStats(merged, combined);buildHeatmap(filteredCloud);buildHistory(filteredCloud);
   }catch(e){

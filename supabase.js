@@ -96,15 +96,50 @@ async function sbSaveSession(userId, session) {
   if (error) console.error('sbSaveSession:', error.message);
 }
 
-async function sbSaveStats(userId, stats) {
+async function sbSaveStats(userId, stats, config) {
   const sb = getSB(); if (!sb) return;
   const { error } = await sb.from('stats').upsert({
     user_id: userId,
     focus_streak: stats.streak, total_sessions: stats.total,
     total_focus_time: stats.focusMins, tasks_done: stats.tasksDone,
-    best_day: stats.best, updated_at: new Date().toISOString()
+    best_day: stats.best, updated_at: new Date().toISOString(),
+    config: config || {}
   }, { onConflict: 'user_id' });
   if (error) console.error('sbSaveStats:', error.message);
+}
+
+async function sbSaveTasks(userId, tasks) {
+  const sb = getSB(); if (!sb) return;
+  /* Prepare tasks for upsert (mapping local id to the text/created uniquely if needed, 
+     but here we'll just upsert the whole set for the user) */
+  const toSave = (tasks || []).map(t => ({
+    user_id: userId,
+    text: t.text,
+    prio: t.prio,
+    done: t.done,
+    notes: t.notes || '',
+    due: t.due || null,
+    created_at: t.createdDate ? t.createdDate + 'T00:00:00Z' : new Date().toISOString()
+  }));
+
+  /* For simplicity in our Bento app, we'll clear and re-insert or use a smart upsert.
+     Actually, a bulk delete/insert for the user's current list is safest for 'syncing' 
+     a simple array without complex conflict resolution. */
+  const { error: delErr } = await sb.from('tasks').delete().eq('user_id', userId);
+  if (delErr) { console.error('sbSaveTasks delete error:', delErr.message); return; }
+  
+  if (toSave.length > 0) {
+    const { error: insErr } = await sb.from('tasks').insert(toSave);
+    if (insErr) console.error('sbSaveTasks insert error:', insErr.message);
+  }
+}
+
+async function sbFetchTasks(userId) {
+  const sb = getSB(); if (!sb) return [];
+  const { data, error } = await sb.from('tasks').select('*')
+    .eq('user_id', userId).order('created_at', { ascending: false });
+  if (error) { console.error('sbFetchTasks:', error.message); return []; }
+  return data || [];
 }
 
 async function sbFetchSessions(userId) {
@@ -136,10 +171,21 @@ CREATE TABLE stats (
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   focus_streak int DEFAULT 0, total_sessions int DEFAULT 0,
   total_focus_time int DEFAULT 0, tasks_done int DEFAULT 0,
-  best_day int DEFAULT 0, updated_at timestamptz DEFAULT now()
+  best_day int DEFAULT 0, updated_at timestamptz DEFAULT now(),
+  config jsonb DEFAULT '{}'
+);
+CREATE TABLE tasks (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  text text NOT NULL, prio text DEFAULT 'medium',
+  done boolean DEFAULT false, notes text, due date,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stats    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks    ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "own" ON sessions FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "own" ON stats    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own" ON tasks    FOR ALL USING (auth.uid() = user_id);
 ─────────────────────────────────────────── */
