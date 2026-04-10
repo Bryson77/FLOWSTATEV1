@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Your Reauthentication</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #ffffff;
+      line-height: 1.6;
+    }
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #000000;
+      padding-top: 80px;
+      padding-bottom: 80px;
+    }
+    .main {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 500px;
+      border-spacing: 0;
+      text-align: center;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      text-decoration: none;
+      margin-bottom: 40px;
+      display: block;
+    }
+    .content {
+      background-color: #111111;
+      border: 1px solid #27272a;
+      border-radius: 24px;
+      padding: 48px 32px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      color: #ffffff;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+    .subtext {
+      font-size: 16px;
+      color: #a1a1aa;
+      margin-bottom: 32px;
+    }
+    .token-box {
+      background-color: #000000;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 24px;
+      margin-bottom: 24px;
+    }
+    .token {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 0.25em;
+      color: #ffffff;
+    }
+    .footer {
+      padding-top: 48px;
+      font-size: 12px;
+      color: #4a4a4a;
+      letter-spacing: 0.02em;
+    }
+    .security-note {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #3f3f46;
+      border-top: 1px solid #27272a;
+      padding-top: 24px;
+    }
+    @media screen and (max-width: 600px) {
+      .content {
+        padding: 40px 24px;
+      }
+      .wrapper {
+        padding-top: 40px;
+      }
+      .token {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="main" align="center">
+      <tr>
+        <td>
+          <div class="logo">Flow State</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="content">
+          <div class="title">Confirm Reauthentication</div>
+          <div class="subtext">
+            Enter the following code to complete your reauthentication attempt. This code will expire in a few minutes.
+          </div>
+          
+          <div class="token-box">
+            <div class="token">{{ .Token }}</div>
+          </div>
+
+          <div class="security-note">
+            If you did not initiate this request, your account might be at risk. We recommend changing your password immediately.
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          &copy; 2026 Flow State Productivity.<br>
+          Secure and private by design.
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

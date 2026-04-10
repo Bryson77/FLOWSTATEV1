@@ -1,0 +1,12 @@
+name = "flowstate-email-worker"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["0 9 * * 1"] # Every Monday at 9 AM
+
+[vars]
+# Add your environment variables here or use wrangler secret put
+# RESEND_API_KEY = "your_key_here"
+# SUPABASE_URL = "your_url_here"
+# SUPABASE_SERVICE_ROLE_KEY = "your_key_here"

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Your Email Change</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #ffffff;
+      line-height: 1.6;
+    }
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #000000;
+      padding-top: 80px;
+      padding-bottom: 80px;
+    }
+    .main {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 500px;
+      border-spacing: 0;
+      text-align: center;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      text-decoration: none;
+      margin-bottom: 40px;
+      display: block;
+    }
+    .content {
+      background-color: #111111;
+      border: 1px solid #27272a;
+      border-radius: 24px;
+      padding: 48px 32px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      color: #ffffff;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+    .subtext {
+      font-size: 16px;
+      color: #a1a1aa;
+      margin-bottom: 32px;
+    }
+    .email-box {
+      background-color: #0e0e0e;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 32px;
+      font-size: 14px;
+      color: #ffffff;
+    }
+    .email-arrow {
+      color: #71717a;
+      margin: 0 10px;
+    }
+    .cta-container {
+      margin-top: 32px;
+    }
+    .button {
+      display: inline-block;
+      padding: 16px 32px;
+      background-color: #ffffff;
+      color: #000000;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .footer {
+      padding-top: 48px;
+      font-size: 12px;
+      color: #4a4a4a;
+      letter-spacing: 0.02em;
+    }
+    .security-note {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #3f3f46;
+      border-top: 1px solid #27272a;
+      padding-top: 24px;
+    }
+    @media screen and (max-width: 600px) {
+      .content {
+        padding: 40px 24px;
+      }
+      .wrapper {
+        padding-top: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="main" align="center">
+      <tr>
+        <td>
+          <div class="logo">Flow State</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="content">
+          <div class="title">Confirm Change of Email</div>
+          <div class="subtext">
+            We received a request to update your account email. Please confirm the change below:
+          </div>
+          
+          <div class="email-box">
+            <span style="color: #71717a;">{{ .Email }}</span>
+            <span class="email-arrow">&rarr;</span>
+            <span style="font-weight: 700;">{{ .NewEmail }}</span>
+          </div>
+
+          <div class="cta-container">
+            <a href="{{ .ConfirmationURL }}" class="button">Confirm New Email &rarr;</a>
+          </div>
+
+          <div class="security-note">
+            If you did not request this update, please ignore this email. Your previous email address remains active.
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          &copy; 2026 Flow State Productivity.<br>
+          Your account security is our priority.
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

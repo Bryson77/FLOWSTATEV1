@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Weekly Flow State Summary</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #ffffff;
+    }
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #000000;
+      padding-top: 40px;
+      padding-bottom: 40px;
+    }
+    .main {
+      background-color: #000000;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 600px;
+      border-spacing: 0;
+    }
+    .header {
+      padding: 20px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      text-decoration: none;
+    }
+    .hero {
+      background-color: #161616;
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      padding: 40px 30px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .streak-val {
+      font-size: 64px;
+      font-weight: 900;
+      line-height: 1;
+      margin: 10px 0;
+    }
+    .streak-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #a1a1aa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .grid {
+      width: 100%;
+      border-spacing: 10px;
+    }
+    .card {
+      background-color: #161616;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: left;
+    }
+    .card-val {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+    .footer {
+      padding: 40px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #4a4a4a;
+    }
+    .button {
+      display: inline-block;
+      padding: 14px 32px;
+      background-color: #ffffff;
+      color: #000000;
+      text-decoration: none;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 14px;
+      margin-top: 20px;
+    }
+    @media screen and (max-width: 600px) {
+      .card {
+        display: block;
+        width: 100% !important;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="main" align="center">
+      <tr>
+        <td class="header">
+          <div class="logo">Flow State</div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="hero">
+            <div class="streak-label">Current Streak</div>
+            <div class="streak-val">{{streak}}</div>
+            <div class="streak-label">Days Locked In</div>
+            <p style="color: #a1a1aa; font-size: 15px; margin-top: 20px;">
+              Great work this week, {{name}}! You're making consistent progress toward your goals.
+            </p>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table class="grid" width="100%">
+            <tr>
+              <td width="50%">
+                <div class="card">
+                  <div class="card-val">{{total_sessions}}</div>
+                  <div class="card-label">Total Sessions</div>
+                </div>
+              </td>
+              <td width="50%">
+                <div class="card">
+                  <div class="card-val">{{focus_hours}}h</div>
+                  <div class="card-label">Focus Time</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%">
+                <div class="card">
+                  <div class="card-val">{{tasks_done}}</div>
+                  <div class="card-label">Tasks Done</div>
+                </div>
+              </td>
+              <td width="50%">
+                <div class="card">
+                  <div class="card-val">{{completion_rate}}%</div>
+                  <div class="card-label">Completion</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="text-align: center; padding-top: 20px;">
+          <a href="https://flowstateproductivity.xyz/dashboard.html" class="button">View Full Dashboard</a>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          You're receiving this because you opted in to weekly summaries in your Flow State settings.<br>
+          <a href="#" style="color: #71717a;">Unsubscribe</a> &bull; &copy; 2026 Flow State
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
