@@ -840,7 +840,7 @@ function renderStreakCal() {
   const now      = new Date();
   for (let i = 6; i >= 0; i--) {
     const d   = new Date(now); d.setDate(d.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
+    const iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     const isToday = i === 0, isOn = active.includes(iso);
     const wrap = document.createElement('div');
     wrap.className = 'sc-day';

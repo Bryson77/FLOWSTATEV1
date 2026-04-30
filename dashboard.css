@@ -310,7 +310,15 @@ body{
 .hm-cell.lv2{background:rgba(120,120,120,0.50);}
 .hm-cell.lv3{background:rgba(120,120,120,0.75);}
 .hm-cell.lv4{background:var(--t1);}
-.hm-cell.today-cell{outline:none;background:var(--t1);}
+.hm-cell.today-cell{
+  outline: 2px solid var(--t1);
+  outline-offset: 1px;
+  background: var(--c3);  /* empty today = base color + ring */
+}
+.hm-cell.today-cell.lv1,.hm-cell.today-cell.lv2,
+.hm-cell.today-cell.lv3,.hm-cell.today-cell.lv4{
+  background: var(--t1);  /* active today = filled + ring */
+}
 
 /* history */
 .db-hist-card{background:var(--c1);border-radius:var(--rad);border:1px solid var(--ln);overflow:hidden;}

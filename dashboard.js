@@ -224,8 +224,10 @@ function buildHeatmap(hist){
   if(!hm)return;
   hm.innerHTML='';mr.innerHTML='';
 
-  const WEEKS=24;
+  const WEEKS=26;
+  /* Normalise 'now' to local midnight so future-cell comparison is clean */
   const now=new Date();
+  const todayMidnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
 
   /* Build counts using LOCAL date strings to avoid UTC-offset bugs */
   const counts={};
@@ -239,8 +241,7 @@ function buildHeatmap(hist){
   });
 
   /* Start from the Sunday of (WEEKS-1) weeks ago */
-  const start=new Date(now);
-  start.setHours(0,0,0,0);
+  const start=new Date(todayMidnight);
   start.setDate(start.getDate()-start.getDay()-(WEEKS-1)*7);
 
   /* day label col */
@@ -251,7 +252,7 @@ function buildHeatmap(hist){
   });
   hm.appendChild(lblCol);
 
-  /* month labels — one per column, blank if same month as previous */
+  // month labels — one per column, blank if same month as previous
   let lastM=-1;
   for(let w=0;w<WEEKS;w++){
     const d=new Date(start);d.setDate(d.getDate()+w*7);
@@ -259,6 +260,10 @@ function buildHeatmap(hist){
     lbl.className='db-month-lbl';
     if(d.getMonth()!==lastM){lbl.textContent=d.toLocaleDateString([],{month:'short'});lastM=d.getMonth();}
     mr.appendChild(lbl);
+  }
+  // Ensure the current week column shows the correct month even if the week starts in previous month
+  if(mr.lastChild && mr.lastChild.textContent===''){
+    mr.lastChild.textContent=now.toLocaleDateString([],{month:'short'});
   }
 
   /* week cols */
@@ -268,13 +273,14 @@ function buildHeatmap(hist){
     for(let d=0;d<7;d++){
       const date=new Date(start);date.setDate(date.getDate()+w*7+d);
       const cell=document.createElement('div');
-      if(date>now&&date.toDateString()!==now.toDateString()){
+      /* Use midnight-normalised comparison so future days are correctly hidden */
+      if(date>todayMidnight){
         cell.className='hm-cell';cell.style.background='transparent';
       } else {
         const iso=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
         const cnt=counts[iso]||0;
         const lvl=cnt===0?0:cnt===1?1:cnt<=3?2:cnt<=5?3:4;
-        cell.className=`hm-cell lv${lvl}${iso===todayLocal?' today-cell':''}`;
+        cell.className=`hm-cell lv${lvl}${iso===todayLocal?' today-cell':''}${cnt>0&&iso===todayLocal?' active-today':''}`;
         cell.title=iso+(cnt?` · ${cnt} session${cnt>1?'s':''}`:'');
       }
       col.appendChild(cell);
