@@ -1,53 +1,78 @@
+/* ═══════════════════════════════════════════════════════════
+   FLOW STATE — supabase.js  (rebuilt for reliable sync)
 
-/* ═══════════════════════════════════════════
-   FLOW STATE — supabase.js
-   Auth + cloud data sync.
-
-   Replace the two constants below with your
-   values from: supabase.com → Settings → API
-   ═══════════════════════════════════════════ */
+   Replace the two constants below with your values from:
+   supabase.com → Settings → API
+   ═══════════════════════════════════════════════════════════ */
 
 const SUPABASE_URL      = "https://tyvwwgigdgcnpjceiavq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_d1aGAzmGSnc_scX9oy5pgQ_SXx00SDu";
-/* client singleton */
-let _sbCheck = false;
-let _sbInit = false;
+
+/* ── CLIENT SINGLETON ──────────────────────────────────────── */
+let _sbClient = null;
+
 function getSB() {
-  if (typeof window.supabase === 'undefined') {
-    if (!_sbCheck) { console.warn('Supabase not loaded yet'); _sbCheck = true; }
+  if (typeof window?.supabase?.createClient !== 'function') {
+    console.warn('[FlowState] Supabase SDK not loaded yet');
     return null;
   }
-  if (!window._sb && !_sbInit) {
+  if (!_sbClient) {
     try {
-      _sbInit = true;
-      window._sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      _sbInit = false;
-    } catch(e) {
-      console.error('Supabase init error:', e);
-      _sbInit = false;
+      _sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true }
+      });
+    } catch (e) {
+      console.error('[FlowState] Supabase init error:', e);
       return null;
     }
   }
-  return window._sb;
+  return _sbClient;
 }
 
-/* ── AUTH ─────────────────────────────────── */
-async function sbGetUser() {
+/* ── INTERNAL HELPERS ──────────────────────────────────────── */
+
+/** Run a Supabase query; on error log and return a safe fallback. */
+async function _query(label, fn, fallback) {
+  const sb = getSB();
+  if (!sb) return fallback;
   try {
-    const sb = getSB(); if (!sb) return null;
+    const result = await fn(sb);
+    if (result.error) {
+      console.error(`[FlowState] ${label}:`, result.error.message, result.error.details ?? '');
+    }
+    return result;
+  } catch (e) {
+    console.error(`[FlowState] ${label} threw:`, e.message);
+    return { data: fallback, error: e };
+  }
+}
+
+/** Return today's ISO date string in local time (YYYY-MM-DD). */
+function _todayLocal() {
+  const d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+/* ── AUTH ──────────────────────────────────────────────────── */
+
+async function sbGetUser() {
+  const sb = getSB(); if (!sb) return null;
+  try {
     const { data: { user }, error } = await sb.auth.getUser();
-    if (error) { console.error('sbGetUser:', error.message); return null; }
+    if (error) { console.error('[FlowState] sbGetUser:', error.message); return null; }
     return user;
-  } catch(e) { console.error('sbGetUser raw error:', e); return null; }
+  } catch (e) { console.error('[FlowState] sbGetUser threw:', e.message); return null; }
 }
 
 async function sbGetSession() {
+  const sb = getSB(); if (!sb) return null;
   try {
-    const sb = getSB(); if (!sb) return null;
     const { data: { session }, error } = await sb.auth.getSession();
-    if (error) { console.error('sbGetSession:', error.message); return null; }
+    if (error) { console.error('[FlowState] sbGetSession:', error.message); return null; }
     return session;
-  } catch(e) { console.error('sbGetSession raw error:', e); return null; }
+  } catch (e) { console.error('[FlowState] sbGetSession threw:', e.message); return null; }
 }
 
 function sbOnAuthChange(cb) {
@@ -76,7 +101,7 @@ async function sbSignInGoogle() {
   const sb = getSB(); if (!sb) throw new Error('Supabase not initialised');
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options:  { redirectTo: 'https://flowstateproductivity.xyz/dashboard.html' }
+    options: { redirectTo: 'https://flowstateproductivity.xyz/dashboard.html' }
   });
   if (error) throw error;
 }
@@ -84,108 +109,243 @@ async function sbSignInGoogle() {
 async function sbSignOut() {
   const sb = getSB(); if (!sb) return;
   await sb.auth.signOut();
+  _sbClient = null; // reset so next login gets a clean client
 }
 
-/* ── DATA ─────────────────────────────────── */
-async function sbSaveSession(userId, session) {
-  const sb = getSB(); if (!sb) return;
-  const { error } = await sb.from('sessions').insert({
-    user_id: userId, duration: session.mins, completed: true,
-    date: session.date.slice(0, 10), label: session.label
-  });
-  if (error) console.error('sbSaveSession:', error.message);
+/* ── STATS ─────────────────────────────────────────────────── */
+
+/**
+ * Fetch the user's stats row.
+ * Returns the DB row object or null.
+ * Column names: focus_streak, total_sessions, total_focus_time, tasks_done, best_day, config
+ */
+async function sbFetchStats(userId) {
+  const sb = getSB(); if (!sb) return null;
+  const { data, error } = await sb
+    .from('stats')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();           // null (not error) when no row exists yet
+  if (error) { console.error('[FlowState] sbFetchStats:', error.message); return null; }
+  return data;               // may be null for brand-new users
 }
 
+/**
+ * Upsert stats for a user.
+ * @param {string} userId
+ * @param {object} stats  — local st.stats shape: { streak, total, focusMins, tasksDone, best }
+ * @param {object} config — local cfg shape
+ */
 async function sbSaveStats(userId, stats, config) {
   const sb = getSB(); if (!sb) return;
   const { error } = await sb.from('stats').upsert({
-    user_id: userId,
-    focus_streak: stats.streak, total_sessions: stats.total,
-    total_focus_time: stats.focusMins, tasks_done: stats.tasksDone,
-    best_day: stats.best, updated_at: new Date().toISOString(),
-    config: config || {}
+    user_id:          userId,
+    focus_streak:     stats.streak     || 0,
+    total_sessions:   stats.total      || 0,
+    total_focus_time: stats.focusMins  || 0,
+    tasks_done:       stats.tasksDone  || 0,
+    best_day:         stats.best       || 0,
+    updated_at:       new Date().toISOString(),
+    config:           config || {}
   }, { onConflict: 'user_id' });
-  if (error) console.error('sbSaveStats:', error.message);
+  if (error) console.error('[FlowState] sbSaveStats:', error.message);
 }
 
-async function sbSaveTasks(userId, tasks) {
-  const sb = getSB(); if (!sb) return;
-  /* Prepare tasks for upsert (mapping local id to the text/created uniquely if needed, 
-     but here we'll just upsert the whole set for the user) */
-  const toSave = (tasks || []).map(t => ({
-    user_id: userId,
-    text: t.text,
-    prio: t.prio,
-    done: t.done,
-    notes: t.notes || '',
-    due: t.due || null,
-    created_at: t.createdDate ? t.createdDate + 'T00:00:00Z' : new Date().toISOString()
-  }));
+/* ── SESSIONS ──────────────────────────────────────────────── */
 
-  /* For simplicity in our Bento app, we'll clear and re-insert or use a smart upsert.
-     Actually, a bulk delete/insert for the user's current list is safest for 'syncing' 
-     a simple array without complex conflict resolution. */
-  const { error: delErr } = await sb.from('tasks').delete().eq('user_id', userId);
-  if (delErr) { console.error('sbSaveTasks delete error:', delErr.message); return; }
-  
-  if (toSave.length > 0) {
-    const { error: insErr } = await sb.from('tasks').insert(toSave);
-    if (insErr) console.error('sbSaveTasks insert error:', insErr.message);
+/**
+ * Fetch all sessions for a user (newest first, max 500).
+ * Returns array of { id, date, duration, label, created_at }
+ */
+async function sbFetchSessions(userId) {
+  const sb = getSB(); if (!sb) return [];
+  const { data, error } = await sb
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(500);
+  if (error) { console.error('[FlowState] sbFetchSessions:', error.message); return []; }
+  return data || [];
+}
+
+/**
+ * Insert a single completed session.
+ * Idempotent-ish: duplicate (date+label+duration) rows are harmless and filtered
+ * on read during deduplication.
+ * @param {string} userId
+ * @param {object} session — { mins, date (ISO string), label }
+ */
+async function sbSaveSession(userId, session) {
+  const sb = getSB(); if (!sb) return;
+  const dateStr = (session.date || new Date().toISOString()).slice(0, 10);
+  const { error } = await sb.from('sessions').insert({
+    user_id:   userId,
+    duration:  session.mins || 25,
+    completed: true,
+    date:      dateStr,
+    label:     session.label || 'Focus session'
+  });
+  // Ignore duplicate-key errors (23505) if you add a unique constraint later
+  if (error && !error.message.includes('duplicate')) {
+    console.error('[FlowState] sbSaveSession:', error.message);
   }
 }
 
+/**
+ * Push any local sessions that are not yet in the cloud.
+ * Compares by date+label to avoid duplication.
+ * @param {string}   userId
+ * @param {object[]} localHistory  — array of { date, label, mins }
+ */
+async function sbSyncSessions(userId, localHistory) {
+  const sb = getSB(); if (!sb) return;
+
+  // Fetch existing cloud sessions just for today and yesterday to limit work
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const cutoff = yesterday.toISOString().slice(0, 10);
+
+  const { data: existing, error: fetchErr } = await sb
+    .from('sessions')
+    .select('date, label, duration')
+    .eq('user_id', userId)
+    .gte('date', cutoff);
+
+  if (fetchErr) { console.error('[FlowState] sbSyncSessions fetch:', fetchErr.message); return; }
+
+  const cloudSet = new Set(
+    (existing || []).map(s => `${s.date}|${s.label}|${s.duration}`)
+  );
+
+  // Only upload sessions from the last 2 days that aren't already there
+  const toInsert = localHistory
+    .filter(h => {
+      const d = (h.date || '').slice(0, 10);
+      if (d < cutoff) return false;
+      const key = `${d}|${h.label || 'Focus session'}|${h.mins || 25}`;
+      return !cloudSet.has(key);
+    })
+    .map(h => ({
+      user_id:   userId,
+      duration:  h.mins  || 25,
+      completed: true,
+      date:      (h.date || new Date().toISOString()).slice(0, 10),
+      label:     h.label || 'Focus session'
+    }));
+
+  if (!toInsert.length) return;
+
+  const { error } = await sb.from('sessions').insert(toInsert);
+  if (error) console.error('[FlowState] sbSyncSessions insert:', error.message);
+}
+
+/* ── TASKS ─────────────────────────────────────────────────── */
+
+/**
+ * Fetch all tasks for a user, newest first.
+ * Returns array matching the DB schema.
+ */
 async function sbFetchTasks(userId) {
   const sb = getSB(); if (!sb) return [];
-  const { data, error } = await sb.from('tasks').select('*')
-    .eq('user_id', userId).order('created_at', { ascending: false });
-  if (error) { console.error('sbFetchTasks:', error.message); return []; }
+  const { data, error } = await sb
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('[FlowState] sbFetchTasks:', error.message); return []; }
   return data || [];
 }
 
-async function sbFetchSessions(userId) {
-  const sb = getSB(); if (!sb) return [];
-  const { data, error } = await sb.from('sessions').select('*')
-    .eq('user_id', userId).order('date', { ascending: false }).limit(500);
-  if (error) { console.error('sbFetchSessions:', error.message); return []; }
-  return data || [];
+/**
+ * Sync local tasks to Supabase using upsert on a stable `id`.
+ *
+ * Strategy:
+ *  - Each local task must have a stable string `id` (UUID preferred).
+ *    app.js already assigns numeric ids; we coerce to string.
+ *  - Upsert by id — insert new, update changed.
+ *  - Soft-delete: tasks removed locally are marked done=true rather than
+ *    physically deleted, unless you call sbDeleteTask explicitly.
+ *  - This avoids the delete-all / re-insert race condition entirely.
+ *
+ * @param {string}   userId
+ * @param {object[]} tasks  — local task array
+ */
+async function sbSaveTasks(userId, tasks) {
+  const sb = getSB(); if (!sb) return;
+  if (!tasks || !tasks.length) return;
+
+  const now = new Date().toISOString();
+  const rows = tasks.map(t => ({
+    id:         String(t.id),           // stable key — must exist on local tasks
+    user_id:    userId,
+    text:       t.text,
+    prio:       t.prio      || 'medium',
+    done:       t.done      || false,
+    notes:      t.notes     || null,
+    due:        t.due       || null,
+    created_at: t.createdDate
+                  ? t.createdDate + 'T00:00:00Z'
+                  : now,
+    updated_at: now
+  }));
+
+  const { error } = await sb.from('tasks').upsert(rows, { onConflict: 'id' });
+  if (error) console.error('[FlowState] sbSaveTasks:', error.message);
 }
 
-async function sbFetchStats(userId) {
-  const sb = getSB(); if (!sb) return null;
-  /* maybeSingle() returns null (not an error) when no row exists yet */
-  const { data, error } = await sb.from('stats').select('*')
-    .eq('user_id', userId).maybeSingle();
-  if (error) { console.error('sbFetchStats:', error.message); return null; }
-  return data;
+/**
+ * Delete a single task by id (call when user explicitly deletes a task).
+ * @param {string} taskId — local task id
+ */
+async function sbDeleteTask(taskId) {
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb
+    .from('tasks')
+    .delete()
+    .eq('id', String(taskId));
+  if (error) console.error('[FlowState] sbDeleteTask:', error.message);
 }
 
-/* ── SUPABASE SQL (run once in SQL editor) ───
-CREATE TABLE sessions (
+/* ── SUPABASE SQL (run once in SQL editor) ──────────────────
+CREATE TABLE IF NOT EXISTS sessions (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  duration int NOT NULL, completed bool DEFAULT true,
-  date date NOT NULL, label text,
+  duration int NOT NULL,
+  completed bool DEFAULT true,
+  date date NOT NULL,
+  label text,
   created_at timestamptz DEFAULT now()
 );
-CREATE TABLE stats (
+
+CREATE TABLE IF NOT EXISTS stats (
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  focus_streak int DEFAULT 0, total_sessions int DEFAULT 0,
-  total_focus_time int DEFAULT 0, tasks_done int DEFAULT 0,
-  best_day int DEFAULT 0, updated_at timestamptz DEFAULT now(),
+  focus_streak int DEFAULT 0,
+  total_sessions int DEFAULT 0,
+  total_focus_time int DEFAULT 0,
+  tasks_done int DEFAULT 0,
+  best_day int DEFAULT 0,
+  updated_at timestamptz DEFAULT now(),
   config jsonb DEFAULT '{}'
 );
-CREATE TABLE tasks (
+
+CREATE TABLE IF NOT EXISTS tasks (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  text text NOT NULL, prio text DEFAULT 'medium',
-  done boolean DEFAULT false, notes text, due date,
+  text text NOT NULL,
+  prio text DEFAULT 'medium',
+  done boolean DEFAULT false,
+  notes text,
+  due date,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stats    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks    ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own" ON sessions FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "own" ON stats    FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "own" ON tasks    FOR ALL USING (auth.uid() = user_id);
-─────────────────────────────────────────── */
+
+CREATE POLICY IF NOT EXISTS "own_sessions" ON sessions FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY IF NOT EXISTS "own_stats"    ON stats    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY IF NOT EXISTS "own_tasks"    ON tasks    FOR ALL USING (auth.uid() = user_id);
+──────────────────────────────────────────────────────────── */
