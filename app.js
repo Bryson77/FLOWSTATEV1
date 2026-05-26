@@ -944,10 +944,9 @@ async function syncFromCloud() {
       sbFetchTasks(user.id)
     ]);
 
-    /* 1. Merge settings (cfg) */
+    /* 1. Merge settings (cfg) from cloud config column */
     if (cs && cs.config && Object.keys(cs.config).length) {
       cfg = { ...cfg, ...cs.config };
-      /* update UI inputs to match new cloud cfg */
       const ids = { 'si-f':'work', 'si-s':'short', 'si-l':'long', 'si-n':'sessions', 'si-dg':'dailyGoal' };
       Object.entries(ids).forEach(([id, k]) => {
         const el = document.getElementById(id);
@@ -955,20 +954,25 @@ async function syncFromCloud() {
       });
     }
 
-    /* 2. Merge stats — take highest value */
+    /* 2. Merge stats — take the highest value so no progress is lost */
     if (cs) {
-      st.stats.streak    = Math.max(st.stats.streak    || 0, cs.focus_streak    || 0);
-      st.stats.total     = Math.max(st.stats.total     || 0, cs.total_sessions  || 0);
-      st.stats.focusMins = Math.max(st.stats.focusMins || 0, cs.total_focus_time|| 0);
-      st.stats.tasksDone = Math.max(st.stats.tasksDone || 0, cs.tasks_done      || 0);
-      st.stats.best      = Math.max(st.stats.best      || 0, cs.best_day        || 0);
+      st.stats.streak    = Math.max(st.stats.streak    || 0, cs.focus_streak     || 0);
+      st.stats.total     = Math.max(st.stats.total     || 0, cs.total_sessions   || 0);
+      st.stats.focusMins = Math.max(st.stats.focusMins || 0, cs.total_focus_time || 0);
+      st.stats.tasksDone = Math.max(st.stats.tasksDone || 0, cs.tasks_done       || 0);
+      st.stats.best      = Math.max(st.stats.best      || 0, cs.best_day         || 0);
     }
 
-    /* 3. Merge history — deduplicate by date+label */
+    /* 3. Merge history — deduplicate by date+label+duration (more reliable than date+label alone) */
     if (csess && csess.length) {
+      const localKeys = new Set(
+        st.history.map(h => `${(h.date||'').slice(0,10)}|${h.label}|${h.mins}`)
+      );
       csess.forEach(s => {
-        if (!st.history.some(h => h.date?.slice(0,10) === s.date && h.label === s.label)) {
-          st.history.unshift({
+        const key = `${s.date}|${s.label || 'Focus session'}|${s.duration}`;
+        if (!localKeys.has(key)) {
+          localKeys.add(key);
+          st.history.push({
             date:  s.date + 'T00:00:00',
             label: s.label || 'Focus session',
             mins:  s.duration,
@@ -977,35 +981,41 @@ async function syncFromCloud() {
         }
       });
       st.history.sort((a, b) => new Date(b.date) - new Date(a.date));
-      st.history = st.history.slice(0, 100);
+      st.history = st.history.slice(0, 200);
     }
 
-    /* 4. Merge tasks — deduplicate by text (simple match) */
+    /* 4. Merge tasks — deduplicate by stable id (string-coerced).
+          Cloud tasks missing from local are added; local tasks take priority
+          so in-progress edits are not overwritten. */
     if (ctasks && ctasks.length) {
+      const localIdSet = new Set(st.tasks.map(t => String(t.id)));
+      let changed = false;
       ctasks.forEach(ct => {
-        if (!st.tasks.some(lt => lt.text === ct.text)) {
+        if (!localIdSet.has(String(ct.id))) {
+          localIdSet.add(String(ct.id));
           st.tasks.push({
-            id: Date.now() + Math.random(),
-            text: ct.text,
-            prio: ct.prio || 'medium',
-            done: ct.done || false,
-            notes: ct.notes || '',
-            due: ct.due || '',
-            createdDate: ct.created_at ? ct.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
+            id:          ct.id,                  // keep the DB uuid as the stable id
+            text:        ct.text,
+            prio:        ct.prio        || 'medium',
+            done:        ct.done        || false,
+            notes:       ct.notes       || '',
+            due:         ct.due         || '',
+            createdDate: ct.created_at  ? ct.created_at.slice(0, 10)
+                                        : new Date().toISOString().slice(0, 10)
           });
+          changed = true;
         }
       });
-      renderTasks();
+      if (changed) renderTasks();
     }
 
-    /* recalculate derived stats from merged history */
+    /* 5. Recalculate derived stats from merged history */
     const now = new Date();
     const todayKey = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
     st.stats.today = st.history.filter(h => (h.date||'').slice(0,10) === todayKey).length;
     st.stats.week  = st.history.filter(h => new Date(h.date) > new Date(now - 7*86400000)).length;
-    /* rebuild activeDays from full history */
-    const adSet = new Set(st.history.map(h => (h.date||'').slice(0,10)).filter(Boolean));
-    const cutoff = new Date(now - 30*86400000).toISOString().slice(0,10);
+    const adSet    = new Set(st.history.map(h => (h.date||'').slice(0,10)).filter(Boolean));
+    const cutoff   = new Date(now - 30*86400000).toISOString().slice(0,10);
     st.stats.activeDays = [...adSet].filter(d => d >= cutoff);
 
     save();
@@ -1013,9 +1023,9 @@ async function syncFromCloud() {
     renderHist();
   } catch (e) {
     const msg = e?.message || String(e);
-    console.warn('syncFromCloud error:', msg);
+    console.warn('[FlowState] syncFromCloud error:', msg);
     const insEl = document.getElementById('ins-smart');
-    if (insEl && msg && (msg.includes('JWT') || msg.includes('policy') || msg.includes('auth'))) {
+    if (insEl && (msg.includes('JWT') || msg.includes('policy') || msg.includes('auth'))) {
       insEl.textContent = 'Auth error — try signing out and back in';
     }
   }
@@ -1047,20 +1057,30 @@ function handleSignIn() {
   window.location.href = 'dashboard.html';
 }
 
+/* Debounce handle — one in-flight sync at a time */
+let _syncTimer = null;
+
 async function cloudSync() {
+  /* Debounce: collapse rapid calls (e.g. task toggles) into one push */
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(_doCloudSync, 800);
+}
+
+async function _doCloudSync() {
   try {
     const user = await sbGetUser();
     if (!user) return;
-    const latest = st.history[0];
-    if (latest) await sbSaveSession(user.id, latest);
-    
-    /* Push settings, stats, and tasks in one swoop */
+
+    /* Push any recent sessions not yet in cloud */
+    await sbSyncSessions(user.id, st.history);
+
+    /* Push stats and tasks in parallel */
     await Promise.all([
       sbSaveStats(user.id, st.stats, cfg),
       sbSaveTasks(user.id, st.tasks)
     ]);
   } catch (e) {
-    console.warn('cloudSync:', e.message);
+    console.warn('[FlowState] cloudSync:', e.message);
   }
 }
 
