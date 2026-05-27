@@ -1,518 +1,1068 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
-  <link rel="icon" href="Logo.svg">
-  <meta name="description" content="Flow State — a distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration to help you do deep work.">
-<meta name="keywords" content="pomodoro timer, focus timer, productivity, deep work, task tracker">
-<meta name="author" content="Flow State">
-<meta property="og:title" content="Flow State">
-<meta property="og:description" content="A distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration.">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://flowstateproductivity.xyz">
-<meta property="og:image" content="https://flowstateproductivity.xyz/Logo.svg">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Flow State">
-<meta name="twitter:description" content="A distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration.">
-<meta name="twitter:image" content="https://flowstateproductivity.xyz/Logo.svg">
-<link rel="canonical" href="https://flowstateproductivity.xyz">
-<link rel="icon" href="Logo.svg">
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Flow State — Focus Timer & Deep Work Tracker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<meta name="description" content="A distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration to help you do deep work."/>
+<meta property="og:title" content="Flow State"/>
+<link rel="icon" href="Logo.svg">
+<meta property="og:description" content="A distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration."/>
+<meta property="og:url" content="https://flowstateproductivity.xyz"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="canonical" href="https://flowstateproductivity.xyz"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #f9f9f9;
+    --bg2:       #ffffff;
+    --c1:        rgba(255,255,255,0.7);
+    --c2:        rgba(255,255,255,0.4);
+    --c3:        rgba(0,0,0,0.04);
+    --ln:        rgba(0,0,0,0.07);
+    --lnhi:      rgba(0,0,0,0.15);
+    --t1:        #111111;
+    --t2:        #555555;
+    --t3:        #999999;
+    --green:     #10b981;
+    --green-dim: rgba(16,185,129,0.12);
+    --rad:       16px;
+    --rad-sm:    10px;
+    --rad-pill:  999px;
+    --tr:        0.2s cubic-bezier(0.2,0,0,1);
+    --tr-m:      0.3s cubic-bezier(0.2,0,0,1);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--t1);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* MESH BACKGROUND */
+  .mesh-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 20% 10%, rgba(255,200,180,0.12) 0px, transparent 50%),
+      radial-gradient(at 80% 5%,  rgba(180,220,255,0.12) 0px, transparent 50%),
+      radial-gradient(at 60% 80%, rgba(200,255,220,0.08) 0px, transparent 50%);
+    filter: blur(60px);
+  }
+
+  section, nav, footer { position: relative; z-index: 1; }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    width: min(900px, calc(100% - 32px));
+    border-radius: var(--rad-pill);
+    border: 1px solid var(--ln);
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+  }
+
+  .nav-wordmark {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--t1);
+    letter-spacing: -0.02em;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--t2);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--rad-pill);
+    transition: all var(--tr);
+  }
+
+  .nav-links a:hover { color: var(--t1); background: var(--c3); }
+
+  .nav-cta {
+    background: var(--t1) !important;
+    color: var(--bg) !important;
+    font-weight: 700 !important;
+    padding: 7px 16px !important;
+    font-size: 0.78rem !important;
+  }
+
+  .nav-cta:hover { opacity: 0.85 !important; background: var(--t1) !important; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 7rem 2rem 5rem;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--c1);
+    border: 1px solid var(--ln);
+    color: var(--t2);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 5px 14px;
+    border-radius: var(--rad-pill);
+    margin-bottom: 2.25rem;
+    backdrop-filter: blur(20px);
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .hero-h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(2.75rem, 6.5vw, 5rem);
+    font-weight: 900;
+    line-height: 1.0;
+    letter-spacing: -0.035em;
+    color: var(--t1);
+    max-width: 760px;
+    animation: fadeUp 0.5s 0.08s ease both;
+  }
+
+  .hero-h1 em {
+    font-style: normal;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .hero-sub {
+    margin-top: 1.25rem;
+    font-size: 1rem;
+    color: var(--t2);
+    max-width: 460px;
+    line-height: 1.7;
+    font-weight: 400;
+    animation: fadeUp 0.5s 0.16s ease both;
+  }
+
+  .hero-actions {
+    margin-top: 2.25rem;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    animation: fadeUp 0.5s 0.24s ease both;
+  }
+
+  .btn-primary {
+    background: var(--t1);
+    color: var(--bg);
+    padding: 11px 24px;
+    border-radius: var(--rad-pill);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: opacity var(--tr), transform var(--tr);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .btn-primary:hover { opacity: 0.82; transform: translateY(-1px); }
+
+  .btn-ghost {
+    color: var(--t2);
+    padding: 11px 20px;
+    border-radius: var(--rad-pill);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all var(--tr);
+    border: 1px solid var(--ln);
+    background: var(--c1);
+    backdrop-filter: blur(20px);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .btn-ghost:hover { color: var(--t1); border-color: var(--lnhi); }
+
+  /* TIMER PREVIEW */
+  .hero-visual {
+    margin-top: 4rem;
+    position: relative;
+    animation: fadeUp 0.7s 0.32s ease both;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .timer-card {
+    background: var(--c1);
+    border: 1px solid var(--ln);
+    border-radius: 20px;
+    padding: 24px;
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.06);
+  }
+
+  .timer-tabs {
+    display: flex;
+    gap: 3px;
+    background: var(--c3);
+    border-radius: var(--rad-pill);
+    padding: 3px;
+    margin-bottom: 1.75rem;
+  }
+
+  .timer-tab {
+    flex: 1;
+    padding: 6px;
+    border-radius: var(--rad-pill);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--t3);
+    text-align: center;
+    transition: all var(--tr);
+    cursor: default;
+  }
+
+  .timer-tab.active {
+    background: var(--bg2);
+    color: var(--t1);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  }
+
+  .timer-session-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--t3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .session-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease infinite;
+  }
+
+  .timer-display {
+    font-family: 'Outfit', sans-serif;
+    font-size: 4.5rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--t1);
+    letter-spacing: -0.05em;
+    margin: 0.25rem 0 1.5rem;
+  }
+
+  .timer-progress-wrap {
+    height: 2px;
+    background: var(--c3);
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .timer-progress-bar {
+    height: 100%;
+    width: 40%;
+    background: var(--t1);
+    border-radius: 2px;
+    animation: progress 5s ease-in-out infinite alternate;
+  }
+
+  @keyframes progress { from{width:40%} to{width:75%} }
+
+  .timer-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--t1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    cursor: pointer;
+    transition: transform var(--tr), opacity var(--tr);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+
+  .timer-btn:hover { transform: scale(1.07); opacity: 0.85; }
+  .timer-btn svg { width: 18px; height: 18px; fill: #fff; }
+
+  .timer-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--ln);
+  }
+
+  .timer-stat { text-align: center; }
+
+  .timer-stat-val {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--t1);
+    display: block;
+    letter-spacing: -0.02em;
+  }
+
+  .timer-stat-lbl {
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: var(--t3);
+    margin-top: 1px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* FLOATING BADGES */
+  .float-badge {
+    position: absolute;
+    background: var(--c1);
+    border: 1px solid var(--ln);
+    border-radius: var(--rad-sm);
+    padding: 8px 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--t2);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  .float-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .fb-streak { top: 8%;  right: -36%; animation: float1 4s ease-in-out infinite; }
+  .fb-sync   { bottom: 28%; left: -38%; animation: float2 4s 1s ease-in-out infinite; }
+  .fb-done   { bottom: 4%;  right: -32%; animation: float1 4s 2s ease-in-out infinite; }
+
+  @keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+
+  /* STATS ROW */
+  .stats-row {
+    border-top: 1px solid var(--ln);
+    border-bottom: 1px solid var(--ln);
+    padding: 3.5rem 2rem;
+  }
+
+  .stats-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--t1);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl {
+    font-size: 0.78rem;
+    color: var(--t3);
+    font-weight: 500;
+  }
+
+  /* FEATURES */
+  .features {
+    padding: 6rem 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .features-intro { margin-bottom: 3rem; }
+
+  .section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--t3);
+    margin-bottom: 0.75rem;
+  }
+
+  .section-h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    color: var(--t1);
+    margin-bottom: 0.875rem;
+  }
+
+  .section-sub {
+    color: var(--t2);
+    font-size: 0.95rem;
+    max-width: 440px;
+    line-height: 1.7;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--ln);
+    border: 1px solid var(--ln);
+    border-radius: var(--rad);
+    overflow: hidden;
+  }
+
+  .feature-cell {
+    background: var(--bg);
+    padding: 1.75rem;
+    transition: background var(--tr);
+  }
+
+  .feature-cell:hover { background: var(--c1); }
+
+  .feature-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--rad-sm);
+    background: var(--c3);
+    border: 1px solid var(--ln);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+
+  .feature-icon svg {
+    width: 16px; height: 16px;
+    stroke: var(--t2); fill: none;
+    stroke-width: 1.75;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  .feature-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--t1);
+    margin-bottom: 0.375rem;
+  }
+
+  .feature-desc {
+    font-size: 0.8rem;
+    color: var(--t2);
+    line-height: 1.65;
+  }
+
+  /* HOW IT WORKS */
+  .how {
+    padding: 6rem 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .how-intro { margin-bottom: 3rem; }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+    position: relative;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 23px;
+    left: calc(16.66% + 22px);
+    right: calc(16.66% + 22px);
+    height: 1px;
+    background: var(--ln);
+  }
+
+  .step-num {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid var(--ln);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--t3);
+    margin-bottom: 1.25rem;
+    background: var(--bg2);
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-num.active {
+    background: var(--t1);
+    border-color: var(--t1);
+    color: #fff;
+  }
+
+  .step-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--t1);
+    margin-bottom: 0.4rem;
+  }
+
+  .step-desc {
+    font-size: 0.8rem;
+    color: var(--t2);
+    line-height: 1.65;
+  }
+
+  /* SPOTIFY SECTION */
+  .spotify-section {
+    padding: 6rem 2rem;
+    border-top: 1px solid var(--ln);
+    border-bottom: 1px solid var(--ln);
+    background: var(--bg2);
+  }
+
+  .spotify-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .playlist-card {
+    background: var(--c1);
+    border: 1px solid var(--ln);
+    border-radius: var(--rad);
+    padding: 1.25rem;
+    backdrop-filter: blur(40px) saturate(150%);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    max-width: 300px;
+  }
+
+  .playlist-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--ln);
+  }
+
+  .spotify-logo {
+    width: 26px; height: 26px;
+    background: #1DB954;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .spotify-logo svg { width: 13px; height: 13px; fill: #000; }
+
+  .playlist-title { font-size: 0.8rem; font-weight: 700; color: var(--t1); }
+  .playlist-sub   { font-size: 0.65rem; color: var(--t3); }
+
+  .playlist-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 6px;
+    border-radius: var(--rad-sm);
+    cursor: pointer;
+    transition: background var(--tr);
+  }
+
+  .playlist-item:hover { background: var(--c3); }
+  .playlist-item.playing .pl-name { color: var(--t1); font-weight: 600; }
+
+  .pl-emoji { font-size: 1rem; width: 24px; text-align: center; flex-shrink: 0; }
+  .pl-info  { flex: 1; }
+  .pl-name  { font-size: 0.75rem; color: var(--t2); }
+  .pl-meta  { font-size: 0.65rem; color: var(--t3); }
+
+  .pl-eq { display: flex; gap: 2px; align-items: flex-end; height: 12px; flex-shrink: 0; }
+  .pl-eq span {
+    width: 3px; background: var(--t1); border-radius: 1px;
+    animation: eq 0.7s ease-in-out infinite alternate;
+  }
+  .pl-eq span:nth-child(1) { height: 5px; animation-delay: 0s; }
+  .pl-eq span:nth-child(2) { height: 9px; animation-delay: 0.2s; }
+  .pl-eq span:nth-child(3) { height: 6px; animation-delay: 0.4s; }
+  @keyframes eq { from{transform:scaleY(0.4)} to{transform:scaleY(1)} }
+
+  /* CTA */
+  .cta-section {
+    padding: 8rem 2rem;
+    text-align: center;
+  }
+
+  .cta-h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(2.25rem, 5vw, 3.75rem);
+    font-weight: 900;
+    line-height: 1.06;
+    letter-spacing: -0.035em;
+    color: var(--t1);
+    max-width: 580px;
+    margin: 0 auto 1rem;
+  }
+
+  .cta-sub {
+    color: var(--t3);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 2.25rem;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--ln);
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-copy { font-size: 0.75rem; color: var(--t3); font-weight: 500; }
+
+  .footer-links { display: flex; gap: 1.25rem; list-style: none; }
+
+  .footer-links a {
+    font-size: 0.75rem;
+    color: var(--t3);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--tr);
+  }
+
+  .footer-links a:hover { color: var(--t2); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.55s ease, transform 0.55s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 860px) {
+    .nav-links li:not(:last-child) { display: none; }
+    .feature-grid { grid-template-columns: 1fr 1fr; }
+    .stats-inner { grid-template-columns: repeat(2, 1fr); }
+    .steps { grid-template-columns: 1fr; gap: 1.75rem; }
+    .steps::before { display: none; }
+    .spotify-inner { grid-template-columns: 1fr; gap: 2.5rem; }
+    .fb-streak, .fb-sync, .fb-done { display: none; }
+  }
+
+  @media (max-width: 580px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .hero-actions { flex-direction: column; width: 100%; max-width: 280px; }
+    .btn-primary, .btn-ghost { width: 100%; justify-content: center; }
+    footer { flex-direction: column; gap: 0.875rem; text-align: center; }
+  }
+</style>
 </head>
 <body>
+
 <div class="mesh-bg"></div>
-<div id="app" data-mode="work">
 
-<!-- ── TOP BAR ── -->
-<header id="bar">
-  <div class="logo">Flow State</div>
-
-  <div class="mode-row">
-    <button class="mode-btn active" data-mode="work"  onclick="setMode('work')">Focus</button>
-    <button class="mode-btn"        data-mode="short" onclick="setMode('short')">Short Break</button>
-    <button class="mode-btn"        data-mode="long"  onclick="setMode('long')">Long Break</button>
-  </div>
-
-  <div class="bar-right">
-    <div class="tip-wrap">
-      <button class="tip-ico">?</button>
-      <div class="tip-box">
-        <div class="tip-hd">Shortcuts</div>
-        <div class="tip-row"><span>Start / Pause</span><kbd>Space</kbd></div>
-        <div class="tip-row"><span>Reset</span><kbd>R</kbd></div>
-        <div class="tip-row"><span>Skip break</span><kbd>S</kbd></div>
-        <div class="tip-row"><span>Add task</span><kbd>T</kbd></div>
-        <div class="tip-row"><span>Next session</span><kbd>N</kbd></div>
-      </div>
-    </div>
-    <button class="theme-toggle icon-toggle" onclick="toggleTheme()" id="th-btn" title="Toggle theme">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-    </button>
-    <button class="bar-btn mob-music-btn" id="mob-music-btn" onclick="toggleMobilePanel()" title="Music">♫</button>
-    <button class="bar-btn" id="bar-signin-btn" onclick="handleSignIn()">Sign in</button>
-  </div>
-</header>
-
-<!-- ── LEFT NAV ── -->
-<nav id="nav">
-  <div class="ns">
-    <div class="ns-lbl">Menu</div>
-    <div class="ni on" onclick="showP('dash')"><span class="ni-ic">○</span>Dashboard</div>
-    <div class="ni"    onclick="showP('hist')"><span class="ni-ic">◷</span>History<span class="ni-badge" id="hi-badge">0</span></div>
-    <div class="ni"    onclick="showP('settings')"><span class="ni-ic">◎</span>Settings</div>
-  </div>
-  <div class="sep"></div>
-
-  <!-- DASHBOARD -->
-  <div id="p-dash">
-
-    <!-- ── STREAK HERO ── -->
-    <div class="streak-hero">
-      <div class="streak-flame" id="streak-flame">○</div>
-      <div class="streak-info">
-        <div class="streak-num" id="streak-num">0<span> days</span></div>
-        <div class="streak-label">Day streak</div>
-        <div class="streak-best">Best: <strong id="streak-best-val">0</strong> days</div>
-      </div>
-    </div>
-
-    <!-- ── LAST 7 DAYS ── -->
-    <div class="streak-cal" id="streak-cal"></div>
-
-    <!-- ── QUICK STATS (high-signal) ── -->
-    <div class="sg ins-grid">
-      <div class="sc ins-card">
-        <div class="sc-v ins-val" id="ins-today">0</div>
-        <div class="sc-l">Today</div>
-      </div>
-      <div class="sc ins-card">
-        <div class="sc-v ins-val" id="ins-week">0</div>
-        <div class="sc-l">This week</div>
-      </div>
-      <div class="sc ins-card">
-        <div class="sc-v ins-val" id="ins-avg">—</div>
-        <div class="sc-l">Avg session</div>
-      </div>
-      <div class="sc ins-card">
-        <div class="sc-v ins-val" id="ins-peak">—</div>
-        <div class="sc-l">Peak hour</div>
-      </div>
-    </div>
-
-    <!-- ── CONSISTENCY BAR ── -->
-    <div class="ins-cons-wrap">
-      <div class="ins-cons-row">
-        <span class="ins-cons-lbl">Consistency</span>
-        <span class="ins-cons-val" id="ins-cons">0/7</span>
-      </div>
-      <div class="ins-cons-track">
-        <div class="ins-cons-fill" id="ins-cons-bar"></div>
-      </div>
-    </div>
-
-    <!-- ── SMART INSIGHT ── -->
-    <div class="ins-smart-wrap">
-      <span class="ins-smart-ico">✦</span>
-      <span class="ins-smart" id="ins-smart">Start your first session to see insights</span>
-    </div>
-
-    <div class="ns"><div class="ns-lbl">Recent</div></div>
-    <div class="hl" id="hl-list">
-    <div style="font-size:.62rem;color:var(--t3);text-align:center;padding:14px 0">No sessions yet</div>
-    </div>
-  </div>
-
-  <!-- HISTORY -->
-  <div id="p-hist" style="display:none;flex:1;flex-direction:column">
-    <div class="ns"><div class="ns-lbl">All Sessions</div></div>
-    <div class="hl" id="hl-all"></div>
-  </div>
-
-  <!-- SETTINGS -->
-  <div id="p-settings" style="display:none">
-    <div class="set-b">
-      <div class="sr"><span class="sl">Focus (min)</span><input type="number" class="si" id="si-f" value="45" min="1" max="90"></div>
-      <div class="sr"><span class="sl">Short break</span><input type="number" class="si" id="si-s" value="5"  min="1" max="30"></div>
-      <div class="sr"><span class="sl">Long break</span> <input type="number" class="si" id="si-l" value="15" min="1" max="60"></div>
-      <div class="sr"><span class="sl">Sessions</span>   <input type="number" class="si" id="si-n" value="4"  min="2" max="8"></div>
-      <div class="sr"><span class="sl">Daily goal</span>   <input type="number" class="si" id="si-dg" value="4" min="1" max="20"></div>
-      <div class="sr si-check-row">
-        <label class="sl" for="si-autobreak">Auto-start breaks</label>
-        <input type="checkbox" id="si-autobreak" class="si-check" checked>
-      </div>
-      <div class="sr si-check-row">
-        <label class="sl" for="si-email-optin">Weekly summary email</label>
-        <input type="checkbox" id="si-email-optin" class="si-check">
-      </div>
-      <button class="sv-btn si-btn-outline" onclick="requestNotifPermission()">Enable notifications</button>
-      <button class="sv-btn si-btn-outline" onclick="exportCSV()">Export CSV</button>
-      <button class="sv-btn" onclick="saveSettings()">Save settings</button>
-    </div>
-  </div>
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <span class="nav-wordmark">Flow State</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#music">Music</a></li>
+    <li><a href="https://flowstateproductivity.xyz/timer.html" class="nav-cta">Open app →</a></li>
+  </ul>
 </nav>
 
-<!-- ── MAIN CENTER ── -->
-<main id="main">
-  <div class="main-body">
-
-    <!-- Motivation card (top-right) -->
-    <div class="mc" id="mc" onclick="nextMotive()">
-      <div class="mc-e" id="mc-e">🏎️</div>
-      <div class="mc-t" id="mc-t">do more.</div>
-      <div class="mc-s">tap to change</div>
-    </div>
-
-    <!-- Session goal display -->
-    <div class="session-goal-display" id="session-goal-display" style="display:none"></div>
-
-    <!-- Daily goal bar -->
-    <div class="daily-goal-wrap" id="daily-goal-wrap">
-      <div class="daily-goal-track">
-        <div class="daily-goal-fill" id="daily-goal-bar"></div>
-      </div>
-      <span class="daily-goal-lbl" id="daily-goal-lbl">0 / 4 sessions today</span>
-    </div>
-
-    <!-- Timer -->
-    <div class="timer-wrap">
-      <div class="timer-num" id="t-num" onclick="editTimer()" title="Click to edit">45:00</div>
-      <div class="timer-label" id="t-lbl">FOCUS SESSION</div>
-      <div class="sdots" id="sdots"></div>
-    </div>
-
-    <!-- Progress bar (counts up) -->
-    <div class="prog-wrap"><div class="prog" id="prog"></div></div>
-    <div class="prog-row">
-      <span class="prog-pct" id="prog-pct">0%</span>
-      <span class="prog-time-rem" id="prog-time-rem">45:00 left</span>
-    </div>
-
-    <!-- Motivational quote -->
-    <div class="motive" id="motive"><em>45 minutes won't hurt.</em></div>
-
-    <!-- Controls -->
-    <div class="ctrl">
-      <button class="btn-ic" onclick="resetTimer()" title="Reset (R)">↺</button>
-      <button class="btn-main" id="btn-main" onclick="toggleTimer()">
-        <span id="btn-lbl">▶ &nbsp;Start</span>
-      </button>
-      <button class="btn-ic" id="skip-btn" onclick="skipBreak()" style="display:none" title="Skip (S)">⏭</button>
-    </div>
-
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="badge-dot"></span>
+    Free to use · No account required
   </div>
 
-  <!-- Task panel -->
-  <div id="tasks">
-    <div class="task-prog-row">
-      <span class="task-prog-label">Tasks</span>
-      <span class="task-prog-frac" id="task-frac">0 / 0</span>
-    </div>
-    <div class="task-master-prog">
-      <div class="task-master-bar" id="task-master-bar"></div>
-    </div>
-    <div class="t-row" style="margin-top:4px">
-      <input type="text" class="t-inp" id="t-inp" placeholder="Add a task… (T to focus)" maxlength="120">
-      <select class="t-prio" id="t-prio">
-        <option value="low">Low</option>
-        <option value="medium" selected>Med</option>
-        <option value="high">High</option>
-      </select>
-      <button class="t-add" onclick="addTask()">Add</button>
-    </div>
-    <div class="t-list" id="t-list"></div>
+  <h1 class="hero-h1">
+    Stop context switching.<br/>
+    Start <em>deep work.</em>
+  </h1>
 
-    <!-- Footer -->
-    <footer id="main-footer">
-      <span>© 2026 Flow State</span>
-      <div class="footer-links">
-        <a href="privacy.html"  target="_blank">Privacy Policy</a>
-        <a href="terms.html"    target="_blank">Terms of Service</a>
-        <a href="dashboard.html">Dashboard</a>
-        <a href="contact.html">Contact</a>
-      </div>
-    </footer>
+  <p class="hero-sub">
+    A distraction-free Pomodoro timer with task tracking, streaks, and Spotify integration — built for people who want to actually get things done.
+  </p>
+
+  <div class="hero-actions">
+    <a href="https://flowstateproductivity.xyz/timer.html" class="btn-primary">
+      Start a session
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <a href="#features" class="btn-ghost">See features</a>
   </div>
-</main>
 
-<!-- ── RIGHT PANEL ── -->
-<aside id="panel">
-  <div class="ps">
-    <div class="pt">Spotify</div>
-    <div class="sp-row">
-      <input type="text" class="sp-inp" id="sp-url" placeholder="Paste playlist URL…">
-      <button class="sp-go" onclick="embedSpotify()">Load</button>
+  <!-- Timer preview -->
+  <div class="hero-visual">
+    <div class="float-badge fb-streak">
+      <span class="dot"></span>
+      12 day streak 🔥
     </div>
-    <div class="sp-frame" id="sp-frame">
-      <div class="sp-ph">
-        <div class="sp-ph-ico">♫</div>
-        <div class="sp-ph-txt">Paste a link or<br>pick a playlist below</div>
+    <div class="float-badge fb-sync">
+      <span class="dot"></span>
+      Synced across devices
+    </div>
+    <div class="float-badge fb-done">
+      <span class="dot"></span>
+      4 / 4 sessions today ✓
+    </div>
+
+    <div class="timer-card">
+      <div class="timer-tabs">
+        <div class="timer-tab active">Focus</div>
+        <div class="timer-tab">Short break</div>
+        <div class="timer-tab">Long break</div>
+      </div>
+
+      <div class="timer-session-label">
+        <span class="session-dot"></span>
+        Focus session · 0 / 4 today
+      </div>
+
+      <div class="timer-display">25:00</div>
+
+      <div class="timer-progress-wrap">
+        <div class="timer-progress-bar"></div>
+      </div>
+
+      <div class="timer-btn" aria-label="Play">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5z"/></svg>
+      </div>
+
+      <div class="timer-meta">
+        <div class="timer-stat">
+          <span class="timer-stat-val">3</span>
+          <span class="timer-stat-lbl">Today</span>
+        </div>
+        <div class="timer-stat">
+          <span class="timer-stat-val">12</span>
+          <span class="timer-stat-lbl">Streak</span>
+        </div>
+        <div class="timer-stat">
+          <span class="timer-stat-val">94m</span>
+          <span class="timer-stat-lbl">This week</span>
+        </div>
       </div>
     </div>
   </div>
-  <div class="ps">
-    <div class="pt">Playlists</div>
-    <div class="pl-list">
-      <div class="pl-item" onclick="loadPL('37i9dQZF1DX8NTLI2TtZa6')"><span class="pl-ico">🧠</span><div><div class="pl-name">Deep Focus</div><div class="pl-sub">Spotify · concentration</div></div></div>
-      <div class="pl-item" onclick="loadPL('37i9dQZF1DWZeKCadgRdKQ')"><span class="pl-ico">☕</span><div><div class="pl-name">Lo-Fi Beats</div><div class="pl-sub">Spotify · chill study</div></div></div>
-      <div class="pl-item" onclick="loadPL('37i9dQZF1DX4sWSpwq3LiO')"><span class="pl-ico">🎹</span><div><div class="pl-name">Peaceful Piano</div><div class="pl-sub">Spotify · calm</div></div></div>
-      <div class="pl-item" onclick="loadPL('37i9dQZF1DWXLeA8Omikj7')"><span class="pl-ico">⚡</span><div><div class="pl-name">Brain Food</div><div class="pl-sub">Spotify · deep work</div></div></div>
-      <div class="pl-item" onclick="loadPL('37i9dQZF1DX3Ogo9pFvBkY')"><span class="pl-ico">🌊</span><div><div class="pl-name">Ambient Chill</div><div class="pl-sub">Spotify · background</div></div></div>
-      <div class="pl-item" onclick="loadPL('37i9dQZF1DX9tPFwDMOkiI')"><span class="pl-ico">🌿</span><div><div class="pl-name">Nature &amp; Noise</div><div class="pl-sub">Spotify · white noise</div></div></div>
+</section>
+
+<!-- STATS ROW -->
+<div class="stats-row">
+  <div class="stats-inner">
+    <div class="reveal">
+      <div class="stat-num">25min</div>
+      <div class="stat-lbl">Default focus interval</div>
     </div>
-  </div>
-</aside>
-
-
-<!-- ── MOBILE BOTTOM NAV ── -->
-<nav id="mob-nav">
-  <div class="mob-tab on" onclick="mobShowP('dash')">
-    <span class="mob-tab-ic">○</span>
-    <span class="mob-tab-lbl">Dashboard</span>
-  </div>
-  <div class="mob-tab" onclick="mobShowP('hist')">
-    <span class="mob-tab-ic">◷</span>
-    <span class="mob-tab-lbl">History</span>
-  </div>
-
-  <div class="mob-tab" onclick="mobShowP('settings')">
-    <span class="mob-tab-ic">◎</span>
-    <span class="mob-tab-lbl">Settings</span>
-  </div>
-</nav>
-
-<!-- ── MOBILE NAV DRAWER ── -->
-<div id="mob-drawer">
-  <div class="mob-drawer-inner" id="mob-drawer-inner">
-    <!-- content injected by JS -->
-  </div>
-</div>
-
-<!-- ── MOBILE PANEL (Spotify) ── -->
-<div id="mob-panel">
-  <div class="mob-panel-inner">
-    <div class="mob-panel-hd">
-      <span>Music</span>
-      <button onclick="toggleMobilePanel()">✕</button>
+    <div class="reveal">
+      <div class="stat-num">∞</div>
+      <div class="stat-lbl">Sessions, no limit</div>
     </div>
-    <div class="ps">
-      <div class="pt">Spotify</div>
-      <div class="sp-row">
-        <input type="text" class="sp-inp" id="mob-sp-url" placeholder="Paste playlist URL…">
-        <button class="sp-go" onclick="embedSpotifyMob()">Load</button>
-      </div>
-      <div class="sp-frame" id="mob-sp-frame">
-        <div class="sp-ph">
-          <div class="sp-ph-ico">♫</div>
-          <div class="sp-ph-txt">Paste a link or<br>pick a playlist below</div>
-        </div>
-      </div>
+    <div class="reveal">
+      <div class="stat-num">100%</div>
+      <div class="stat-lbl">Free, no paywalls</div>
     </div>
-    <div class="ps">
-      <div class="pt">Playlists</div>
-      <div class="pl-list">
-        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX8NTLI2TtZa6')"><span class="pl-ico">🧠</span><div><div class="pl-name">Deep Focus</div><div class="pl-sub">Spotify · concentration</div></div></div>
-        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DWZeKCadgRdKQ')"><span class="pl-ico">☕</span><div><div class="pl-name">Lo-Fi Beats</div><div class="pl-sub">Spotify · chill study</div></div></div>
-        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX4sWSpwq3LiO')"><span class="pl-ico">🎹</span><div><div class="pl-name">Peaceful Piano</div><div class="pl-sub">Spotify · calm</div></div></div>
-        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DWXLeA8Omikj7')"><span class="pl-ico">⚡</span><div><div class="pl-name">Brain Food</div><div class="pl-sub">Spotify · deep work</div></div></div>
-        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX3Ogo9pFvBkY')"><span class="pl-ico">🌊</span><div><div class="pl-name">Ambient Chill</div><div class="pl-sub">Spotify · background</div></div></div>
-        <div class="pl-item" onclick="loadPLMob('37i9dQZF1DX9tPFwDMOkiI')"><span class="pl-ico">🌿</span><div><div class="pl-name">Nature &amp; Noise</div><div class="pl-sub">Spotify · white noise</div></div></div>
-      </div>
-    </div>
-  </div>
-</div>
-</div><!-- #app -->
-
-<div id="toast"></div>
-
-<!-- ═══════════════════════════════════════════
-     DASHBOARD OVERLAY
-     ═══════════════════════════════════════════ -->
-<div id="dash-overlay">
-  <div class="dov-inner">
-
-    <!-- header -->
-    <div class="dov-header">
-      <div class="dov-user">
-        <div class="dov-avatar" id="dov-avatar">?</div>
-        <div class="dov-user-info">
-          <div class="dov-name" id="dov-name">Guest</div>
-          <div class="dov-email" id="dov-email">Not signed in</div>
-        </div>
-      </div>
-      <button class="dov-close" onclick="closeDashboard()">✕</button>
-    </div>
-
-    <div class="dov-scroll">
-
-      <!-- streak + flame hero -->
-      <div class="dov-streak-hero">
-        <div class="dov-flame" id="dov-flame">○</div>
-        <div>
-          <div class="dov-streak-num"><span id="dov-streak">0</span> day streak</div>
-          <div class="dov-streak-sub">Best: <strong id="dov-best">0</strong> days &nbsp;·&nbsp; This week: <strong id="dov-week">0</strong></div>
-        </div>
-      </div>
-
-      <!-- 8-stat grid -->
-      <div class="dov-grid">
-        <div class="dov-card">
-          <div class="dov-card-val" id="dov-total">0</div>
-          <div class="dov-card-lbl">Total sessions</div>
-        </div>
-        <div class="dov-card">
-          <div class="dov-card-val" id="dov-hours">0m</div>
-          <div class="dov-card-lbl">Focus time</div>
-        </div>
-        <div class="dov-card">
-          <div class="dov-card-val" id="dov-today">0</div>
-          <div class="dov-card-lbl">Today</div>
-        </div>
-        <div class="dov-card">
-          <div class="dov-card-val" id="dov-tasks">0</div>
-          <div class="dov-card-lbl">Tasks done</div>
-        </div>
-        <div class="dov-card dov-card-wide">
-          <div class="dov-card-val" id="dov-rate">—</div>
-          <div class="dov-card-lbl">Task completion rate</div>
-        </div>
-      </div>
-
-      <!-- heatmap -->
-      <div class="dov-section-title">Activity — last 16 weeks</div>
-      <div class="dov-heatmap-wrap">
-        <div class="dov-heatmap" id="dov-heatmap"></div>
-        <div class="dov-heatmap-legend">
-          <span>Less</span>
-          <div class="hm-cell lv0"></div>
-          <div class="hm-cell lv1"></div>
-          <div class="hm-cell lv2"></div>
-          <div class="hm-cell lv3"></div>
-          <div class="hm-cell lv4"></div>
-          <span>More</span>
-        </div>
-      </div>
-
-      <!-- recent sessions -->
-      <div class="dov-section-title">Recent sessions</div>
-      <div class="dov-hist-list" id="dov-hist-list"></div>
-
-      <!-- supabase CTA -->
-      <div class="dov-cta" id="dov-cta">
-        <div class="dov-cta-icon">☁</div>
-        <div class="dov-cta-text">
-          <strong>Sync across devices</strong>
-          <span>Connect Supabase to save your streak and history everywhere.</span>
-        </div>
-        <button class="dov-cta-btn" onclick="toast('Supabase coming soon')">Connect</button>
-      </div>
-
-    </div><!-- dov-scroll -->
-  </div><!-- dov-inner -->
-</div><!-- dash-overlay -->
-
-
-<!-- ═══════════════════════════════════════════
-     INTENTION MODAL
-     ═══════════════════════════════════════════ -->
-<div class="fs-modal" id="intention-modal">
-  <div class="fs-modal-box">
-    <div class="fs-modal-icon">🎯</div>
-    <div class="fs-modal-title">What's your focus?</div>
-    <div class="fs-modal-sub">Set an intention for this session. It will be added to your task list.</div>
-    <input type="text" class="fs-modal-inp" id="intention-inp"
-      placeholder="e.g. Finish chapter 3, Review notes, Write report…"
-      maxlength="100">
-    <div class="fs-modal-actions">
-      <button class="fs-modal-skip" onclick="closeIntentionModal(false); play()">Skip</button>
-      <button class="fs-modal-btn"  onclick="closeIntentionModal(true)">Start session →</button>
+    <div class="reveal">
+      <div class="stat-num">0</div>
+      <div class="stat-lbl">Distractions</div>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     REFLECTION MODAL
-     ═══════════════════════════════════════════ -->
-<div class="fs-modal" id="reflection-modal">
-  <div class="fs-modal-box">
-    <div class="fs-modal-icon">✅</div>
-    <div class="fs-modal-title">Session complete!</div>
-    <div class="fs-modal-sub">You worked on: <strong id="reflection-goal">—</strong></div>
-    <textarea class="fs-modal-inp fs-modal-textarea" id="reflection-note" rows="3"
-      placeholder="How did it go? Any wins, blockers, or notes… (optional)"></textarea>
-    <div class="fs-modal-actions">
-      <button class="fs-modal-skip" onclick="closeReflectionModal(false)">Skip</button>
-      <button class="fs-modal-btn"  onclick="closeReflectionModal(true)">Save & take break →</button>
+<!-- FEATURES -->
+<section id="features" class="features">
+  <div class="features-intro reveal">
+    <div class="section-label">Features</div>
+    <h2 class="section-h2">Everything you need.<br/>Nothing you don't.</h2>
+    <p class="section-sub">Designed around the Pomodoro Technique — proven to improve focus, reduce mental fatigue, and build sustainable work habits.</p>
+  </div>
+
+  <div class="feature-grid reveal">
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </div>
+      <div class="feature-title">Customisable timer</div>
+      <div class="feature-desc">Set your own focus, short break, and long break durations. Fully configurable to match your workflow.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      </div>
+      <div class="feature-title">Task tracking</div>
+      <div class="feature-desc">Add tasks with priority levels, due dates, and notes. Check them off as you power through your sessions.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div class="feature-title">Streaks & momentum</div>
+      <div class="feature-desc">Build daily consistency with an automatic streak tracker. See your best streak, sessions this week, and peak hour.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      </div>
+      <div class="feature-title">Session history</div>
+      <div class="feature-desc">Full history of every session with date, duration, and label. Visualised over the last 16 weeks with a heatmap.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h4M18 12h4M12 2v4M12 18v4"/></svg>
+      </div>
+      <div class="feature-title">Cloud sync</div>
+      <div class="feature-desc">Sign in to sync your streak, sessions, tasks, and settings across all your devices. Your progress is never lost.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M9 19V6l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg>
+      </div>
+      <div class="feature-title">Spotify integration</div>
+      <div class="feature-desc">Paste any Spotify link or pick from curated focus playlists — Deep Focus, Lo-Fi Beats, Peaceful Piano, and more.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div class="feature-title">Dashboard</div>
+      <div class="feature-desc">Stats dashboard with total focus time, tasks done, completion rate, and AI-powered session insights.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      </div>
+      <div class="feature-title">Session intention</div>
+      <div class="feature-desc">Before each session, set an intention — what will you focus on? Linked to your task list and logged automatically.</div>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="feature-title">Privacy first</div>
+      <div class="feature-desc">Works without an account. Row-level security ensures your data is yours. Export your history as CSV any time.</div>
     </div>
   </div>
-</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="how">
+  <div class="how-intro reveal">
+    <div class="section-label">How it works</div>
+    <h2 class="section-h2">Simple by design.</h2>
+    <p class="section-sub">The Pomodoro Technique in three steps. No complicated setup. Open the app and start.</p>
+  </div>
+
+  <div class="steps">
+    <div class="reveal">
+      <div class="step-num active">01</div>
+      <div class="step-title">Set your intention</div>
+      <div class="step-desc">Add the tasks you want to work through. Assign priorities and due dates. Set a session intention so you stay locked in from the first second.</div>
+    </div>
+    <div class="reveal">
+      <div class="step-num">02</div>
+      <div class="step-title">Focus for 25 minutes</div>
+      <div class="step-desc">Hit start. Put your head down. The timer runs in the background — no notifications, no distractions. Just you and the work.</div>
+    </div>
+    <div class="reveal">
+      <div class="step-num">03</div>
+      <div class="step-title">Rest, then repeat</div>
+      <div class="step-desc">Take your short break, then go again. After four sessions, take a longer break. Your streak and stats update automatically.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SPOTIFY SECTION -->
+<section id="music" class="spotify-section">
+  <div class="spotify-inner">
+    <div class="reveal">
+      <div class="section-label">Music</div>
+      <h2 class="section-h2">Your focus,<br/>soundtracked.</h2>
+      <p class="section-sub">Paste any Spotify playlist URL or pick from our curated selection of focus-optimised playlists. The music plays inside Flow State — no tab switching.</p>
+      <a href="https://flowstateproductivity.xyz/dashboard.html" class="btn-primary" style="display:inline-flex; margin-top: 1.5rem;">
+        Try it now →
+      </a>
+    </div>
+
+    <div class="reveal">
+      <div class="playlist-card">
+        <div class="playlist-header">
+          <div class="spotify-logo">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.65 14.42c-.18.3-.57.39-.87.21-2.38-1.46-5.37-1.79-8.9-.98-.34.08-.68-.13-.76-.47-.08-.34.13-.68.47-.76 3.86-.88 7.17-.5 9.84 1.13.3.18.4.57.22.87zm1.24-2.77c-.23.37-.71.49-1.08.26-2.72-1.67-6.87-2.16-10.09-1.18-.42.13-.86-.11-.99-.52-.13-.41.11-.86.52-.99 3.68-1.12 8.25-.57 11.37 1.35.37.23.49.71.27 1.08zm.11-2.88c-3.27-1.94-8.66-2.12-11.78-1.17-.5.15-1.03-.13-1.18-.63-.15-.5.13-1.03.63-1.18 3.58-1.09 9.53-.88 13.29 1.35.46.27.61.86.34 1.32-.27.46-.86.61-1.3.31z"/></svg>
+          </div>
+          <div>
+            <div class="playlist-title">Focus playlists</div>
+            <div class="playlist-sub">Curated for deep work</div>
+          </div>
+        </div>
+
+        <div class="playlist-item playing">
+          <div class="pl-emoji">🧠</div>
+          <div class="pl-info">
+            <div class="pl-name">Deep Focus</div>
+            <div class="pl-meta">Spotify · concentration</div>
+          </div>
+          <div class="pl-eq"><span></span><span></span><span></span></div>
+        </div>
+        <div class="playlist-item">
+          <div class="pl-emoji">☕</div>
+          <div class="pl-info">
+            <div class="pl-name">Lo-Fi Beats</div>
+            <div class="pl-meta">Spotify · chill study</div>
+          </div>
+        </div>
+        <div class="playlist-item">
+          <div class="pl-emoji">🎹</div>
+          <div class="pl-info">
+            <div class="pl-name">Peaceful Piano</div>
+            <div class="pl-meta">Spotify · calm</div>
+          </div>
+        </div>
+        <div class="playlist-item">
+          <div class="pl-emoji">⚡</div>
+          <div class="pl-info">
+            <div class="pl-name">Brain Food</div>
+            <div class="pl-meta">Spotify · deep work</div>
+          </div>
+        </div>
+        <div class="playlist-item">
+          <div class="pl-emoji">🌊</div>
+          <div class="pl-info">
+            <div class="pl-name">Ambient Chill</div>
+            <div class="pl-meta">Spotify · background</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="section-label reveal">Get started</div>
+  <h2 class="cta-h2 reveal">Your next focus session<br/>starts now.</h2>
+  <p class="cta-sub reveal">No sign-up required. Free forever.</p>
+  <div class="reveal">
+    <a href="https://flowstateproductivity.xyz/timer.html" class="btn-primary" style="font-size:0.9rem; padding: 13px 28px;">
+      Open Flow State →
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-copy">© 2026 Flow State</span>
+  <ul class="footer-links">
+    <li><a href="privacy.html">Privacy</a></li>
+    <li><a href="terms.html">Terms</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+    <li><a href="contact.html">Contact</a></li>
+  </ul>
+</footer>
 
 <script>
-/* ── MOBILE NAV ── */
-const MOB_PANELS = {
-  dash:     document.getElementById('p-dash'),
-  hist:     document.getElementById('p-hist'),
-  settings: document.getElementById('p-settings'),
-};
-const PANEL_LABELS = { dash:'Dashboard', hist:'History', settings:'Settings' };
-
-function mobShowP(name) {
-  showP(name);
-  const drawer = document.getElementById('mob-drawer-inner');
-  const panel  = MOB_PANELS[name];
-  if (!panel) return;
-  drawer.innerHTML = '';
-  const hd = document.createElement('div');
-  hd.className = 'mob-drawer-hd';
-  hd.innerHTML = '<span>' + PANEL_LABELS[name] + '</span><button onclick="closeMobDrawer()">&#x2715;</button>';
-  drawer.appendChild(hd);
-  const clone = panel.cloneNode(true);
-  clone.style.display = '';
-  drawer.appendChild(clone);
-  document.getElementById('mob-drawer').classList.add('open');
-  document.querySelectorAll('.mob-tab').forEach(function(t,i) {
-    t.classList.toggle('on', ['dash','hist','settings'][i] === name);
-  });
-}
-
-function closeMobDrawer() {
-  document.getElementById('mob-drawer').classList.remove('open');
-}
-
-document.getElementById('mob-drawer').addEventListener('click', function(e) {
-  if (e.target === this) closeMobDrawer();
-});
-
-/* ── MOBILE SPOTIFY PANEL ── */
-var mobPanelOpen = false;
-function toggleMobilePanel() {
-  mobPanelOpen = !mobPanelOpen;
-  document.getElementById('mob-panel').classList.toggle('open', mobPanelOpen);
-}
-document.getElementById('mob-panel').addEventListener('click', function(e) {
-  if (e.target === this) { mobPanelOpen = false; this.classList.remove('open'); }
-});
-
-function embedSpotifyMob() {
-  var url = document.getElementById('mob-sp-url').value.trim();
-  if (!url) return;
-  var m = url.match(/playlist\/([a-zA-Z0-9]+)/);
-  if (!m) { toast('Invalid Spotify URL'); return; }
-  loadPLMob(m[1]);
-}
-function loadPLMob(id) {
-  document.getElementById('mob-sp-frame').innerHTML =
-    '<iframe src="https://open.spotify.com/embed/playlist/' + id + '?utm_source=generator&theme=0" width="100%" height="232" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
-  toast('Playlist loaded');
-}
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 70);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
 </body>
-</html>     
+</html>
