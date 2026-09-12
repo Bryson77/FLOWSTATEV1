@@ -1,0 +1,41 @@
+{
+  "name": "@flowstate/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build && opennextjs-cloudflare build --skipNextBuild",
+    "build:next": "next build",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next .open-next .turbo node_modules"
+  },
+  "dependencies": {
+    "@flowstate/ui": "workspace:*",
+    "@flowstate/shared": "workspace:*",
+    "@flowstate/study-engine": "workspace:*",
+    "@supabase/supabase-js": "^2.49.0",
+    "@supabase/ssr": "^0.7.0",
+    "@tanstack/react-query": "catalog:",
+    "clsx": "catalog:",
+    "framer-motion": "catalog:",
+    "lucide-react": "catalog:",
+    "next": "15.2.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "~5.9.3",
+    "wrangler": "^4.0.0"
+  }
+}

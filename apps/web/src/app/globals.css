@@ -1,0 +1,94 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Typography — warm, stylish, Apple-adjacent */
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Backgrounds — true black, glassmorphic surfaces */
+  --color-bg-base: #000000;
+  --color-bg-card: rgba(255, 255, 255, 0.03);
+  --color-bg-elevated: rgba(255, 255, 255, 0.07);
+  --color-bg-hover: rgba(255, 255, 255, 0.05);
+
+  /* Borders — subtle glass edges */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #A0A0A0;
+  --color-text-disabled: #52525B;
+
+  /* Accent — pure white primary, dark navy secondary */
+  --color-accent: #FFFFFF;
+  --color-accent-blue: #1E3A5F;
+  --color-accent-blue-light: #2B5A8F;
+
+  /* Status */
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Course preset palette */
+  --color-course-blue: #3B82F6;
+  --color-course-purple: #8B5CF6;
+  --color-course-pink: #EC4899;
+  --color-course-red: #EF4444;
+  --color-course-orange: #F97316;
+  --color-course-amber: #F59E0B;
+  --color-course-teal: #14B8A6;
+  --color-course-cyan: #06B6D4;
+  --color-course-indigo: #6366F1;
+  --color-course-slate: #64748B;
+  --color-course-rose: #F43F5E;
+
+  /* Emil Kowalski / Apple Design custom curves */
+  --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+  --ease-apple-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Glass panel utility */
+.glass {
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+/* Tabular numbers for timer/data */
+.tnum {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* Apple Design / Emil Kowalski micro-interactions */
+.btn-press {
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

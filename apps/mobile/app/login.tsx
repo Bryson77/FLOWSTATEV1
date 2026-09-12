@@ -1,0 +1,287 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
+import { router } from 'expo-router';
+
+export default function MobileLoginScreen() {
+  const insets = useSafeAreaInsets();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleAuth = async () => {
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Please fill in all required fields.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      // Direct navigation to tabs after auth
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo & Header */}
+          <View style={styles.header}>
+            <Text style={styles.brandTitle}>FlowState</Text>
+            <Text style={styles.brandSubtitle}>
+              {isSignUp ? 'Create your student cockpit' : 'Welcome back'}
+            </Text>
+            <Text style={styles.brandDescription}>
+              {isSignUp
+                ? 'Sign up to sync courses, timetable & flashcards'
+                : 'Sign in to access your timetable and focus sessions'}
+            </Text>
+          </View>
+
+          {/* Form Card */}
+          <View style={styles.card}>
+            {errorMsg ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              </View>
+            ) : null}
+
+            {isSignUp && (
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>FULL NAME</Text>
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Lethabo Mabilo"
+                    placeholderTextColor="#52525B"
+                    value={fullName}
+                    onChangeText={setFullName}
+                  />
+                </View>
+              </View>
+            )}
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
+              <View style={styles.inputRow}>
+                <Mail size={16} color="#71717A" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="student@university.ac.za"
+                  placeholderTextColor="#52525B"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>PASSWORD</Text>
+              <View style={styles.inputRow}>
+                <Lock size={16} color="#71717A" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••••••"
+                  placeholderTextColor="#52525B"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                />
+                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                  {showPassword ? (
+                    <EyeOff size={16} color="#71717A" />
+                  ) : (
+                    <Eye size={16} color="#71717A" />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={handleAuth}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.authButton,
+                { transform: [{ scale: pressed ? 0.97 : 1 }] },
+              ]}
+            >
+              {loading ? (
+                <View style={styles.skeletonBar} />
+              ) : (
+                <View style={styles.btnRow}>
+                  <Text style={styles.authButtonText}>
+                    {isSignUp ? 'Create Account' : 'Sign In'}
+                  </Text>
+                  <ArrowRight size={16} color="#000000" />
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Toggle button */}
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleText}>
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            </Text>
+            <Pressable onPress={() => setIsSignUp(!isSignUp)}>
+              <Text style={styles.toggleHighlight}>
+                {isSignUp ? 'Sign in' : 'Sign up'}
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    gap: 24,
+  },
+  header: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  brandTitle: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  brandSubtitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  brandDescription: {
+    color: '#71717A',
+    fontSize: 13,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 20,
+    gap: 16,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    padding: 10,
+  },
+  errorText: {
+    color: '#F87171',
+    fontSize: 12,
+  },
+  field: {
+    gap: 6,
+  },
+  fieldLabel: {
+    color: '#71717A',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 14,
+    height: 48,
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  authButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  authButtonText: {
+    color: '#000000',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  skeletonBar: {
+    width: 80,
+    height: 14,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: 4,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleText: {
+    color: '#71717A',
+    fontSize: 13,
+  },
+  toggleHighlight: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+});
