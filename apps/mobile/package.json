@@ -35,7 +35,9 @@
     "react-native-svg": "15.8.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.25.0",
     "@types/react": "catalog:",
+    "babel-preset-expo": "~52.0.2",
     "typescript": "~5.9.3"
   },
   "expo": {

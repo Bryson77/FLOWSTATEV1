@@ -114,6 +114,7 @@ export type Database = {
           description: string | null
           id: string
           is_public: boolean | null
+          tags: string[] | null
           title: string
           user_id: string
         }
@@ -123,6 +124,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean | null
+          tags?: string[] | null
           title: string
           user_id: string
         }
@@ -132,6 +134,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean | null
+          tags?: string[] | null
           title?: string
           user_id?: string
         }
@@ -155,6 +158,8 @@ export type Database = {
       flashcards: {
         Row: {
           back_text: string
+          card_type: string | null
+          correct_answer: string | null
           created_at: string | null
           deck_id: string
           due_date: string | null
@@ -162,12 +167,15 @@ export type Database = {
           front_text: string
           id: string
           interval_days: number | null
+          options: Json | null
           repetition_number: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           back_text: string
+          card_type?: string | null
+          correct_answer?: string | null
           created_at?: string | null
           deck_id: string
           due_date?: string | null
@@ -175,12 +183,15 @@ export type Database = {
           front_text: string
           id?: string
           interval_days?: number | null
+          options?: Json | null
           repetition_number?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           back_text?: string
+          card_type?: string | null
+          correct_answer?: string | null
           created_at?: string | null
           deck_id?: string
           due_date?: string | null
@@ -188,6 +199,7 @@ export type Database = {
           front_text?: string
           id?: string
           interval_days?: number | null
+          options?: Json | null
           repetition_number?: number | null
           updated_at?: string | null
           user_id?: string
@@ -693,6 +705,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          course_id: string | null
           created_at: string | null
           done: boolean | null
           due: string | null
@@ -704,6 +717,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          course_id?: string | null
           created_at?: string | null
           done?: boolean | null
           due?: string | null
@@ -715,6 +729,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          course_id?: string | null
           created_at?: string | null
           done?: boolean | null
           due?: string | null
@@ -725,7 +740,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       timetable_classes: {
         Row: {
