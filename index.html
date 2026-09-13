@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saktus — Something Great is Coming</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 480px;
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 6px 14px;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 5vw, 2.25rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.35);
+      line-height: 1.6;
+    }
+
+    .pulse {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      margin-right: 8px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .status {
+      margin-top: 2.5rem;
+      font-size: 11px;
+      color: rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">S</div>
+    <div class="badge">Rebranding in Progress</div>
+    <h1>We're rebranding.<br>Something great is coming.</h1>
+    <p>The academic cockpit you know is being rebuilt from the ground up. Stay tuned.</p>
+    <div class="status">
+      <span class="pulse"></span>
+      Building something better
+    </div>
+  </div>
+</body>
+</html>
