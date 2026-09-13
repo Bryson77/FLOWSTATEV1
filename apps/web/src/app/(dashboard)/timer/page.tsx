@@ -69,11 +69,20 @@ export default function TimerPage() {
       ]);
 
       if (coursesRes.data && coursesRes.data.length > 0) {
-        setCourses(coursesRes.data);
-        setSelectedCourseId(coursesRes.data[0].id);
+        const mappedCourses: CourseItem[] = coursesRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+        }));
+        setCourses(mappedCourses);
+        setSelectedCourseId(mappedCourses[0].id);
       }
       if (tasksRes.data) {
-        setTasks(tasksRes.data);
+        const mappedTasks: TaskItem[] = tasksRes.data.map((t: any) => ({
+          id: t.id,
+          text: t.text,
+        }));
+        setTasks(mappedTasks);
       }
     }
     loadData();

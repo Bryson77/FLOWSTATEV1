@@ -84,9 +84,14 @@ export default function ExamsPage() {
       }));
 
       setAssessments(mapped);
-      setCourses(coursesRes.data || []);
-      if (coursesRes.data && coursesRes.data.length > 0 && !selectedCourseId) {
-        setSelectedCourseId(coursesRes.data[0].id);
+      const mappedCourses: CourseItem[] = (coursesRes.data || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+      }));
+      setCourses(mappedCourses);
+      if (mappedCourses.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(mappedCourses[0].id);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to load assessments. Check your connection.');

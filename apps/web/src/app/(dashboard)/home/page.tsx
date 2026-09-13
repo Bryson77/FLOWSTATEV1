@@ -57,17 +57,17 @@ interface CourseItem {
   id: string;
   name: string;
   code: string;
-  color: string;
-  target_hours_per_week: number;
+  color: string | null;
+  target_hours_per_week: number | null;
 }
 
 interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: string;
-  read: boolean;
-  created_at: string;
+  type: string | null;
+  read: boolean | null;
+  created_at: string | null;
 }
 
 export default function HomePage() {
@@ -130,9 +130,27 @@ export default function HomePage() {
       ]);
 
       setProfile(profileRes.data || { study_streak_days: 0, streak_freezes_available: 1 });
-      setCourses(coursesRes.data || []);
+
+      const mappedCourses: CourseItem[] = (coursesRes.data || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        code: c.code,
+        color: c.color || '#3b82f6',
+        target_hours_per_week: c.target_hours_per_week || 0
+      }));
+      setCourses(mappedCourses);
+
       setCardsDueCount(cardsRes.data?.length || 0);
-      setNotifications(notificationsRes.data || []);
+
+      const mappedNotifications: NotificationItem[] = (notificationsRes.data || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        type: n.type || 'info',
+        read: !!n.read,
+        created_at: n.created_at || ''
+      }));
+      setNotifications(mappedNotifications);
 
       // Format tasks
       const mappedTasks: TaskItem[] = (tasksRes.data || []).map((t: any) => ({
