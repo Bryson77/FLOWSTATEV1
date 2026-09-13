@@ -12,6 +12,22 @@ export interface SM2Output {
   dueDate: Date;
 }
 
+export type ReviewRating = 'again' | 'hard' | 'good' | 'easy';
+
+export interface NextReviewInput {
+  repetitionNumber: number;
+  intervalDays: number;
+  easeFactor: number;
+  rating: ReviewRating;
+}
+
+export interface NextReviewOutput {
+  repetitionNumber: number;
+  intervalDays: number;
+  easeFactor: number;
+  nextReviewDate: string; // YYYY-MM-DD
+}
+
 /**
  * SM-2 spaced repetition algorithm.
  * Quality ratings: 0 = complete blackout, 5 = perfect recall.
@@ -45,4 +61,30 @@ export function calculateSM2(input: SM2Input): SM2Output {
   dueDate.setDate(dueDate.getDate() + intervalDays);
 
   return { repetitionNumber, intervalDays, easeFactor, dueDate };
+}
+
+/**
+ * High-level SM-2 wrapper accepting UI rating strings ('again', 'hard', 'good', 'easy')
+ */
+export function calculateNextReview(input: NextReviewInput): NextReviewOutput {
+  const qualityMap: Record<ReviewRating, number> = {
+    again: 0,
+    hard: 2,
+    good: 4,
+    easy: 5,
+  };
+
+  const result = calculateSM2({
+    repetitionNumber: input.repetitionNumber,
+    intervalDays: input.intervalDays,
+    easeFactor: input.easeFactor,
+    quality: qualityMap[input.rating] ?? 3,
+  });
+
+  return {
+    repetitionNumber: result.repetitionNumber,
+    intervalDays: result.intervalDays,
+    easeFactor: Number(result.easeFactor.toFixed(2)),
+    nextReviewDate: result.dueDate.toISOString().split('T')[0],
+  };
 }

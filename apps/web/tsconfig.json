@@ -7,7 +7,9 @@
     "moduleResolution": "bundler",
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@flowstate/study-engine": ["../../lib/study-engine/src/index.ts"],
+      "@flowstate/shared": ["../../lib/shared/src/index.ts"]
     },
     "outDir": "dist",
     "tsBuildInfoFile": ".turbo/tsconfig.tsbuildinfo"

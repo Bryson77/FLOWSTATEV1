@@ -42,11 +42,6 @@ jobs:
       - name: 🚀 Install EAS CLI
         run: npm install --global eas-cli
 
-      - name: 🚀 Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          token: ${{ secrets.EXPO_TOKEN }}
-
       - name: 💾 Get pnpm store directory
         shell: bash
         run: |
@@ -61,7 +56,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: 📥 Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: 🏗️ Build Shared Packages
         run: |
@@ -74,6 +69,8 @@ jobs:
 
       - name: 🚀 Publish EAS Update
         working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           BRANCH_NAME="${{ github.event.inputs.branch || 'production' }}"
           eas update --auto --branch "$BRANCH_NAME" --message "Deploy from GitHub Actions (commit ${{ github.sha }})"

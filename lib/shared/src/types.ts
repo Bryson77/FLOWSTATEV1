@@ -181,5 +181,3 @@ export interface Notification {
   createdAt: string;
 }
 
-/** Database schema mapping for Supabase client */
-export type Database = any;
