@@ -53,7 +53,7 @@ interface CourseItem {
   id: string;
   name: string;
   code: string;
-  target_hours_per_week: number;
+  target_hours_per_week: number | null;
 }
 
 export default function HomeScreen() {
@@ -130,10 +130,11 @@ export default function HomeScreen() {
       } else if (classes.length > 0) {
         const first = classes[0];
         const days = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const dayIndex = typeof first.day_of_week === 'number' ? first.day_of_week : 1;
         setNextClass({
           name: first.courses?.name || 'Class',
           code: first.courses?.code || '',
-          time: `${days[first.day_of_week]} · ${first.start_time?.slice(0, 5)}`,
+          time: `${days[dayIndex]} · ${first.start_time?.slice(0, 5)}`,
           venue: first.venue || 'Campus Venue',
         });
       } else {

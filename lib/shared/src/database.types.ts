@@ -248,6 +248,83 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          id: string
+          follower_id: string
+          followee_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          follower_id: string
+          followee_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          follower_id?: string
+          followee_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_followee_id_fkey"
+            columns: ["followee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          message: string
+          type: string | null
+          read: boolean | null
+          link: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          message: string
+          type?: string | null
+          read?: boolean | null
+          link?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          message?: string
+          type?: string | null
+          read?: boolean | null
+          link?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -265,6 +342,7 @@ export type Database = {
           study_streak_days: number | null
           university: string | null
           updated_at: string | null
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -282,6 +360,7 @@ export type Database = {
           study_streak_days?: number | null
           university?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -299,6 +378,7 @@ export type Database = {
           study_streak_days?: number | null
           university?: string | null
           updated_at?: string | null
+          username?: string | null
         }
         Relationships: []
       }
@@ -475,6 +555,127 @@ export type Database = {
           },
         ]
       }
+      streaks: {
+        Row: {
+          user_id: string
+          current_streak: number | null
+          longest_streak: number | null
+          last_active_date: string | null
+          freezes_available: number | null
+          freezes_used_total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          user_id: string
+          current_streak?: number | null
+          longest_streak?: number | null
+          last_active_date?: string | null
+          freezes_available?: number | null
+          freezes_used_total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          current_streak?: number | null
+          longest_streak?: number | null
+          last_active_date?: string | null
+          freezes_available?: number | null
+          freezes_used_total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streaks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_room_members: {
+        Row: {
+          room_id: string
+          user_id: string
+          joined_at: string | null
+          completed: boolean | null
+        }
+        Insert: {
+          room_id: string
+          user_id: string
+          joined_at?: string | null
+          completed?: boolean | null
+        }
+        Update: {
+          room_id?: string
+          user_id?: string
+          joined_at?: string | null
+          completed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_room_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_rooms: {
+        Row: {
+          id: string
+          host_id: string
+          name: string
+          code: string
+          course_id: string | null
+          duration_seconds: number | null
+          elapsed_seconds_at_pause: number | null
+          status: string | null
+          last_resumed_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          host_id: string
+          name: string
+          code: string
+          course_id?: string | null
+          duration_seconds?: number | null
+          elapsed_seconds_at_pause?: number | null
+          status?: string | null
+          last_resumed_at?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          host_id?: string
+          name?: string
+          code?: string
+          course_id?: string | null
+          duration_seconds?: number | null
+          elapsed_seconds_at_pause?: number | null
+          status?: string | null
+          last_resumed_at?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_rooms_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           created_at: string | null
@@ -491,7 +692,7 @@ export type Database = {
           created_at?: string | null
           done?: boolean | null
           due?: string | null
-          id: string
+          id?: string
           notes?: string | null
           prio?: string | null
           text: string
