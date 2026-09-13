@@ -3,105 +3,623 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Saktus — Something Great is Coming</title>
+  <title>Saktus — The Calm Academic Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    :root {
+      --bg-base: #FAFAF9;
+      --bg-surface: rgba(255, 255, 255, 0.82);
+      --bg-elevated: #FFFFFF;
+      --border-subtle: rgba(0, 0, 0, 0.08);
+      --border-strong: rgba(0, 0, 0, 0.15);
+      --text-primary: #09090B;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      --accent-primary: #09090B;
+      --accent-text: #FFFFFF;
+      --accent-blue: #0071E3;
+      --accent-emerald: #10B981;
+      --ease-spring: cubic-bezier(0.2, 0, 0, 1);
+      --ease-apple-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.dark {
+      --bg-base: #000000;
+      --bg-surface: #09090B;
+      --bg-elevated: #121215;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text-primary: #FFFFFF;
+      --text-secondary: #A0A0A0;
+      --text-muted: #52525B;
+      --accent-primary: #FFFFFF;
+      --accent-text: #000000;
+      background-color: #000000;
+    }
 
     body {
       min-height: 100vh;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      position: relative;
+      overflow-x: hidden;
+      transition: background-color 200ms ease, color 200ms ease;
+    }
+
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(to right, rgba(0,0,0,0.02) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(0,0,0,0.02) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body.dark .bg-grid {
+      background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+    }
+
+    .main-wrapper {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Top Nav Row */
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      gap: 12px;
+    }
+
+    /* Floating Dynamic Island Badge */
+    .island-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px 6px 10px;
+      border-radius: 9999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 200ms var(--ease-apple-out);
+    }
+
+    .island-badge:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
+
+    .status-dot-wrap {
+      position: relative;
+      width: 8px;
+      height: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #000;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      overflow: hidden;
     }
 
-    .container {
-      text-align: center;
-      padding: 2rem;
-      max-width: 480px;
-    }
-
-    .logo {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 20px;
-      letter-spacing: -0.02em;
-      margin-bottom: 2rem;
-    }
-
-    .badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(255,255,255,0.4);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 100px;
-      padding: 6px 14px;
-      margin-bottom: 2rem;
-    }
-
-    h1 {
-      font-size: clamp(1.5rem, 5vw, 2.25rem);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.15;
-      margin-bottom: 1rem;
-    }
-
-    p {
-      font-size: 14px;
-      color: rgba(255,255,255,0.35);
-      line-height: 1.6;
-    }
-
-    .pulse {
+    .status-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #10b981;
-      display: inline-block;
-      margin-right: 8px;
-      animation: pulse 2s ease-in-out infinite;
+      background: var(--accent-emerald);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
+    .status-ping {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      opacity: 0.75;
+      animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
     }
 
-    .status {
-      margin-top: 2.5rem;
+    @keyframes ping {
+      75%, 100% {
+        transform: scale(2.4);
+        opacity: 0;
+      }
+    }
+
+    /* Dark mode toggle button */
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
       font-size: 11px;
-      color: rgba(255,255,255,0.25);
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 2px 6px -1px rgba(0,0,0,0.04);
+      transition: all 160ms var(--ease-apple-out);
+    }
+
+    .theme-toggle-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    /* Solid Tactile Card (No Glassmorphism Slop) */
+    .cockpit-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 28px;
+      padding: 3rem 2.5rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: background 200ms ease, border-color 200ms ease;
+    }
+
+    body.dark .cockpit-card {
+      box-shadow: none;
+    }
+
+    .logo-container {
+      margin: 0 auto 1.75rem auto;
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+      transition: transform 240ms var(--ease-spring);
+    }
+
+    .logo-container:hover {
+      transform: scale(1.05) rotate(-2deg);
+    }
+
+    .logo-svg {
+      width: 32px;
+      height: 32px;
+      fill: var(--text-primary);
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.12;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin: 0 auto 2rem auto;
+    }
+
+    /* Emil Kowalski Button Craft */
+    .btn-press {
+      transition: transform 140ms var(--ease-apple-out), background-color 150ms ease, box-shadow 150ms ease;
+      will-change: transform;
+      cursor: pointer;
+    }
+
+    .btn-press:active {
+      transform: scale(0.97);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 2.5rem;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.25);
+      border: 1px solid transparent;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.92;
+      box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.35);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--border-strong);
+    }
+
+    /* Core Modules Feature Grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      text-align: left;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .feature-pill {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: all 180ms ease;
+    }
+
+    .feature-pill:hover {
+      border-color: var(--border-strong);
+      box-shadow: 0 4px 12px -2px rgba(0,0,0,0.04);
+      transform: translateY(-1px);
+    }
+
+    .feature-icon-box {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-primary);
+    }
+
+    body.dark .feature-icon-box {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .feature-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .feature-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Waitlist Input Box */
+    .waitlist-wrap {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .waitlist-form {
+      display: flex;
+      align-items: center;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      padding: 4px 4px 4px 16px;
+      box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .waitlist-form:focus-within {
+      border-color: var(--text-primary);
+      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+    }
+
+    .waitlist-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: var(--text-primary);
+      background: transparent;
+      font-family: inherit;
+    }
+
+    .waitlist-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .waitlist-btn {
+      border: none;
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 9999px;
+      cursor: pointer;
+    }
+
+    .waitlist-success {
+      display: none;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent-emerald);
+      padding: 10px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* Footer Metadata */
+    footer {
+      margin-top: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 0 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 600px) {
+      .glass-card {
+        padding: 2rem 1.5rem;
+        border-radius: 24px;
+      }
+      .actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      .btn-primary, .btn-secondary {
+        width: 100%;
+        justify-content: center;
+      }
+      footer {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">S</div>
-    <div class="badge">Rebranding in Progress</div>
-    <h1>We're rebranding.<br>Something great is coming.</h1>
-    <p>The academic cockpit you know is being rebuilt from the ground up. Stay tuned.</p>
-    <div class="status">
-      <span class="pulse"></span>
-      Building something better
+  <div class="bg-grid"></div>
+
+  <div class="main-wrapper">
+    <div class="top-row">
+      <div class="island-badge">
+        <div class="status-dot-wrap">
+          <div class="status-ping"></div>
+          <div class="status-dot"></div>
+        </div>
+        <span>Saktus Academic OS · Dual Edition</span>
+      </div>
+
+      <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn btn-press" title="Toggle Pure White / Pure Black">
+        <svg id="themeIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <span id="themeLabel">Dark Mode</span>
+      </button>
     </div>
+
+    <div class="cockpit-card">
+      <div class="logo-container">
+        <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+          <path d="M2 17l10 5 10-5" />
+          <path d="M2 12l10 5 10-5" />
+        </svg>
+      </div>
+
+      <h1>The Calm Academic Cockpit.</h1>
+      <p class="subtitle">
+        Built for actual university coursework: your 5-day timetable matrix, SM-2 flashcard decks, procedural focus timer, and assessment deadlines without switching between five tabs.
+      </p>
+
+      <div class="actions">
+        <a href="/login" class="btn-primary btn-press">
+          Launch Cockpit
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+        <a href="/timer" class="btn-secondary btn-press">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Zen Focus Timer
+        </a>
+      </div>
+
+      <div class="waitlist-wrap">
+        <form class="waitlist-form" id="waitlistForm" onsubmit="handleWaitlist(event)">
+          <input type="email" id="emailInput" class="waitlist-input" placeholder="Enter student email for early access..." required>
+          <button type="submit" class="waitlist-btn btn-press">Get Notified</button>
+        </form>
+        <div class="waitlist-success" id="waitlistSuccess">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>You're on the priority list. Watch your inbox.</span>
+        </div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-pill">
+          <div class="feature-icon-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="feature-title">SM-2 Flashcard Engine</div>
+            <div class="feature-desc">Active recall with standard, T/F, and MCQ formats.</div>
+          </div>
+        </div>
+
+        <div class="feature-pill">
+          <div class="feature-icon-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div>
+            <div class="feature-title">5 & 7-Day Timetable</div>
+            <div class="feature-desc">Auto-highlight current period and exam countdowns.</div>
+          </div>
+        </div>
+
+        <div class="feature-pill">
+          <div class="feature-icon-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="feature-title">Floating Island Timer</div>
+            <div class="feature-desc">Dual Zen (White Paper & Obsidian Dark) with soundscapes.</div>
+          </div>
+        </div>
+
+        <div class="feature-pill">
+          <div class="feature-icon-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="feature-title">Study Rooms & Squads</div>
+            <div class="feature-desc">Host-synchronized focus timers, cheers, & leaderboards.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>SAKTUS ARCHITECTURE V3</span>
+      <span class="tabular-nums" id="liveClock">--:--:--</span>
+      <span>APPLE HIG · EMIL KOWALSKI CRAFT</span>
+    </footer>
   </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const el = document.getElementById('liveClock');
+      if (el) {
+        el.textContent = now.toTimeString().split(' ')[0] + ' UTC';
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark');
+      try {
+        localStorage.setItem('saktus_html_theme', isDark ? 'dark' : 'light');
+      } catch(e) {}
+      updateThemeUI(isDark);
+    }
+
+    function updateThemeUI(isDark) {
+      const label = document.getElementById('themeLabel');
+      const icon = document.getElementById('themeIcon');
+      if (isDark) {
+        label.textContent = 'Light Mode';
+        icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+      } else {
+        label.textContent = 'Dark Mode';
+        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+      }
+    }
+
+    // Initialize from storage or preference
+    try {
+      if (localStorage.getItem('saktus_html_theme') === 'dark') {
+        document.body.classList.add('dark');
+        updateThemeUI(true);
+      }
+    } catch(e) {}
+
+    function handleWaitlist(e) {
+      e.preventDefault();
+      const email = document.getElementById('emailInput').value;
+      if (!email) return;
+      try {
+        localStorage.setItem('saktus_waitlist_email', email);
+      } catch(e) {}
+      document.getElementById('waitlistForm').style.display = 'none';
+      document.getElementById('waitlistSuccess').style.display = 'inline-flex';
+    }
+  </script>
 </body>
 </html>

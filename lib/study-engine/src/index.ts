@@ -10,6 +10,7 @@ export {
 
 export {
   calculateStreak,
+  getLocalISODate,
   type StreakInput,
   type StreakResult,
 } from './streaks';

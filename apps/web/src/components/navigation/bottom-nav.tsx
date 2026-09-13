@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="flex items-center justify-around bg-[rgba(255,255,255,0.02)] backdrop-blur-[40px] border-t border-white/5 saturate-[150%] px-4 py-2 pb-safe">
+    <div className="flex items-center justify-around bg-white/90 dark:bg-black/90 backdrop-blur-[40px] border-t border-black/[0.08] dark:border-white/10 saturate-[150%] px-4 py-2 pb-safe transition-colors duration-150">
       {bottomNavItems.map((item) => (
         <NavItem
           key={item.href}

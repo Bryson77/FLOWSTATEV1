@@ -1,3 +1,5 @@
+import { getLocalISODate } from './streaks';
+
 export interface SM2Input {
   repetitionNumber: number;
   intervalDays: number;
@@ -19,6 +21,7 @@ export interface NextReviewInput {
   intervalDays: number;
   easeFactor: number;
   rating: ReviewRating;
+  timezone?: string;
 }
 
 export interface NextReviewOutput {
@@ -85,6 +88,6 @@ export function calculateNextReview(input: NextReviewInput): NextReviewOutput {
     repetitionNumber: result.repetitionNumber,
     intervalDays: result.intervalDays,
     easeFactor: Number(result.easeFactor.toFixed(2)),
-    nextReviewDate: result.dueDate.toISOString().split('T')[0],
+    nextReviewDate: getLocalISODate(result.dueDate, input.timezone),
   };
 }

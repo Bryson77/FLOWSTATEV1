@@ -150,7 +150,7 @@ export default function TimetablePage() {
 
       if (classErr) throw classErr;
 
-      toast('✓ Saved');
+      toast('Class saved', 'success');
       setIsModalOpen(false);
       setNewCourseName('');
       setNewCourseCode('');
@@ -172,7 +172,7 @@ export default function TimetablePage() {
 
       if (error) throw error;
       setClasses(prev => prev.filter(c => c.id !== id));
-      toast('✓ Removed');
+      toast('Class removed', 'info');
     } catch (err: any) {
       toast('Failed to remove. Try again.', 'error');
     }

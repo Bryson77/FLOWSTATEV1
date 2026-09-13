@@ -1,17 +1,21 @@
 import { Tabs } from 'expo-router';
-import { Home, Calendar, Layers, Timer, Users } from 'lucide-react-native';
-
-const INACTIVE = '#71717A';
-const ACTIVE = '#FFFFFF';
+import { useColorScheme } from 'react-native';
+import { Home, Calendar, Layers, Users } from 'lucide-react-native';
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  const ACTIVE = isDark ? '#FFFFFF' : '#09090B';
+  const INACTIVE = isDark ? '#71717A' : '#A1A1AA';
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#000000',
-          borderTopColor: 'rgba(255,255,255,0.08)',
+          backgroundColor: isDark ? '#000000' : '#FFFFFF',
+          borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
           borderTopWidth: 0.5,
           paddingTop: 8,
           height: 84,
@@ -56,7 +60,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="timer"
         options={{
-          href: null, // Hidden from bottom bar, accessible via quick action
+          href: null, // Floating mini-player paradigm
         }}
       />
     </Tabs>

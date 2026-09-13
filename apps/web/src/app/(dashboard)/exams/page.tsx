@@ -143,7 +143,7 @@ export default function ExamsPage() {
 
       if (error) throw error;
 
-      toast('✓ Saved');
+      toast('Assessment saved', 'success');
       setIsModalOpen(false);
       setTitle('');
       setDueDate('');
@@ -166,7 +166,7 @@ export default function ExamsPage() {
 
       if (error) throw error;
       setAssessments(prev => prev.map(a => a.id === id ? { ...a, completed: nextStatus } : a));
-      toast(nextStatus ? '✓ Completed' : '✓ Reopened');
+      toast(nextStatus ? 'Assessment completed' : 'Assessment reopened', 'success');
     } catch {
       toast('Failed to update. Try again.', 'error');
     }
@@ -181,7 +181,7 @@ export default function ExamsPage() {
 
       if (error) throw error;
       setAssessments(prev => prev.filter(a => a.id !== id));
-      toast('✓ Removed');
+      toast('Assessment removed', 'info');
     } catch {
       toast('Failed to remove. Try again.', 'error');
     }

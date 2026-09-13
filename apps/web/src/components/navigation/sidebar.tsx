@@ -14,6 +14,7 @@ import {
   Plus 
 } from 'lucide-react';
 import { NavItem } from './nav-item';
+import { ThemeToggle } from '../theme-toggle';
 
 const mainNavItems = [
   { href: '/home', icon: Home, label: 'Home' },
@@ -35,14 +36,19 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-[240px] flex-col bg-[rgba(255,255,255,0.01)] backdrop-blur-[40px] border-r border-white/5 saturate-[150%]">
+    <div className="flex h-full w-[240px] flex-col bg-white/80 dark:bg-black/80 backdrop-blur-[40px] border-r border-black/[0.08] dark:border-white/10 transition-colors duration-150">
       {/* Logo */}
-      <div className="flex h-16 items-center px-6">
-        <span className="font-display text-xl font-bold text-white tracking-tight">Saktus</span>
+      <div className="flex h-16 items-center justify-between px-6 border-b border-black/[0.04] dark:border-white/5">
+        <Link href="/home" className="flex items-center gap-2.5 group">
+          <div className="h-7 w-7 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center font-display font-bold text-xs transition-transform group-hover:scale-105 btn-press">
+            S
+          </div>
+          <span className="font-display text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Saktus</span>
+        </Link>
       </div>
 
       {/* Main Nav */}
-      <div className="flex-1 overflow-y-auto py-2">
+      <div className="flex-1 overflow-y-auto py-3">
         <nav className="space-y-1 px-3">
           {mainNavItems.map((item) => (
             <NavItem 
@@ -59,24 +65,36 @@ export function Sidebar() {
         {/* My Courses */}
         <div className="mt-8 px-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-medium text-[#A0A0A0] uppercase tracking-wider">My Courses</h2>
-            <button className="text-[#A0A0A0] hover:text-white transition-colors">
-              <Plus className="h-4 w-4" />
+            <h2 className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">My Courses</h2>
+            <button 
+              className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-white/5 btn-press"
+              aria-label="Add course"
+            >
+              <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
           <div className="space-y-0.5">
             {courses.map((course) => (
-              <div key={course.id} className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-white/5 cursor-pointer group transition-colors">
+              <div 
+                key={course.id} 
+                className="flex items-center gap-3 rounded-xl px-2.5 py-1.5 hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer group transition-colors btn-press"
+              >
                 <div className={`h-2 w-2 rounded-full ${course.color}`} />
-                <span className="text-sm text-[#A0A0A0] group-hover:text-white transition-colors">{course.name}</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
+                  {course.name}
+                </span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Profile / Settings */}
-      <div className="p-3 mt-auto">
+      {/* Profile, Settings & Theme Toggle */}
+      <div className="p-3 mt-auto border-t border-black/[0.04] dark:border-white/5 space-y-2">
+        <div className="flex items-center justify-between px-2 py-1">
+          <span className="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 uppercase">Theme</span>
+          <ThemeToggle variant="pill" />
+        </div>
         <NavItem 
           href="/settings"
           icon={Settings}

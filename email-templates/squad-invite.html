@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirm your Saktus account</title>
+  <title>Study invitation from Saktus</title>
   <style>
     body {
       margin: 0;
@@ -55,12 +55,31 @@
     .subtext {
       font-size: 14px;
       color: #a1a1aa;
-      margin: 0 0 28px 0;
+      margin: 0 0 24px 0;
       line-height: 1.6;
     }
-    .cta-container {
-      margin: 28px 0;
+    .code-box {
+      background-color: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 16px;
       text-align: center;
+      margin: 20px 0 28px 0;
+    }
+    .code-label {
+      font-size: 11px;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      font-family: monospace;
+    }
+    .code-value {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #ffffff;
+      font-family: monospace;
     }
     .button {
       display: inline-block;
@@ -74,22 +93,6 @@
       font-weight: 600;
       font-size: 14px;
       text-align: center;
-    }
-    .fallback-box {
-      margin-top: 28px;
-      padding-top: 20px;
-      border-top: 1px solid #18181b;
-      font-size: 12px;
-      color: #71717a;
-      line-height: 1.6;
-    }
-    .fallback-url {
-      word-break: break-all;
-      color: #a1a1aa;
-      font-family: monospace;
-      font-size: 11px;
-      margin-top: 6px;
-      display: block;
     }
     .footer {
       padding-top: 32px;
@@ -110,19 +113,17 @@
       </tr>
       <tr>
         <td class="content-card">
-          <h1 class="title">Confirm your email</h1>
+          <h1 class="title">Join a Study Session</h1>
           <p class="subtext">
-            Tap the button below to verify your student email address and enter your academic cockpit.
+            A classmate has invited you to study together in a live focus room on Saktus.
           </p>
 
-          <div class="cta-container">
-            <a href="{{ .ConfirmationURL }}" class="button" target="_blank">Confirm Account</a>
+          <div class="code-box">
+            <div class="code-label">Room Code</div>
+            <div class="code-value">{{ .RoomCode }}</div>
           </div>
 
-          <div class="fallback-box">
-            If the button above does not work, copy and paste this verification URL into your browser:
-            <span class="fallback-url">{{ .ConfirmationURL }}</span>
-          </div>
+          <a href="{{ .InviteURL }}" class="button" target="_blank">Join Study Room</a>
         </td>
       </tr>
       <tr>

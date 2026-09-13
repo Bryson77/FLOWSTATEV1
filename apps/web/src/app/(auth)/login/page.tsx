@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { KeyRound, Mail, ArrowRight, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,14 +26,22 @@ export default function LoginPage() {
     setInfoMsg('');
     setLoading(true);
 
+    const userTimezone =
+      typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : 'Africa/Johannesburg';
+
     try {
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
           options: {
-            data: { full_name: fullName.trim() }
-          }
+            data: {
+              full_name: fullName.trim(),
+              timezone: userTimezone,
+            },
+          },
         });
         if (error) throw error;
         if (data?.session) {
@@ -43,44 +52,73 @@ export default function LoginPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim().toLowerCase(),
-          password
+          password,
         });
         if (error) throw error;
         router.push('/home');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication failed. Check your details.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('invalid login credentials')) {
+        setErrorMsg('Wrong email or password.');
+      } else {
+        setErrorMsg(msg || 'Authentication failed. Check your details.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center px-4 selection:bg-white selection:text-black">
+    <div className="min-h-screen bg-zinc-50 dark:bg-black text-zinc-900 dark:text-white flex flex-col justify-center items-center px-4 relative transition-colors duration-150">
+      {/* Top right theme toggle */}
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-sm space-y-8 animate-in fade-in zoom-in-95 duration-200">
         {/* Logo & Subtitle */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-block">
-            <span className="font-display text-2xl font-bold tracking-tight text-white">Saktus</span>
+            <span className="font-display text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              Saktus
+            </span>
           </Link>
-          <h2 className="text-lg font-semibold text-white tracking-tight">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white tracking-tight">
             {isSignUp ? 'Create your academic cockpit' : 'Welcome back'}
           </h2>
-          <p className="text-xs text-[#A0A0A0]">
-            {isSignUp ? 'Organise courses, timetable, exams & active recall' : 'Enter your credentials to enter your cockpit'}
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            {isSignUp
+              ? 'Organise courses, timetable, exams & active recall'
+              : 'Enter your credentials to enter your cockpit'}
           </p>
         </div>
 
-        {/* Card Form */}
-        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.03)] backdrop-blur-[40px] p-6 sm:p-8 space-y-5 shadow-2xl">
+        {/* Tactile Solid Card Form (No glassmorphism) */}
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] p-6 sm:p-8 space-y-5 shadow-sm dark:shadow-2xl transition-colors duration-150">
           {errorMsg && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">
-              {errorMsg}
+            <div className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 p-3.5 text-xs text-red-600 dark:text-red-400 space-y-2">
+              <p className="font-medium">{errorMsg}</p>
+              {!isSignUp && (
+                <div className="pt-2 border-t border-red-200 dark:border-red-500/20 flex items-center justify-between">
+                  <span className="text-zinc-600 dark:text-zinc-400">New here?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setErrorMsg('');
+                    }}
+                    className="font-semibold text-zinc-900 dark:text-white underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                  >
+                    Create an account
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {infoMsg && (
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-300">
+            <div className="rounded-xl border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 p-3.5 text-xs text-blue-600 dark:text-blue-300">
               {infoMsg}
             </div>
           )}
@@ -88,22 +126,22 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5">
                   Full Name
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Lethabo Mabilo"
+                  placeholder="e.g. Alex Ndlovu"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black/60 px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5">
                 Email Address
               </label>
               <div className="relative">
@@ -113,13 +151,13 @@ export default function LoginPage() {
                   placeholder="student@university.ac.za"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black/60 px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+              <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -129,12 +167,12 @@ export default function LoginPage() {
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black/60 px-3.5 py-2.5 pr-10 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3.5 py-2.5 pr-10 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-500 hover:text-white"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -144,7 +182,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-press rounded-xl bg-white py-3 text-sm font-semibold text-black hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50"
+              className="w-full btn-press rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black py-3 text-sm font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-4 w-20 skeleton" />
@@ -158,7 +196,7 @@ export default function LoginPage() {
           </form>
 
           {/* Toggle Switch */}
-          <div className="pt-2 text-center text-xs text-[#A0A0A0] border-t border-white/5">
+          <div className="pt-2 text-center text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-800">
             <span>{isSignUp ? 'Already have an account?' : "Don't have an account yet?"} </span>
             <button
               type="button"
@@ -167,7 +205,7 @@ export default function LoginPage() {
                 setErrorMsg('');
                 setInfoMsg('');
               }}
-              className="font-medium text-white underline underline-offset-4 hover:text-zinc-300"
+              className="font-medium text-zinc-900 dark:text-white underline underline-offset-4 hover:text-zinc-700 dark:hover:text-zinc-300 cursor-pointer"
             >
               {isSignUp ? 'Sign in' : 'Create account'}
             </button>

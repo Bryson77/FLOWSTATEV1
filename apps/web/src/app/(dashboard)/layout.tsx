@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/navigation/sidebar';
 import { BottomNav } from '@/components/navigation/bottom-nav';
+import { OnboardingModal } from '@/components/onboarding-modal';
 
 export default function DashboardLayout({
   children,
@@ -7,7 +8,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-black text-white">
+    <div className="flex h-screen overflow-hidden bg-white text-zinc-900 dark:bg-black dark:text-white transition-colors duration-150">
+      {/* First-run onboarding wizard */}
+      <OnboardingModal />
+
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-[240px] flex-shrink-0">
         <Sidebar />

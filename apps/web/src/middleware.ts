@@ -47,12 +47,20 @@ export async function middleware(request: NextRequest) {
 
   // If user is not authenticated and trying to access dashboard routes, redirect to login
   if (!user && isDashboardPage) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.getAll().forEach((cookie: any) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
   }
 
   // If user is already authenticated and visits login, redirect to home cockpit
   if (user && isAuthPage) {
-    return NextResponse.redirect(new URL('/home', request.url));
+    const redirectResponse = NextResponse.redirect(new URL('/home', request.url));
+    response.cookies.getAll().forEach((cookie: any) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
   }
 
   return response;

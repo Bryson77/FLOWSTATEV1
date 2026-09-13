@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
+import { getLocalISODate } from '@flowstate/study-engine';
 
 interface NextClass {
   name: string;
@@ -107,7 +108,7 @@ export default function HomePage() {
 
       const today = new Date();
       const currentDayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); // 1=Mon, 7=Sun
-      const todayDateStr = today.toISOString().split('T')[0];
+      const todayDateStr = getLocalISODate(today);
 
       // Parallelize queries per Estavo performance standard
       const [

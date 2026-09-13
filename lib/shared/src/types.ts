@@ -14,6 +14,11 @@ export interface Profile {
   isStudyingNow: boolean;
   currentSubject: string | null;
   sessionEndsAt: string | null;
+  timezone: string | null;
+  hasCompletedOnboarding: boolean;
+  dailyStudyGoalMinutes: number;
+  emailNotificationsOptIn: boolean;
+  tier: 'free' | 'standard' | 'pro';
   createdAt: string;
   updatedAt: string;
 }
@@ -180,4 +185,55 @@ export interface Notification {
   link: string | null;
   createdAt: string;
 }
+
+/** Academic Tier Definition (Feature Split Specification) */
+export type PricingTier = 'free' | 'standard' | 'pro';
+
+export interface TierFeatures {
+  timetable: boolean;
+  examTracker: boolean;
+  focusTimer: boolean;
+  streaks: boolean;
+  maxFlashcardDecks: number | 'unlimited';
+  socialAndRooms: boolean;
+  leaderboards: boolean;
+  analytics: 'basic' | 'full';
+  aiFlashcards: boolean;
+}
+
+export const PRICING_TIER_LIMITS: Record<PricingTier, TierFeatures> = {
+  free: {
+    timetable: true,
+    examTracker: true,
+    focusTimer: true,
+    streaks: true,
+    maxFlashcardDecks: 3,
+    socialAndRooms: false,
+    leaderboards: false,
+    analytics: 'basic',
+    aiFlashcards: false,
+  },
+  standard: {
+    timetable: true,
+    examTracker: true,
+    focusTimer: true,
+    streaks: true,
+    maxFlashcardDecks: 'unlimited',
+    socialAndRooms: true,
+    leaderboards: true,
+    analytics: 'full',
+    aiFlashcards: false,
+  },
+  pro: {
+    timetable: true,
+    examTracker: true,
+    focusTimer: true,
+    streaks: true,
+    maxFlashcardDecks: 'unlimited',
+    socialAndRooms: true,
+    leaderboards: true,
+    analytics: 'full',
+    aiFlashcards: true,
+  },
+};
 

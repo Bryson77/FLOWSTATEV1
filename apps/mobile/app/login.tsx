@@ -33,21 +33,27 @@ export default function MobileLoginScreen() {
     setLoading(true);
     setErrorMsg('');
 
+    const userTimezone =
+      typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : 'Africa/Johannesburg';
+
     try {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password: password.trim(),
           options: {
             data: {
               full_name: fullName.trim(),
+              timezone: userTimezone,
             },
           },
         });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password: password.trim(),
         });
         if (error) throw error;
@@ -55,7 +61,12 @@ export default function MobileLoginScreen() {
 
       router.replace('/(tabs)');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication failed.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('invalid login credentials')) {
+        setErrorMsg('Wrong email or password.');
+      } else {
+        setErrorMsg(msg || 'Authentication failed.');
+      }
     } finally {
       setLoading(false);
     }
@@ -93,6 +104,35 @@ export default function MobileLoginScreen() {
             {errorMsg ? (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{errorMsg}</Text>
+                {!isSignUp && (
+                  <Pressable
+                    onPress={() => {
+                      setIsSignUp(true);
+                      setErrorMsg('');
+                    }}
+                    style={{
+                      marginTop: 8,
+                      paddingTop: 8,
+                      borderTopWidth: 1,
+                      borderTopColor: 'rgba(239,68,68,0.2)',
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, color: '#A1A1AA' }}>New here?</Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: '#FFFFFF',
+                        fontWeight: '600',
+                        textDecorationLine: 'underline',
+                      }}
+                    >
+                      Create an account
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             ) : null}
 
@@ -102,7 +142,7 @@ export default function MobileLoginScreen() {
                 <View style={styles.inputRow}>
                   <TextInput
                     style={styles.input}
-                    placeholder="Lethabo Mabilo"
+                    placeholder="e.g. Alex Ndlovu"
                     placeholderTextColor="#52525B"
                     value={fullName}
                     onChangeText={setFullName}
@@ -153,7 +193,7 @@ export default function MobileLoginScreen() {
             <Pressable
               onPress={handleAuth}
               disabled={loading}
-              style={({ pressed }) => [
+              style={({ pressed }: { pressed: boolean }) => [
                 styles.authButton,
                 { transform: [{ scale: pressed ? 0.97 : 1 }] },
               ]}
