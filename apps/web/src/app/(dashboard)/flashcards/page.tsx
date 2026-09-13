@@ -712,6 +712,155 @@ export default function FlashcardsPage() {
             ))
           )}
         </div>
+
+        {/* Add / Edit Card Modal */}
+        {isCardModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                <h3 className="text-sm font-semibold text-white">
+                  {editingCardId ? 'Edit Card' : `Add Card to ${managingDeck.title}`}
+                </h3>
+                <button onClick={() => setIsCardModalOpen(false)} className="text-zinc-500 hover:text-white">
+                  Cancel
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveCard} className="space-y-4">
+                {/* Card Type Selector */}
+                <div>
+                  <label className="block text-[11px] font-mono text-zinc-400 mb-1">Card Format</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCardType('standard')}
+                      className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+                        cardType === 'standard' ? 'border-white bg-white text-black' : 'border-white/10 text-zinc-400'
+                      }`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCardType('true_false')}
+                      className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+                        cardType === 'true_false' ? 'border-white bg-white text-black' : 'border-white/10 text-zinc-400'
+                      }`}
+                    >
+                      True / False
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCardType('multiple_choice')}
+                      className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+                        cardType === 'multiple_choice' ? 'border-white bg-white text-black' : 'border-white/10 text-zinc-400'
+                      }`}
+                    >
+                      Multiple Choice
+                    </button>
+                  </div>
+                </div>
+
+                {/* Front Text */}
+                <div>
+                  <label className="block text-[11px] font-mono text-zinc-400 mb-1">Front Question / Prompt</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter the concept, term, or question..."
+                    value={cardFront}
+                    onChange={e => setCardFront(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-black p-3 text-xs text-white focus:outline-none focus:border-white/30"
+                    required
+                  />
+                </div>
+
+                {/* Format Specific Fields */}
+                {cardType === 'standard' && (
+                  <div>
+                    <label className="block text-[11px] font-mono text-zinc-400 mb-1">Back Answer</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Enter the comprehensive answer / definition..."
+                      value={cardBack}
+                      onChange={e => setCardBack(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-black p-3 text-xs text-white focus:outline-none focus:border-white/30"
+                      required
+                    />
+                  </div>
+                )}
+
+                {cardType === 'true_false' && (
+                  <div>
+                    <label className="block text-[11px] font-mono text-zinc-400 mb-1">Correct Answer</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-xs text-zinc-300">
+                        <input
+                          type="radio"
+                          checked={tfCorrect === 'true'}
+                          onChange={() => setTfCorrect('true')}
+                        />
+                        True
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-zinc-300">
+                        <input
+                          type="radio"
+                          checked={tfCorrect === 'false'}
+                          onChange={() => setTfCorrect('false')}
+                        />
+                        False
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {cardType === 'multiple_choice' && (
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-mono text-zinc-400">Options (Select correct choice)</label>
+                    {mcqOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="correct_mcq"
+                          checked={mcqCorrect === idx.toString()}
+                          onChange={() => setMcqCorrect(idx.toString())}
+                        />
+                        <input
+                          type="text"
+                          placeholder={`Option ${idx + 1}`}
+                          value={opt}
+                          onChange={e => {
+                            const updated = [...mcqOptions];
+                            updated[idx] = e.target.value;
+                            setMcqOptions(updated);
+                          }}
+                          className="flex-1 rounded-xl border border-white/10 bg-black px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
+                          required
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCardModalOpen(false)}
+                    className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingCard}
+                    className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
+                  >
+                    {isSavingCard ? 'Saving...' : 'Save Card'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -928,155 +1077,6 @@ export default function FlashcardsPage() {
                   className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
                 >
                   {isSavingDeck ? 'Creating...' : 'Create Deck'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Card Modal */}
-      {isCardModalOpen && managingDeck && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h3 className="text-sm font-semibold text-white">
-                {editingCardId ? 'Edit Card' : `Add Card to ${managingDeck.title}`}
-              </h3>
-              <button onClick={() => setIsCardModalOpen(false)} className="text-zinc-500 hover:text-white">
-                Cancel
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCard} className="space-y-4">
-              {/* Card Type Selector */}
-              <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Card Format</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCardType('standard')}
-                    className={`py-2 rounded-xl text-xs font-medium border transition-all ${
-                      cardType === 'standard' ? 'border-white bg-white text-black' : 'border-white/10 text-zinc-400'
-                    }`}
-                  >
-                    Standard
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCardType('true_false')}
-                    className={`py-2 rounded-xl text-xs font-medium border transition-all ${
-                      cardType === 'true_false' ? 'border-white bg-white text-black' : 'border-white/10 text-zinc-400'
-                    }`}
-                  >
-                    True / False
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCardType('multiple_choice')}
-                    className={`py-2 rounded-xl text-xs font-medium border transition-all ${
-                      cardType === 'multiple_choice' ? 'border-white bg-white text-black' : 'border-white/10 text-zinc-400'
-                    }`}
-                  >
-                    Multiple Choice
-                  </button>
-                </div>
-              </div>
-
-              {/* Front Text */}
-              <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Front Question / Prompt</label>
-                <textarea
-                  rows={2}
-                  placeholder="Enter the concept, term, or question..."
-                  value={cardFront}
-                  onChange={e => setCardFront(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black p-3 text-xs text-white focus:outline-none focus:border-white/30"
-                  required
-                />
-              </div>
-
-              {/* Format Specific Fields */}
-              {cardType === 'standard' && (
-                <div>
-                  <label className="block text-[11px] font-mono text-zinc-400 mb-1">Back Answer</label>
-                  <textarea
-                    rows={3}
-                    placeholder="Enter the comprehensive answer / definition..."
-                    value={cardBack}
-                    onChange={e => setCardBack(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-black p-3 text-xs text-white focus:outline-none focus:border-white/30"
-                    required
-                  />
-                </div>
-              )}
-
-              {cardType === 'true_false' && (
-                <div>
-                  <label className="block text-[11px] font-mono text-zinc-400 mb-1">Correct Answer</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 text-xs text-zinc-300">
-                      <input
-                        type="radio"
-                        checked={tfCorrect === 'true'}
-                        onChange={() => setTfCorrect('true')}
-                      />
-                      True
-                    </label>
-                    <label className="flex items-center gap-2 text-xs text-zinc-300">
-                      <input
-                        type="radio"
-                        checked={tfCorrect === 'false'}
-                        onChange={() => setTfCorrect('false')}
-                      />
-                      False
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {cardType === 'multiple_choice' && (
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-mono text-zinc-400">Options (Select correct choice)</label>
-                  {mcqOptions.map((opt, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="correct_mcq"
-                        checked={mcqCorrect === idx.toString()}
-                        onChange={() => setMcqCorrect(idx.toString())}
-                      />
-                      <input
-                        type="text"
-                        placeholder={`Option ${idx + 1}`}
-                        value={opt}
-                        onChange={e => {
-                          const updated = [...mcqOptions];
-                          updated[idx] = e.target.value;
-                          setMcqOptions(updated);
-                        }}
-                        className="flex-1 rounded-xl border border-white/10 bg-black px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
-                        required
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCardModalOpen(false)}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingCard}
-                  className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
-                >
-                  {isSavingCard ? 'Saving...' : 'Save Card'}
                 </button>
               </div>
             </form>
