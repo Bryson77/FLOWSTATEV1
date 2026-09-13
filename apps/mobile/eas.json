@@ -8,17 +8,32 @@
       "developmentClient": true,
       "distribution": "internal",
       "node": "22.16.0",
-      "pnpm": "11.5.2"
+      "pnpm": "11.5.2",
+      "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
+      },
+      "ios": {
+        "simulator": true
+      }
     },
     "preview": {
       "distribution": "internal",
       "node": "22.16.0",
-      "pnpm": "11.5.2"
+      "pnpm": "11.5.2",
+      "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
+      },
+      "ios": {
+        "simulator": true
+      }
     },
     "production": {
       "autoIncrement": true,
       "node": "22.16.0",
-      "pnpm": "11.5.2"
+      "pnpm": "11.5.2",
+      "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
+      }
     }
   },
   "submit": {
