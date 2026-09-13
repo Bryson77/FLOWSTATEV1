@@ -1,9 +1,10 @@
-﻿name: Deploy Mobile to Expo (EAS Update)
+name: Deploy Mobile to Expo (EAS Update)
 
 on:
   push:
     branches:
       - main
+      - WorkingBranch
     paths:
       - 'apps/mobile/**'
       - 'lib/**'

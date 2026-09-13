@@ -1,0 +1,14 @@
+# Local Development Environment Secrets (.dev.vars)
+# Copy this file to .dev.vars for local testing with `wrangler dev`
+# DO NOT COMMIT .dev.vars TO GIT (Already ignored in .gitignore)
+#
+# For production deployment, set these using:
+# wrangler secret put SUPABASE_URL
+# wrangler secret put SUPABASE_ANON_KEY
+# wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# wrangler secret put RESEND_API_KEY
+
+SUPABASE_URL=https://maftkhcqxhjhhmkkgmpi.supabase.co
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+RESEND_API_KEY=
