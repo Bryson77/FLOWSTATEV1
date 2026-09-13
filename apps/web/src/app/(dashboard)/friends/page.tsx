@@ -140,7 +140,7 @@ export default function FriendsDashboardPage() {
         code: r.code,
         duration_seconds: r.duration_seconds || 1500,
         elapsed_seconds_at_pause: r.elapsed_seconds_at_pause || 0,
-        status: r.status,
+        status: (r.status as 'active' | 'paused' | 'completed') || 'active',
         last_resumed_at: r.last_resumed_at
       }));
 
@@ -326,7 +326,7 @@ export default function FriendsDashboardPage() {
         code: data.code,
         duration_seconds: data.duration_seconds || 1500,
         elapsed_seconds_at_pause: data.elapsed_seconds_at_pause || 0,
-        status: data.status,
+        status: (data.status as 'active' | 'paused' | 'completed') || 'active',
         last_resumed_at: data.last_resumed_at
       };
 
