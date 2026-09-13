@@ -32,6 +32,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Build API Server
+        working-directory: apps/api
+        run: pnpm run build
+
       - name: Deploy to Cloudflare Workers
         working-directory: apps/api
         env:

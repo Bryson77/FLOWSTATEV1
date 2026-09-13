@@ -12,6 +12,8 @@
   "dependencies": {
     "@flowstate/shared": "workspace:*",
     "@flowstate/study-engine": "workspace:*",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.49.1",
     "expo": "~52.0.0",
     "expo-font": "~13.0.0",
     "expo-haptics": "~14.0.0",
@@ -19,6 +21,7 @@
     "expo-splash-screen": "~0.29.0",
     "expo-status-bar": "~2.0.0",
     "expo-system-ui": "~4.0.0",
+    "expo-updates": "~0.26.0",
     "react": "19.1.0",
     "react-native": "0.76.9",
     "react-native-reanimated": "~3.16.0",

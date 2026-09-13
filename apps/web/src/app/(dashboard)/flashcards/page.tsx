@@ -1,277 +1,502 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, BookOpen, Layers, RotateCw, Sparkles, Check, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, BookOpen, Layers, RotateCw, Sparkles, Check, ArrowLeft, Trash2, AlertCircle, X } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/toast';
+import { calculateNextReview, type ReviewRating } from '@flowstate/study-engine';
 
-interface Flashcard {
+interface CardItem {
   id: string;
-  front: string;
-  back: string;
+  deck_id: string;
+  front_text: string;
+  back_text: string;
+  repetition_number: number | null;
+  interval_days: number | null;
+  ease_factor: number | null;
+  due_date: string | null;
 }
 
-interface Deck {
+interface DeckItem {
   id: string;
   title: string;
-  course: string;
-  code: string;
-  cardCount: number;
-  dueToday: number;
-  color: string;
-  cards: Flashcard[];
+  course_id: string;
+  course_name?: string;
+  course_code?: string;
+  card_count?: number;
+  due_count?: number;
+  cards?: CardItem[];
 }
 
-const INITIAL_DECKS: Deck[] = [
-  {
-    id: '1',
-    title: 'Chapter 4: Binary Trees & Heaps',
-    course: 'Computer Science',
-    code: 'CSC2001F',
-    cardCount: 12,
-    dueToday: 8,
-    color: '#3B82F6',
-    cards: [
-      {
-        id: 'c1',
-        front: 'What is the maximum number of nodes at level L in a binary tree?',
-        back: '2^L (assuming the root is at level 0).'
-      },
-      {
-        id: 'c2',
-        front: 'What are the properties of a Min-Heap?',
-        back: 'A complete binary tree where each node value is less than or equal to the values of its children.'
-      },
-      {
-        id: 'c3',
-        front: 'What is the time complexity of building a heap from an array of N elements?',
-        back: 'O(N) using bottom-up sift-down (Floyd algorithm).'
-      }
-    ]
-  },
-  {
-    id: '2',
-    title: 'Eigenvalues & Diagonalization',
-    course: 'Linear Algebra',
-    code: 'MTH2000S',
-    cardCount: 15,
-    dueToday: 10,
-    color: '#8B5CF6',
-    cards: [
-      {
-        id: 'c4',
-        front: 'How do you find the eigenvalues of a square matrix A?',
-        back: 'Solve the characteristic equation: det(A - λI) = 0.'
-      }
-    ]
-  }
-];
+interface CourseItem {
+  id: string;
+  name: string;
+  code: string;
+}
 
 export default function FlashcardsPage() {
-  const [decks, setDecks] = useState<Deck[]>(INITIAL_DECKS);
-  const [activeDeck, setActiveDeck] = useState<Deck | null>(null);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [isCreatingDeck, setIsCreatingDeck] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newCourse, setNewCourse] = useState('Computer Science');
-  const [newCode, setNewCode] = useState('CSC2001F');
+  const [decks, setDecks] = useState<DeckItem[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const startStudying = (deck: Deck) => {
-    setActiveDeck(deck);
-    setCurrentCardIndex(0);
-    setIsFlipped(false);
-  };
+  // Active study mode
+  const [activeDeck, setActiveDeck] = useState<DeckItem | null>(null);
+  const [cardIndex, setCardIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
 
-  const handleNextCard = () => {
-    setIsFlipped(false);
-    if (!activeDeck) return;
-    if (currentCardIndex + 1 < activeDeck.cards.length) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    } else {
-      setActiveDeck(null); // Finished
+  // Create Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deckTitle, setDeckTitle] = useState('');
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [initialFront, setInitialFront] = useState('');
+  const [initialBack, setInitialBack] = useState('');
+
+  const { toast } = useToast();
+  const supabase = createClient();
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('Please sign in to view flashcards.');
+
+      const [decksRes, coursesRes] = await Promise.all([
+        supabase
+          .from('flashcard_decks')
+          .select('*, courses(name, code), flashcards(*)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('courses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('name'),
+      ]);
+
+      if (decksRes.error) throw decksRes.error;
+      if (coursesRes.error) throw coursesRes.error;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const mappedDecks: DeckItem[] = (decksRes.data || []).map((d: any) => {
+        const cards: CardItem[] = d.flashcards || [];
+        const dueCount = cards.filter(c => !c.due_date || c.due_date <= todayStr).length;
+
+        return {
+          id: d.id,
+          title: d.title,
+          course_id: d.course_id,
+          course_name: d.courses?.name || 'General',
+          course_code: d.courses?.code || '',
+          card_count: cards.length,
+          due_count: dueCount,
+          cards,
+        };
+      });
+
+      setDecks(mappedDecks);
+      setCourses(coursesRes.data || []);
+      if (coursesRes.data && coursesRes.data.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(coursesRes.data[0].id);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to load flashcard decks.');
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, selectedCourseId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleCreateDeck = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deckTitle.trim()) return;
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Unauthorized');
+
+      let courseIdToUse = selectedCourseId;
+      if (!courseIdToUse) {
+        if (courses.length > 0) {
+          courseIdToUse = courses[0].id;
+        } else {
+          const { data: newCourse, error: cErr } = await supabase
+            .from('courses')
+            .insert({ user_id: user.id, name: 'General Revision', code: 'GEN101' })
+            .select()
+            .single();
+          if (cErr) throw cErr;
+          courseIdToUse = newCourse.id;
+        }
+      }
+
+      // Create deck
+      const { data: newDeck, error: dErr } = await supabase
+        .from('flashcard_decks')
+        .insert({
+          user_id: user.id,
+          course_id: courseIdToUse,
+          title: deckTitle.trim(),
+        })
+        .select()
+        .single();
+
+      if (dErr) throw dErr;
+
+      // Add first card if specified
+      if (initialFront.trim() && initialBack.trim()) {
+        const { error: cErr } = await supabase
+          .from('flashcards')
+          .insert({
+            user_id: user.id,
+            deck_id: newDeck.id,
+            front_text: initialFront.trim(),
+            back_text: initialBack.trim(),
+          });
+        if (cErr) throw cErr;
+      }
+
+      toast('✓ Saved');
+      setIsModalOpen(false);
+      setDeckTitle('');
+      setInitialFront('');
+      setInitialBack('');
+      await fetchData();
+    } catch (err: any) {
+      toast(err.message || 'Failed to create deck.', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleCreateDeck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
+  const handleRateCard = async (rating: ReviewRating) => {
+    if (!activeDeck || !activeDeck.cards || activeDeck.cards.length === 0) return;
+    const currentCard = activeDeck.cards[cardIndex];
 
-    const newDeck: Deck = {
-      id: Date.now().toString(),
-      title: newTitle,
-      course: newCourse,
-      code: newCode,
-      cardCount: 0,
-      dueToday: 0,
-      color: '#3B82F6',
-      cards: []
-    };
+    try {
+      const result = calculateNextReview({
+        repetitionNumber: currentCard.repetition_number || 0,
+        intervalDays: currentCard.interval_days || 0,
+        easeFactor: currentCard.ease_factor || 2.5,
+        rating,
+      });
 
-    setDecks([...decks, newDeck]);
-    setIsCreatingDeck(false);
-    setNewTitle('');
+      const nextDueDate = new Date();
+      nextDueDate.setDate(nextDueDate.getDate() + result.intervalDays);
+
+      await supabase
+        .from('flashcards')
+        .update({
+          repetition_number: result.repetitionNumber,
+          interval_days: result.intervalDays,
+          ease_factor: result.easeFactor,
+          due_date: nextDueDate.toISOString().split('T')[0],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentCard.id);
+
+      if (cardIndex + 1 < activeDeck.cards.length) {
+        setCardIndex(prev => prev + 1);
+        setFlipped(false);
+      } else {
+        toast('✓ Review logged');
+        setActiveDeck(null);
+        setCardIndex(0);
+        setFlipped(false);
+        fetchData();
+      }
+    } catch {
+      toast('Failed to record review.', 'error');
+    }
   };
 
-  // Study View
-  if (activeDeck) {
-    const card = activeDeck.cards[currentCardIndex];
+  const handleDeleteDeck = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('flashcard_decks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setDecks(prev => prev.filter(d => d.id !== id));
+      toast('✓ Removed');
+    } catch {
+      toast('Failed to delete deck.', 'error');
+    }
+  };
+
+  // Study Screen Active
+  if (activeDeck && activeDeck.cards && activeDeck.cards.length > 0) {
+    const card = activeDeck.cards[cardIndex];
 
     return (
-      <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-200">
+      <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-200 pb-16">
+        {/* Top bar */}
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setActiveDeck(null)}
+            onClick={() => { setActiveDeck(null); setCardIndex(0); setFlipped(false); }}
             className="inline-flex items-center gap-2 text-xs font-medium text-[#A0A0A0] hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Exit Deck
+            <span>Exit Review</span>
           </button>
           <span className="font-mono text-xs text-[#A0A0A0]">
-            Card {currentCardIndex + 1} of {activeDeck.cards.length}
+            Card {cardIndex + 1} of {activeDeck.cards.length}
           </span>
         </div>
 
-        {/* 3D-feeling Flashcard Container */}
+        {/* 3D Flashcard */}
         <div
-          onClick={() => setIsFlipped(!isFlipped)}
-          className="min-h-[320px] rounded-3xl border border-white/10 bg-[rgba(255,255,255,0.03)] backdrop-blur-[40px] p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:border-white/20 active:scale-[0.99] select-none shadow-2xl relative"
+          onClick={() => setFlipped(!flipped)}
+          className="min-h-[300px] flex flex-col justify-between rounded-2xl border border-[#2A2A2A] bg-[#111111] p-8 cursor-pointer transition-all hover:border-white/20 select-none shadow-2xl"
         >
-          <span className="absolute top-6 left-6 text-xs font-mono uppercase tracking-widest text-zinc-500">
-            {isFlipped ? 'Answer' : 'Question'}
-          </span>
+          <div className="flex items-center justify-between text-[11px] font-mono text-[#A0A0A0] uppercase tracking-wider">
+            <span>{flipped ? 'Back / Solution' : 'Front / Prompt'}</span>
+            <span>Click to flip</span>
+          </div>
 
-          <p className="text-xl sm:text-2xl font-semibold text-white max-w-lg leading-relaxed">
-            {isFlipped ? card.back : card.front}
-          </p>
+          <div className="my-auto py-8 text-center">
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-white leading-relaxed">
+              {flipped ? card.back_text : card.front_text}
+            </h2>
+          </div>
 
-          <span className="absolute bottom-6 text-[11px] text-zinc-500 font-medium">
-            Click or tap to flip
-          </span>
+          <div className="text-center text-xs text-[#4A4A4A] font-mono">
+            {flipped ? 'Rate your recall below' : 'Think of answer, then click'}
+          </div>
         </div>
 
-        {/* SM-2 Rating Controls */}
-        <div className="grid grid-cols-4 gap-3 pt-2">
+        {/* SM-2 Recall Difficulty Buttons */}
+        {flipped ? (
+          <div className="grid grid-cols-4 gap-2.5 pt-2 animate-in fade-in duration-150">
+            <button
+              onClick={() => handleRateCard('again')}
+              className="rounded-xl border border-[#E74C3C]/40 bg-[#E74C3C]/10 py-3 text-xs font-semibold text-[#E74C3C] hover:bg-[#E74C3C]/20 transition-all active:scale-95 cursor-pointer"
+            >
+              Again (1d)
+            </button>
+            <button
+              onClick={() => handleRateCard('hard')}
+              className="rounded-xl border border-amber-500/40 bg-amber-500/10 py-3 text-xs font-semibold text-amber-400 hover:bg-amber-500/20 transition-all active:scale-95 cursor-pointer"
+            >
+              Hard
+            </button>
+            <button
+              onClick={() => handleRateCard('good')}
+              className="rounded-xl border border-blue-500/40 bg-blue-500/10 py-3 text-xs font-semibold text-blue-400 hover:bg-blue-500/20 transition-all active:scale-95 cursor-pointer"
+            >
+              Good
+            </button>
+            <button
+              onClick={() => handleRateCard('easy')}
+              className="rounded-xl border border-[#22C55E]/40 bg-[#22C55E]/10 py-3 text-xs font-semibold text-[#22C55E] hover:bg-[#22C55E]/20 transition-all active:scale-95 cursor-pointer"
+            >
+              Easy
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={handleNextCard}
-            className="rounded-xl border border-red-500/20 bg-red-500/10 py-3 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-all"
+            onClick={() => setFlipped(true)}
+            className="w-full rounded-xl bg-white py-3 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-95 cursor-pointer"
           >
-            Again (1d)
+            Show Answer
           </button>
-          <button
-            onClick={handleNextCard}
-            className="rounded-xl border border-amber-500/20 bg-amber-500/10 py-3 text-xs font-semibold text-amber-400 hover:bg-amber-500/20 transition-all"
-          >
-            Hard (2d)
-          </button>
-          <button
-            onClick={handleNextCard}
-            className="rounded-xl border border-blue-500/20 bg-blue-500/10 py-3 text-xs font-semibold text-blue-400 hover:bg-blue-500/20 transition-all"
-          >
-            Good (4d)
-          </button>
-          <button
-            onClick={handleNextCard}
-            className="rounded-xl border border-white/20 bg-white/10 py-3 text-xs font-semibold text-white hover:bg-white/20 transition-all"
-          >
-            Easy (7d)
-          </button>
-        </div>
+        )}
       </div>
     );
   }
 
-  // Decks Browser View
   return (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-16">
+    <div className="space-y-8 animate-in fade-in duration-200 pb-16">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-white">Flashcards</h1>
-          <p className="mt-1 text-[#A0A0A0]">Spaced repetition active recall decks.</p>
+          <p className="mt-1 text-sm text-[#A0A0A0]">Active recall decks with SM-2 spaced repetition.</p>
         </div>
+
         <button
-          onClick={() => setIsCreatingDeck(!isCreatingDeck)}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition-all hover:scale-105 active:scale-[0.97]"
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97]"
         >
           <Plus className="h-4 w-4" />
-          Create Deck
+          <span>New Deck</span>
         </button>
       </div>
 
-      {isCreatingDeck && (
-        <form onSubmit={handleCreateDeck} className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-6 backdrop-blur-[40px] saturate-[150%] space-y-4">
-          <h3 className="font-display text-lg font-semibold text-white">New Deck</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1 font-medium">Deck Title</label>
-              <input
-                type="text"
-                placeholder="e.g. Chapter 5: Sorting Algorithms"
-                value={newTitle}
-                onChange={e => setNewTitle(e.target.value)}
-                required
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1 font-medium">Course</label>
-              <input
-                type="text"
-                value={newCourse}
-                onChange={e => setNewCourse(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/40"
-              />
-            </div>
+      {/* Error State */}
+      {errorMsg && (
+        <div className="rounded-xl border border-[#E74C3C]/30 bg-[#E74C3C]/10 p-4 text-xs text-[#E74C3C] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{errorMsg}</span>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsCreatingDeck(false)}
-              className="rounded-full px-4 py-2 text-xs font-medium text-[#A0A0A0] hover:text-white"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-zinc-200"
-            >
-              Save Deck
-            </button>
-          </div>
-        </form>
+          <button onClick={fetchData} className="font-medium underline hover:text-white ml-4">
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Loading Skeletons */}
+      {loading && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-44 w-full skeleton rounded-2xl" />
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !errorMsg && decks.length === 0 && (
+        <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-12 text-center space-y-4 max-w-lg mx-auto my-12">
+          <h2 className="font-display text-xl font-bold text-white">No flashcard decks yet</h2>
+          <p className="text-sm text-[#A0A0A0] leading-relaxed">
+            Create decks with active recall cards to train with the SuperMemo SM-2 spaced repetition algorithm.
+          </p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97]"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create Your First Deck</span>
+          </button>
+        </div>
       )}
 
       {/* Decks Grid */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {decks.map(deck => (
-          <div
-            key={deck.id}
-            className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.03)] backdrop-blur-[40px] p-6 flex flex-col justify-between transition-all hover:bg-[rgba(255,255,255,0.06)] hover:border-white/20"
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs text-[#A0A0A0] uppercase tracking-wider">{deck.code}</span>
-                <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-mono font-medium text-zinc-300">
-                  {deck.cardCount} cards
+      {!loading && !errorMsg && decks.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {decks.map((deck) => (
+            <div
+              key={deck.id}
+              onClick={() => {
+                if (deck.cards && deck.cards.length > 0) {
+                  setActiveDeck(deck);
+                  setCardIndex(0);
+                  setFlipped(false);
+                } else {
+                  toast('Deck has no cards yet', 'info');
+                }
+              }}
+              className="group flex flex-col justify-between rounded-2xl border border-[#2A2A2A] bg-[#111111] p-6 transition-all hover:border-white/20 cursor-pointer shadow-xl"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="font-mono text-xs text-[#A0A0A0]">{deck.course_code}</span>
+                  <button
+                    onClick={(e) => handleDeleteDeck(deck.id, e)}
+                    className="opacity-0 group-hover:opacity-100 text-[#A0A0A0] hover:text-[#E74C3C] transition-opacity"
+                    title="Delete Deck"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <h3 className="font-display text-lg font-bold text-white leading-snug">
+                  {deck.title}
+                </h3>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#2A2A2A] flex items-center justify-between text-xs font-mono">
+                <span className="text-[#A0A0A0]">{deck.card_count} cards</span>
+                <span className={`${(deck.due_count || 0) > 0 ? 'text-amber-400 font-semibold' : 'text-[#4A4A4A]'}`}>
+                  {deck.due_count} due today
                 </span>
               </div>
-              <h3 className="font-display text-xl font-bold text-white mt-2 leading-snug">{deck.title}</h3>
-              <p className="text-xs text-zinc-400 mt-1">{deck.course}</p>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/5">
-              <span className="text-xs text-zinc-300 font-mono font-medium">
-                {deck.dueToday} due today
-              </span>
-              <button
-                onClick={() => startStudying(deck)}
-                disabled={deck.cards.length === 0}
-                className="rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black hover:bg-zinc-200 disabled:opacity-40 transition-colors"
-              >
-                Study Now
+      {/* Modal: New Deck */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
+              <h2 className="font-display text-lg font-bold text-white">Create Flashcard Deck</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-[#A0A0A0] hover:text-white transition-colors">
+                <X className="h-5 w-5" />
               </button>
             </div>
+
+            <form onSubmit={handleCreateDeck} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  Deck Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Chapter 4: Binary Trees & Heaps"
+                  value={deckTitle}
+                  onChange={(e) => setDeckTitle(e.target.value)}
+                  className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                />
+              </div>
+
+              {courses.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                    Course
+                  </label>
+                  <select
+                    value={selectedCourseId}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="border-t border-[#2A2A2A] pt-3 space-y-3">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">First Card (Optional)</span>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Front / Question prompt"
+                    value={initialFront}
+                    onChange={(e) => setInitialFront(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40 mb-2"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Back / Answer solution"
+                    value={initialBack}
+                    onChange={(e) => setInitialBack(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg px-4 py-2 text-xs font-medium text-[#A0A0A0] hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97] disabled:opacity-50"
+                >
+                  {saving ? 'Creating...' : 'Create Deck'}
+                </button>
+              </div>
+            </form>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

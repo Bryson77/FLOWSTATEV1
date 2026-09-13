@@ -1,18 +1,81 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Play, Pause, RotateCcw } from 'lucide-react-native';
+import { supabase } from '../../lib/supabase';
 
 export default function TimerScreen() {
   const [timeLeft, setTimeLeft] = useState(45 * 60);
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<{ id: string; code: string; name: string } | null>(null);
+
+  // Load user's first course if available
+  useEffect(() => {
+    async function loadCourse() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('id, code, name')
+        .eq('user_id', user.id)
+        .limit(1);
+      if (courses && courses.length > 0) {
+        setSelectedCourse(courses[0]);
+      }
+    }
+    loadCourse();
+  }, []);
+
+  const handleSessionComplete = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Record study session
+        await supabase.from('study_sessions').insert({
+          user_id: user.id,
+          course_id: selectedCourse?.id || null,
+          duration_seconds: 45 * 60,
+          mode: 'focus',
+          completed_at: new Date().toISOString(),
+        });
+
+        // Increment study streak & mark last study date
+        const today = new Date().toISOString().split('T')[0];
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('study_streak_days, last_study_date, longest_streak_days')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile) {
+          const isNewDay = profile.last_study_date !== today;
+          const newStreak = isNewDay ? (profile.study_streak_days || 0) + 1 : (profile.study_streak_days || 1);
+          const longest = Math.max(newStreak, profile.longest_streak_days || 0);
+
+          await supabase
+            .from('profiles')
+            .update({
+              study_streak_days: newStreak,
+              longest_streak_days: longest,
+              last_study_date: today,
+              is_studying_now: false,
+            })
+            .eq('id', user.id);
+        }
+      }
+      Alert.alert('Session Saved', '45 minutes focus recorded to your Saktus study log.');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (isRunning && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && isRunning) {
       setIsRunning(false);
+      handleSessionComplete();
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -28,7 +91,9 @@ export default function TimerScreen() {
       <View style={styles.content}>
         {/* Course Header */}
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>CSC2001F · Computer Science</Text>
+          <Text style={styles.badgeText}>
+            {selectedCourse ? `${selectedCourse.code} · ${selectedCourse.name}` : 'General Focus · Saktus'}
+          </Text>
         </View>
 
         {/* Clock Face */}

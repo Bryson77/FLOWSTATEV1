@@ -12,6 +12,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { supabase } from '../lib/supabase';
+
 
 export default function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -32,7 +34,25 @@ export default function MobileLoginScreen() {
     setErrorMsg('');
 
     try {
-      // Direct navigation to tabs after auth
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: password.trim(),
+          options: {
+            data: {
+              full_name: fullName.trim(),
+            },
+          },
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: password.trim(),
+        });
+        if (error) throw error;
+      }
+
       router.replace('/(tabs)');
     } catch (err: any) {
       setErrorMsg(err.message || 'Authentication failed.');

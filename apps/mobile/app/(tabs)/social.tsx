@@ -1,44 +1,82 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Users, Zap, Trophy, UserPlus } from 'lucide-react-native';
+import { Users, Zap, Trophy, RefreshCw } from 'lucide-react-native';
+import { supabase } from '../../lib/supabase';
 
-const FRIENDS = [
-  {
-    id: '1',
-    name: 'Kagiso T.',
-    initials: 'KT',
-    subject: 'Data Structures',
-    isStudying: true,
-    minsLeft: 34,
-  },
-  {
-    id: '2',
-    name: 'Liam D.',
-    initials: 'LD',
-    subject: 'Contract Law',
-    isStudying: true,
-    minsLeft: 15,
-  },
-  {
-    id: '3',
-    name: 'Sarah M.',
-    initials: 'SM',
-    subject: 'Calculus III',
-    isStudying: false,
-    minsLeft: 0,
-  },
-];
+interface StudentProfile {
+  id: string;
+  name: string;
+  initials: string;
+  subject: string;
+  isStudying: boolean;
+  streak: number;
+}
 
-const LEADERBOARD = [
-  { rank: 1, name: 'Kagiso T.', hours: '18.5h' },
-  { rank: 2, name: 'You (Lethabo)', hours: '14.0h', isSelf: true },
-  { rank: 3, name: 'Liam D.', hours: '11.2h' },
-  { rank: 4, name: 'Sarah M.', hours: '8.5h' },
-];
+interface LeaderboardItem {
+  rank: number;
+  name: string;
+  streak: number;
+  isSelf: boolean;
+}
 
 export default function SocialScreen() {
   const [cheered, setCheered] = useState<Record<string, boolean>>({});
+  const [buddies, setBuddies] = useState<StudentProfile[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadSquad = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, degree, current_subject, is_studying_now, study_streak_days')
+        .order('study_streak_days', { ascending: false })
+        .limit(15);
+
+      if (error) throw error;
+
+      if (profiles && profiles.length > 0) {
+        const studentList: StudentProfile[] = profiles.map((p) => {
+          const initials = p.full_name
+            ? p.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+            : 'ST';
+          return {
+            id: p.id,
+            name: p.full_name || 'Anonymous Student',
+            initials,
+            subject: p.current_subject || p.degree || 'Study Session',
+            isStudying: p.is_studying_now || false,
+            streak: p.study_streak_days || 0,
+          };
+        });
+        setBuddies(studentList);
+
+        const lb: LeaderboardItem[] = profiles.map((p, idx) => ({
+          rank: idx + 1,
+          name: user && p.id === user.id ? `You (${p.full_name || 'Me'})` : (p.full_name || 'Student'),
+          streak: p.study_streak_days || 0,
+          isSelf: user ? p.id === user.id : false,
+        }));
+        setLeaderboard(lb);
+      } else {
+        setBuddies([]);
+        setLeaderboard([]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSquad();
+  }, []);
 
   const handleCheer = (id: string) => {
     setCheered((prev) => ({ ...prev, [id]: true }));
@@ -49,41 +87,61 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadSquad();
+            }}
+            tintColor="#FFFFFF"
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Squad & Friends</Text>
-            <Text style={styles.subtitle}>Live study presence & leaderboard</Text>
+            <Text style={styles.subtitle}>Live study presence & streaks</Text>
           </View>
-          <Pressable style={styles.joinBtn}>
-            <UserPlus size={14} color="#000000" />
-            <Text style={styles.joinBtnText}>Join</Text>
-          </Pressable>
         </View>
 
         {/* Studying Now */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>STUDYING NOW</Text>
-          <View style={styles.friendsList}>
-            {FRIENDS.map((friend) => (
-              <View key={friend.id} style={styles.friendCard}>
-                <View style={styles.friendLeft}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{friend.initials}</Text>
-                    {friend.isStudying && <View style={styles.onlineDot} />}
+          <Text style={styles.sectionTitle}>CAMPUS PRESENCE</Text>
+          {loading ? (
+            <View style={{ gap: 10 }}>
+              <View style={[styles.friendCard, { opacity: 0.5 }]} />
+              <View style={[styles.friendCard, { opacity: 0.5 }]} />
+            </View>
+          ) : buddies.length === 0 ? (
+            <View style={[styles.friendCard, { paddingVertical: 24, justifyContent: 'center' }]}>
+              <Text style={{ color: '#A0A0A0', fontSize: 13, textAlign: 'center' }}>
+                No active students yet. As users join, they will appear here.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.friendsList}>
+              {buddies.map((friend) => (
+                <View key={friend.id} style={styles.friendCard}>
+                  <View style={styles.friendLeft}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{friend.initials}</Text>
+                      {friend.isStudying && <View style={styles.onlineDot} />}
+                    </View>
+                    <View style={styles.friendInfo}>
+                      <Text style={styles.friendName}>{friend.name}</Text>
+                      <Text style={styles.friendStatus}>
+                        {friend.isStudying
+                          ? `Studying · ${friend.subject}`
+                          : `Streak: ${friend.streak} day(s)`}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.friendInfo}>
-                    <Text style={styles.friendName}>{friend.name}</Text>
-                    <Text style={styles.friendStatus}>
-                      {friend.isStudying
-                        ? `Locked in · ${friend.subject} (${friend.minsLeft}m)`
-                        : 'Offline'}
-                    </Text>
-                  </View>
-                </View>
 
-                {friend.isStudying && (
                   <Pressable
                     onPress={() => handleCheer(friend.id)}
                     style={styles.cheerBtn}
@@ -94,10 +152,10 @@ export default function SocialScreen() {
                       <Zap size={14} color="#A0A0A0" />
                     )}
                   </Pressable>
-                )}
-              </View>
-            ))}
-          </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Leaderboard Card */}
@@ -105,29 +163,35 @@ export default function SocialScreen() {
           <View style={styles.leaderboardHeader}>
             <View style={styles.leaderboardTitleRow}>
               <Trophy size={16} color="#F59E0B" />
-              <Text style={styles.leaderboardTitle}>Weekly Focus</Text>
+              <Text style={styles.leaderboardTitle}>Streak Leaderboard</Text>
             </View>
-            <Text style={styles.resetLabel}>Resets Sun 00:00</Text>
+            <Text style={styles.resetLabel}>Supabase Sync</Text>
           </View>
 
           <View style={styles.leaderboardList}>
-            {LEADERBOARD.map((item) => (
-              <View
-                key={item.rank}
-                style={[
-                  styles.leaderboardRow,
-                  item.isSelf && styles.selfRow,
-                ]}
-              >
-                <View style={styles.rankCol}>
-                  <Text style={styles.rankNumber}>{item.rank}.</Text>
-                  <Text style={[styles.userName, item.isSelf && styles.selfName]}>
-                    {item.name}
-                  </Text>
+            {leaderboard.length === 0 && !loading ? (
+              <Text style={{ color: '#71717A', fontSize: 12, paddingVertical: 12, textAlign: 'center' }}>
+                No streak rankings yet.
+              </Text>
+            ) : (
+              leaderboard.map((item) => (
+                <View
+                  key={item.rank}
+                  style={[
+                    styles.leaderboardRow,
+                    item.isSelf && styles.selfRow,
+                  ]}
+                >
+                  <View style={styles.rankCol}>
+                    <Text style={styles.rankNumber}>{item.rank}.</Text>
+                    <Text style={[styles.userName, item.isSelf && styles.selfName]}>
+                      {item.name}
+                    </Text>
+                  </View>
+                  <Text style={styles.hoursText}>{item.streak} days</Text>
                 </View>
-                <Text style={styles.hoursText}>{item.hours}</Text>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         </View>
       </ScrollView>

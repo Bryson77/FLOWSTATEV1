@@ -33,6 +33,8 @@ export const metadata: Metadata = {
   description: 'The all-in-one academic cockpit for students.',
 };
 
+import { ToastProvider } from '@/components/ui/toast';
+
 export default function RootLayout({
   children,
 }: {
@@ -44,7 +46,7 @@ export default function RootLayout({
       className={`${plusJakarta.variable} ${inter.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="bg-black text-white antialiased font-sans">
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

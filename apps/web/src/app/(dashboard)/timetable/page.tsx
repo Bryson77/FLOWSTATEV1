@@ -1,284 +1,470 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Clock, MapPin, Sparkles, BookOpen, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Clock, MapPin, Trash2, X, AlertCircle } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/components/ui/toast';
 
 interface ClassItem {
   id: string;
-  subject: string;
-  code: string;
-  venue: string;
-  day: number; // 1 = Mon, 5 = Fri
-  startTime: string;
-  endTime: string;
-  color: string;
-  type: 'lecture' | 'tutorial' | 'lab';
+  course_id: string;
+  course_name?: string;
+  course_code?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  venue: string | null;
+  class_type: string | null;
 }
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', 
-  '13:00', '14:00', '15:00', '16:00', '17:00'
-];
+interface CourseItem {
+  id: string;
+  name: string;
+  code: string;
+  color: string | null;
+}
 
-const INITIAL_CLASSES: ClassItem[] = [
-  {
-    id: '1',
-    subject: 'Computer Science',
-    code: 'CSC2001F',
-    venue: 'Science Block LT2',
-    day: 1,
-    startTime: '09:00',
-    endTime: '10:30',
-    color: '#3B82F6',
-    type: 'lecture'
-  },
-  {
-    id: '2',
-    subject: 'Linear Algebra',
-    code: 'MTH2000S',
-    venue: 'Maths Building Room 4',
-    day: 2,
-    startTime: '11:00',
-    endTime: '12:30',
-    color: '#8B5CF6',
-    type: 'lecture'
-  },
-  {
-    id: '3',
-    subject: 'Algorithms Lab',
-    code: 'CSC2001F',
-    venue: 'Computer Lab 3',
-    day: 4,
-    startTime: '14:00',
-    endTime: '16:00',
-    color: '#3B82F6',
-    type: 'lab'
-  }
+const DAYS = [
+  { num: 1, label: 'Mon' },
+  { num: 2, label: 'Tue' },
+  { num: 3, label: 'Wed' },
+  { num: 4, label: 'Thu' },
+  { num: 5, label: 'Fri' },
 ];
 
 export default function TimetablePage() {
-  const [classes, setClasses] = useState<ClassItem[]>(INITIAL_CLASSES);
-  const [isAdding, setIsAdding] = useState(false);
-  const [newSubject, setNewSubject] = useState('');
-  const [newCode, setNewCode] = useState('');
-  const [newVenue, setNewVenue] = useState('');
-  const [newDay, setNewDay] = useState(1);
-  const [newStartTime, setNewStartTime] = useState('09:00');
-  const [newEndTime, setNewEndTime] = useState('10:30');
-  const [newType, setNewType] = useState<'lecture' | 'tutorial' | 'lab'>('lecture');
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleAddClass = (e: React.FormEvent) => {
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [newCourseName, setNewCourseName] = useState('');
+  const [newCourseCode, setNewCourseCode] = useState('');
+  const [dayOfWeek, setDayOfWeek] = useState(1);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:30');
+  const [venue, setVenue] = useState('');
+  const [classType, setClassType] = useState('lecture');
+
+  const { toast } = useToast();
+  const supabase = createClient();
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error('You must be signed in to view your timetable.');
+
+      // Parallelize queries per Estavo performance standard
+      const [classesRes, coursesRes] = await Promise.all([
+        supabase
+          .from('timetable_classes')
+          .select('*, courses(name, code, color)')
+          .eq('user_id', user.id)
+          .order('start_time', { ascending: true }),
+        supabase
+          .from('courses')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('name', { ascending: true }),
+      ]);
+
+      if (classesRes.error) throw classesRes.error;
+      if (coursesRes.error) throw coursesRes.error;
+
+      const mappedClasses: ClassItem[] = (classesRes.data || []).map((c: any) => ({
+        id: c.id,
+        course_id: c.course_id,
+        course_name: c.courses?.name || 'Class',
+        course_code: c.courses?.code || '',
+        day_of_week: c.day_of_week,
+        start_time: c.start_time?.slice(0, 5) || '09:00',
+        end_time: c.end_time?.slice(0, 5) || '10:30',
+        venue: c.venue,
+        class_type: c.class_type || 'lecture',
+      }));
+
+      setClasses(mappedClasses);
+      setCourses(coursesRes.data || []);
+      if (coursesRes.data && coursesRes.data.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(coursesRes.data[0].id);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to load timetable. Check connection.');
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, selectedCourseId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSubject.trim()) return;
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Unauthorized');
 
-    const newItem: ClassItem = {
-      id: Date.now().toString(),
-      subject: newSubject,
-      code: newCode || newSubject.slice(0, 3).toUpperCase() + '101',
-      venue: newVenue || 'Main Hall',
-      day: Number(newDay),
-      startTime: newStartTime,
-      endTime: newEndTime,
-      color: newType === 'lab' ? '#6366F1' : newType === 'tutorial' ? '#F59E0B' : '#3B82F6',
-      type: newType
-    };
+      let courseIdToUse = selectedCourseId;
 
-    setClasses([...classes, newItem]);
-    setIsAdding(false);
-    setNewSubject('');
-    setNewCode('');
-    setNewVenue('');
+      // If user is adding a new course inline
+      if (!courseIdToUse && newCourseName.trim()) {
+        const { data: newCourse, error: courseErr } = await supabase
+          .from('courses')
+          .insert({
+            user_id: user.id,
+            name: newCourseName.trim(),
+            code: newCourseCode.trim() || newCourseName.slice(0, 3).toUpperCase() + '101',
+            color: '#3B82F6',
+          })
+          .select()
+          .single();
+
+        if (courseErr) throw courseErr;
+        courseIdToUse = newCourse.id;
+        setCourses(prev => [...prev, newCourse]);
+      }
+
+      if (!courseIdToUse) {
+        throw new Error('Please select or specify a course.');
+      }
+
+      const { error: classErr } = await supabase
+        .from('timetable_classes')
+        .insert({
+          user_id: user.id,
+          course_id: courseIdToUse,
+          day_of_week: Number(dayOfWeek),
+          start_time: startTime,
+          end_time: endTime,
+          venue: venue.trim() || null,
+          class_type: classType,
+        });
+
+      if (classErr) throw classErr;
+
+      toast('✓ Saved');
+      setIsModalOpen(false);
+      setNewCourseName('');
+      setNewCourseCode('');
+      setVenue('');
+      await fetchData();
+    } catch (err: any) {
+      toast(err.message || 'Failed to save. Try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setClasses(classes.filter(c => c.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('timetable_classes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setClasses(prev => prev.filter(c => c.id !== id));
+      toast('✓ Removed');
+    } catch (err: any) {
+      toast('Failed to remove. Try again.', 'error');
+    }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-16">
-      {/* Header with quick stats */}
+    <div className="space-y-8 animate-in fade-in duration-200 pb-16">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-white">Timetable</h1>
-          <p className="mt-1 text-[#A0A0A0]">Weekly class schedule and venue coordinates.</p>
+          <p className="mt-1 text-sm text-[#A0A0A0]">Weekly class matrix & venue coordinates.</p>
         </div>
+
         <button
-          onClick={() => setIsAdding(!isAdding)}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition-all hover:scale-105 active:scale-[0.97]"
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97]"
         >
           <Plus className="h-4 w-4" />
-          Add Class
+          <span>Add Class</span>
         </button>
       </div>
 
-      {/* Add Class Inline Form Drawer */}
-      {isAdding && (
-        <form onSubmit={handleAddClass} className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-6 backdrop-blur-[40px] saturate-[150%] space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold text-white">New Class Entry</h3>
-            <span className="text-xs text-[#A0A0A0]">Synced to cloud profile</span>
+      {/* Error State */}
+      {errorMsg && (
+        <div className="rounded-xl border border-[#E74C3C]/30 bg-[#E74C3C]/10 p-4 text-xs text-[#E74C3C] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span>{errorMsg}</span>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">Subject / Course Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Computer Science"
-                value={newSubject}
-                onChange={e => setNewSubject(e.target.value)}
-                required
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">Course Code</label>
-              <input
-                type="text"
-                placeholder="e.g. CSC2001F"
-                value={newCode}
-                onChange={e => setNewCode(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">Venue / Room</label>
-              <input
-                type="text"
-                placeholder="e.g. Science LT2"
-                value={newVenue}
-                onChange={e => setNewVenue(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white/40"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">Day</label>
-              <select
-                value={newDay}
-                onChange={e => setNewDay(Number(e.target.value))}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/40"
-              >
-                {DAYS.map((day, idx) => (
-                  <option key={day} value={idx + 1} className="bg-zinc-900 text-white">{day}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">Class Type</label>
-              <select
-                value={newType}
-                onChange={e => setNewType(e.target.value as any)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/40"
-              >
-                <option value="lecture" className="bg-zinc-900 text-white">Lecture</option>
-                <option value="tutorial" className="bg-zinc-900 text-white">Tutorial</option>
-                <option value="lab" className="bg-zinc-900 text-white">Lab</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">Start Time</label>
-              <input
-                type="time"
-                value={newStartTime}
-                onChange={e => setNewStartTime(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/40"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-[#A0A0A0] block mb-1.5 font-medium">End Time</label>
-              <input
-                type="time"
-                value={newEndTime}
-                onChange={e => setNewEndTime(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/40"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsAdding(false)}
-              className="rounded-full px-4 py-2 text-xs font-medium text-[#A0A0A0] hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-colors"
-            >
-              Save to Timetable
-            </button>
-          </div>
-        </form>
+          <button
+            onClick={fetchData}
+            className="font-medium underline hover:text-white ml-4"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
-      {/* Timetable Grid View */}
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.02)] backdrop-blur-[40px] p-6">
-        <div className="min-w-[640px]">
-          {/* Days Header */}
-          <div className="grid grid-cols-5 gap-3 border-b border-white/10 pb-4">
-            {DAYS.map((day, idx) => (
-              <div key={day} className="text-center">
-                <span className="text-sm font-semibold tracking-wide text-white uppercase">{day}</span>
-                <p className="text-[11px] text-[#A0A0A0] mt-0.5">
-                  {classes.filter(c => c.day === idx + 1).length} scheduled
-                </p>
-              </div>
-            ))}
-          </div>
+      {/* Loading State (Skeletons Only — No Spinners per Estavo Spec) */}
+      {loading && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          {DAYS.map((d) => (
+            <div key={d.num} className="space-y-3 rounded-xl border border-[#2A2A2A] bg-[#111111] p-4">
+              <div className="h-4 w-12 skeleton" />
+              <div className="h-24 w-full skeleton rounded-lg" />
+              <div className="h-24 w-full skeleton rounded-lg" />
+            </div>
+          ))}
+        </div>
+      )}
 
-          {/* Schedule Matrix */}
-          <div className="grid grid-cols-5 gap-3 pt-4 min-h-[380px]">
-            {DAYS.map((day, idx) => {
-              const dayClasses = classes.filter(c => c.day === idx + 1);
-              return (
-                <div key={day} className="space-y-3">
+      {/* Empty State (Centered, Display Heading, Inter Body, CTA Button, No Illustrations) */}
+      {!loading && !errorMsg && classes.length === 0 && (
+        <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-12 text-center space-y-4 max-w-lg mx-auto my-12">
+          <h2 className="font-display text-xl font-bold text-white">No classes scheduled yet</h2>
+          <p className="text-sm text-[#A0A0A0] leading-relaxed">
+            Add your lectures, tutorials, and labs to build your weekly schedule matrix and enable Next Up countdowns.
+          </p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97]"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Your First Class</span>
+          </button>
+        </div>
+      )}
+
+      {/* Weekly Matrix Grid */}
+      {!loading && !errorMsg && classes.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          {DAYS.map((day) => {
+            const dayClasses = classes.filter(c => c.day_of_week === day.num);
+
+            return (
+              <div
+                key={day.num}
+                className="flex flex-col rounded-xl border border-[#2A2A2A] bg-[#111111] p-4 min-h-[380px]"
+              >
+                <div className="border-b border-[#2A2A2A] pb-3 mb-3 flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                    {day.label}
+                  </span>
+                  <span className="font-mono text-[11px] text-[#A0A0A0]">
+                    {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'}
+                  </span>
+                </div>
+
+                <div className="flex-1 space-y-2.5 overflow-y-auto">
                   {dayClasses.length === 0 ? (
-                    <div className="h-full min-h-[140px] rounded-xl border border-dashed border-white/5 flex items-center justify-center p-3">
-                      <span className="text-xs text-zinc-600">Free day</span>
+                    <div className="py-8 text-center text-xs text-[#4A4A4A] italic">
+                      No classes
                     </div>
                   ) : (
-                    dayClasses.map(item => (
+                    dayClasses.map((cls) => (
                       <div
-                        key={item.id}
-                        className="group relative rounded-xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3.5 transition-all hover:scale-[1.02] hover:border-white/20 hover:bg-[rgba(255,255,255,0.07)]"
-                        style={{ borderLeftColor: item.color, borderLeftWidth: '3px' }}
+                        key={cls.id}
+                        className="group relative rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-3 transition-all hover:border-white/20"
                       >
-                        <div className="flex items-start justify-between">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#A0A0A0]">{item.code}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest bg-white/10 text-white">
+                            {cls.class_type}
+                          </span>
                           <button
-                            onClick={() => handleDelete(item.id)}
-                            className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-opacity"
-                            title="Remove"
+                            onClick={() => handleDelete(cls.id)}
+                            className="opacity-0 group-hover:opacity-100 text-[#A0A0A0] hover:text-[#E74C3C] transition-opacity"
+                            title="Delete class"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                        <h4 className="font-semibold text-sm text-white mt-1 leading-snug">{item.subject}</h4>
-                        <div className="mt-3 space-y-1 text-xs text-[#A0A0A0]">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="h-3 w-3 text-zinc-400" />
-                            <span className="font-mono text-[11px]">{item.startTime} - {item.endTime}</span>
+
+                        <h3 className="font-semibold text-sm text-white mt-1.5 leading-snug">
+                          {cls.course_name}
+                        </h3>
+                        {cls.course_code && (
+                          <div className="text-[11px] font-mono text-[#A0A0A0] mt-0.5">
+                            {cls.course_code}
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3 text-zinc-400" />
-                            <span className="truncate">{item.venue}</span>
+                        )}
+
+                        <div className="mt-2.5 pt-2 border-t border-white/5 space-y-1 text-[11px] text-[#A0A0A0]">
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <Clock className="h-3 w-3 text-zinc-500" />
+                            <span>{cls.start_time} - {cls.end_time}</span>
                           </div>
+                          {cls.venue && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3 text-zinc-500" />
+                              <span className="truncate">{cls.venue}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal: Add Class */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
+              <h2 className="font-display text-lg font-bold text-white">Add Class to Schedule</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-[#A0A0A0] hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddClass} className="space-y-4">
+              {/* Course Selection or Create */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  Course
+                </label>
+                {courses.length > 0 ? (
+                  <select
+                    value={selectedCourseId}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Course Name (e.g. Computer Science)"
+                      value={newCourseName}
+                      onChange={(e) => setNewCourseName(e.target.value)}
+                      className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Course Code (e.g. CSC2001F)"
+                      value={newCourseCode}
+                      onChange={(e) => setNewCourseCode(e.target.value)}
+                      className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Day & Type */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                    Day
+                  </label>
+                  <select
+                    value={dayOfWeek}
+                    onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                  >
+                    {DAYS.map((d) => (
+                      <option key={d.num} value={d.num}>{d.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                    Type
+                  </label>
+                  <select
+                    value={classType}
+                    onChange={(e) => setClassType(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                  >
+                    <option value="lecture">Lecture</option>
+                    <option value="tutorial">Tutorial</option>
+                    <option value="lab">Lab</option>
+                    <option value="workshop">Workshop</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Times */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                    Start Time
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                    End Time
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Venue */}
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  Venue Coordinates
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Science Block LT2"
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
+                  className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg px-4 py-2 text-xs font-medium text-[#A0A0A0] hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97] disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Class'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

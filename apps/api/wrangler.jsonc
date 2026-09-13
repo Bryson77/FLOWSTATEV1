@@ -1,12 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "flowstate-api",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-01",
+  "main": "dist/index.js",
+  "compatibility_date": "2024-01-01",
   "compatibility_flags": [
     "nodejs_compat"
   ],
   "observability": {
     "enabled": true
-  }
+  },
+  "tail_consumers": [
+    { "service": "alerts-tail" }
+  ]
 }
