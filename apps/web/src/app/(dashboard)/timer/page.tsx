@@ -1,18 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Check, Sparkles, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Maximize2,
+  Minimize2,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  BookOpen,
+  CheckCircle2,
+  ArrowLeft,
+  Flame,
+  Radio
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
-
-const MOTIVES = [
-  'stay locked in.',
-  'one session closer.',
-  'finish what you started.',
-  'deep work pays off.',
-  'pressure makes diamonds.',
-  'floor it.'
-];
 
 interface CourseItem {
   id: string;
@@ -20,200 +25,455 @@ interface CourseItem {
   code: string;
 }
 
+interface TaskItem {
+  id: string;
+  text: string;
+}
+
 export default function TimerPage() {
-  const [mode, setMode] = useState<'work' | 'short' | 'long'>('work');
-  const [timeLeft, setTimeLeft] = useState(45 * 60);
-  const [initialDuration, setInitialDuration] = useState(45 * 60);
+  const [mode, setMode] = useState<'pomodoro' | 'short_break' | 'long_break' | 'stopwatch'>('pomodoro');
+  const [durationSeconds, setDurationSeconds] = useState(25 * 60);
+  const [secondsRemaining, setSecondsRemaining] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false);
+
+  // Soundscape Synthesizer
+  const [activeSound, setActiveSound] = useState<'none' | 'binaural' | 'brown' | 'rain'>('none');
+  const [soundVolume, setSoundVolume] = useState(0.4);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundNodesRef = useRef<any[]>([]);
+
+  // Metadata
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [intention, setIntention] = useState('');
-  const [motiveIndex, setMotiveIndex] = useState(0);
-  const [isLogging, setIsLogging] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Delta timestamp tracking
+  const targetEndTimeRef = useRef<number | null>(null);
 
   const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => {
-    async function loadCourses() {
+    async function loadData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-      if (data && data.length > 0) {
-        setCourses(data);
-        setSelectedCourseId(data[0].id);
+
+      const [coursesRes, tasksRes] = await Promise.all([
+        supabase.from('courses').select('*').eq('user_id', user.id).order('name'),
+        supabase.from('tasks').select('id, text').eq('user_id', user.id).eq('done', false).limit(10)
+      ]);
+
+      if (coursesRes.data && coursesRes.data.length > 0) {
+        setCourses(coursesRes.data);
+        setSelectedCourseId(coursesRes.data[0].id);
+      }
+      if (tasksRes.data) {
+        setTasks(tasksRes.data);
       }
     }
-    loadCourses();
+    loadData();
   }, [supabase]);
 
-  const setTimerMode = (newMode: 'work' | 'short' | 'long') => {
+  // Web Audio Procedural Synthesizer (Zero external MP3 assets)
+  const stopAudio = useCallback(() => {
+    soundNodesRef.current.forEach(node => {
+      try {
+        if (node.stop) node.stop();
+        node.disconnect();
+      } catch {}
+    });
+    soundNodesRef.current = [];
+  }, []);
+
+  const startAudio = useCallback((type: 'binaural' | 'brown' | 'rain', volume: number) => {
+    stopAudio();
+    if (typeof window === 'undefined') return;
+
+    if (!audioCtxRef.current) {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      audioCtxRef.current = new AudioCtx();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(volume, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+    soundNodesRef.current.push(masterGain);
+
+    if (type === 'binaural') {
+      // 40Hz Gamma beat (left 200Hz, right 240Hz)
+      const oscL = ctx.createOscillator();
+      const oscR = ctx.createOscillator();
+      const merger = ctx.createChannelMerger(2);
+
+      oscL.type = 'sine';
+      oscL.frequency.setValueAtTime(200, ctx.currentTime);
+      oscR.type = 'sine';
+      oscR.frequency.setValueAtTime(240, ctx.currentTime);
+
+      oscL.connect(merger, 0, 0);
+      oscR.connect(merger, 0, 1);
+      merger.connect(masterGain);
+
+      oscL.start();
+      oscR.start();
+      soundNodesRef.current.push(oscL, oscR);
+    } else if (type === 'brown') {
+      // Brown Noise (integrated white noise)
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      let lastOut = 0.0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        output[i] = (lastOut + (0.02 * white)) / 1.02;
+        lastOut = output[i];
+        output[i] *= 3.5;
+      }
+
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(400, ctx.currentTime);
+
+      whiteNoise.connect(filter);
+      filter.connect(masterGain);
+      whiteNoise.start();
+      soundNodesRef.current.push(whiteNoise, filter);
+    } else if (type === 'rain') {
+      // Procedural Rain Simulation
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      noise.loop = true;
+
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.setValueAtTime(1000, ctx.currentTime);
+      bandpass.Q.setValueAtTime(0.8, ctx.currentTime);
+
+      noise.connect(bandpass);
+      bandpass.connect(masterGain);
+      noise.start();
+      soundNodesRef.current.push(noise, bandpass);
+    }
+  }, [stopAudio]);
+
+  useEffect(() => {
+    if (activeSound !== 'none') {
+      startAudio(activeSound, soundVolume);
+    } else {
+      stopAudio();
+    }
+    return () => stopAudio();
+  }, [activeSound, soundVolume, startAudio, stopAudio]);
+
+  // Mode Selection
+  const handleSelectMode = (newMode: 'pomodoro' | 'short_break' | 'long_break' | 'stopwatch') => {
     setIsRunning(false);
     setMode(newMode);
-    const duration = newMode === 'work' ? 45 * 60 : newMode === 'short' ? 5 * 60 : 15 * 60;
-    setTimeLeft(duration);
-    setInitialDuration(duration);
+    targetEndTimeRef.current = null;
+
+    let sec = 25 * 60;
+    if (newMode === 'short_break') sec = 5 * 60;
+    if (newMode === 'long_break') sec = 15 * 60;
+    if (newMode === 'stopwatch') sec = 0;
+
+    setDurationSeconds(sec);
+    setSecondsRemaining(sec);
   };
 
+  // Session Completion Handler
   const handleSessionComplete = useCallback(async () => {
     setIsRunning(false);
-    setIsLogging(true);
+    targetEndTimeRef.current = null;
+    setIsSaving(true);
+    stopAudio();
+    setActiveSound('none');
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast('Session finished');
+        toast('Session completed', 'success');
         return;
       }
 
-      const durationSeconds = initialDuration - timeLeft;
-      if (durationSeconds < 60) {
-        toast('Session too short to record', 'info');
-        return;
-      }
+      const loggedSeconds = mode === 'stopwatch' ? secondsRemaining : (durationSeconds - secondsRemaining);
 
-      const { error } = await supabase
-        .from('study_sessions')
-        .insert({
+      if (loggedSeconds >= 60) {
+        // 1. Insert session log
+        await supabase.from('study_sessions').insert({
           user_id: user.id,
           course_id: selectedCourseId || null,
-          duration_seconds: durationSeconds,
-          mode: mode === 'work' ? 'pomodoro' : 'stopwatch',
+          duration_seconds: loggedSeconds,
+          mode: mode === 'stopwatch' ? 'stopwatch' : 'pomodoro',
           completed_at: new Date().toISOString(),
           notes: intention.trim() || null,
         });
 
-      if (error) throw error;
-      toast('✓ Logged');
-      setIntention('');
+        // 2. If Pomodoro (>= 25 min), invoke server-side streak maintenance function
+        if (loggedSeconds >= 25 * 60) {
+          await supabase.rpc('record_study_activity', {
+            p_user_id: user.id,
+            p_activity_type: 'session',
+          });
+          toast('Study session recorded. Daily streak incremented!', 'success');
+        } else {
+          toast('Study session recorded', 'success');
+        }
+      }
     } catch {
-      toast('Failed to save session. Try again.', 'error');
+      toast('Failed to save study session', 'error');
     } finally {
-      setIsLogging(false);
+      setIsSaving(false);
+      handleSelectMode(mode);
     }
-  }, [supabase, initialDuration, timeLeft, selectedCourseId, mode, intention, toast]);
+  }, [durationSeconds, secondsRemaining, mode, selectedCourseId, intention, supabase, toast, stopAudio]);
 
+  // Delta timestamp tick
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (isRunning && timeLeft > 0) {
+
+    if (isRunning) {
+      if (!targetEndTimeRef.current && mode !== 'stopwatch') {
+        targetEndTimeRef.current = Date.now() + secondsRemaining * 1000;
+      }
+
       interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      handleSessionComplete();
+        if (mode === 'stopwatch') {
+          setSecondsRemaining(prev => prev + 1);
+        } else {
+          if (targetEndTimeRef.current) {
+            const diff = Math.ceil((targetEndTimeRef.current - Date.now()) / 1000);
+            if (diff <= 0) {
+              setSecondsRemaining(0);
+              handleSessionComplete();
+            } else {
+              setSecondsRemaining(diff);
+            }
+          }
+        }
+      }, 500);
+    } else {
+      targetEndTimeRef.current = null;
     }
+
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, timeLeft, handleSessionComplete]);
+  }, [isRunning, mode, secondsRemaining, handleSessionComplete]);
 
-  const toggleTimer = () => {
-    if (!isRunning) {
-      setMotiveIndex(Math.floor(Math.random() * MOTIVES.length));
-    }
-    setIsRunning(!isRunning);
-  };
-
-  const resetTimer = () => {
-    setIsRunning(false);
-    setTimerMode(mode);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+  // Format MM:SS
+  const formatTime = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-8 animate-in fade-in duration-200 py-8 text-center">
-      {/* Course Tag selector */}
-      <div className="inline-flex items-center gap-2 rounded-full border border-[#2A2A2A] bg-[#111111] px-4 py-1.5 backdrop-blur-[40px]">
-        <span className="text-xs text-[#A0A0A0]">Course:</span>
-        {courses.length > 0 ? (
-          <select
-            value={selectedCourseId}
-            onChange={e => setSelectedCourseId(e.target.value)}
-            className="bg-transparent text-xs font-mono font-semibold text-white focus:outline-none cursor-pointer"
+    <div className={`transition-all duration-300 ${
+      isZenMode ? 'fixed inset-0 z-50 bg-black flex flex-col justify-between p-8' : 'max-w-2xl mx-auto space-y-8 pb-16'
+    }`}>
+      {/* Zen Mode Header / Standard Header */}
+      <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
+        {isZenMode ? (
+          <button
+            onClick={() => setIsZenMode(false)}
+            className="inline-flex items-center gap-2 text-xs font-mono text-zinc-500 hover:text-white"
           >
-            {courses.map(c => (
-              <option key={c.id} value={c.id} className="bg-[#1A1A1A] text-white">
-                {c.code} · {c.name}
-              </option>
-            ))}
-          </select>
+            <ArrowLeft className="h-4 w-4" /> Exit Zen Mode
+          </button>
         ) : (
-          <span className="text-xs font-mono text-zinc-400">General Focus</span>
+          <div>
+            <h1 className="font-display text-3xl font-bold tracking-tight text-white">Focus Timer</h1>
+            <p className="text-xs text-zinc-400 font-mono mt-0.5">Procedural Soundscapes · Delta-Resilient</p>
+          </div>
         )}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsZenMode(!isZenMode)}
+            className="p-2 rounded-xl border border-white/10 text-zinc-400 hover:text-white transition-all btn-press"
+            title={isZenMode ? 'Exit Fullscreen' : 'Zen OLED Mode'}
+          >
+            {isZenMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
-      {/* Mode Switches */}
-      <div className="flex items-center justify-center gap-2">
-        {(['work', 'short', 'long'] as const).map(m => (
+      {/* Mode Selector Tabs (Hidden in Zen Mode) */}
+      {!isZenMode && (
+        <div className="grid grid-cols-4 gap-2 rounded-xl border border-white/10 bg-[#09090b] p-1 text-xs">
           <button
-            key={m}
-            onClick={() => setTimerMode(m)}
-            className={`rounded-full px-5 py-1.5 text-xs font-medium transition-all ${
-              mode === m
-                ? 'bg-white text-black shadow-lg scale-105'
-                : 'text-[#A0A0A0] hover:text-white bg-[#111111] border border-[#2A2A2A]'
+            onClick={() => handleSelectMode('pomodoro')}
+            className={`py-2 rounded-lg text-xs font-medium transition-all ${
+              mode === 'pomodoro' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
             }`}
           >
-            {m === 'work' ? '45m Focus' : m === 'short' ? '5m Break' : '15m Rest'}
+            25m Focus
           </button>
-        ))}
-      </div>
-
-      {/* Main Clock Face */}
-      <div className="py-6">
-        <h1 className="font-mono text-7xl sm:text-9xl font-bold tracking-tighter text-white tabular-nums select-none drop-shadow-2xl">
-          {formatTime(timeLeft)}
-        </h1>
-        <p className="font-serif italic text-lg sm:text-xl text-[#A0A0A0] mt-4 transition-all">
-          "{MOTIVES[motiveIndex]}"
-        </p>
-      </div>
-
-      {/* Intention Input */}
-      <div className="max-w-sm mx-auto">
-        <input
-          type="text"
-          placeholder="What are you locking in on?"
-          value={intention}
-          onChange={e => setIntention(e.target.value)}
-          className="w-full text-center rounded-xl border border-[#2A2A2A] bg-[#111111] px-4 py-2.5 text-sm text-white placeholder-[#4A4A4A] focus:outline-none focus:border-white/30"
-        />
-      </div>
-
-      {/* Timer Controls */}
-      <div className="flex items-center justify-center gap-4 pt-4">
-        <button
-          onClick={toggleTimer}
-          className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-white text-black shadow-2xl transition-all hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          {isRunning ? <Pause className="h-6 w-6 fill-black" /> : <Play className="h-6 w-6 fill-black ml-1" />}
-        </button>
-        <button
-          onClick={resetTimer}
-          className="inline-flex items-center justify-center h-12 w-12 rounded-full border border-[#2A2A2A] bg-[#111111] text-[#A0A0A0] hover:text-white transition-all active:scale-95 cursor-pointer"
-          title="Reset"
-        >
-          <RotateCcw className="h-5 w-5" />
-        </button>
-        {timeLeft < initialDuration && !isRunning && (
           <button
-            onClick={handleSessionComplete}
-            disabled={isLogging}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-xs font-semibold text-white hover:bg-white/20 transition-all active:scale-95 cursor-pointer"
+            onClick={() => handleSelectMode('short_break')}
+            className={`py-2 rounded-lg text-xs font-medium transition-all ${
+              mode === 'short_break' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
+            }`}
           >
-            <Check className="h-4 w-4" />
-            <span>Log Early</span>
+            5m Break
           </button>
-        )}
+          <button
+            onClick={() => handleSelectMode('long_break')}
+            className={`py-2 rounded-lg text-xs font-medium transition-all ${
+              mode === 'long_break' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            15m Long
+          </button>
+          <button
+            onClick={() => handleSelectMode('stopwatch')}
+            className={`py-2 rounded-lg text-xs font-medium transition-all ${
+              mode === 'stopwatch' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            Stopwatch
+          </button>
+        </div>
+      )}
+
+      {/* Central Timer Clock Face */}
+      <div className="text-center py-12 space-y-6">
+        <div className="font-mono text-7xl sm:text-9xl font-bold tracking-tight text-white tnum select-none">
+          {formatTime(secondsRemaining)}
+        </div>
+
+        {/* Course & Task Tagging */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#09090b] px-4 py-1.5 text-xs text-zinc-300">
+          <BookOpen className="h-3.5 w-3.5 text-zinc-400" />
+          <span>{courses.find(c => c.id === selectedCourseId)?.name || 'General Focus'}</span>
+        </div>
+
+        {/* Main Action Buttons */}
+        <div className="flex items-center justify-center gap-4 pt-4">
+          <button
+            onClick={() => {
+              if (isRunning) {
+                setIsRunning(false);
+              } else {
+                setIsRunning(true);
+              }
+            }}
+            className="h-14 w-14 rounded-full bg-white flex items-center justify-center text-black hover:bg-zinc-200 transition-all shadow-xl btn-press"
+          >
+            {isRunning ? <Pause className="h-6 w-6 fill-black" /> : <Play className="h-6 w-6 fill-black ml-0.5" />}
+          </button>
+
+          <button
+            onClick={() => handleSelectMode(mode)}
+            className="h-14 w-14 rounded-full border border-white/10 bg-[#09090b] flex items-center justify-center text-zinc-400 hover:text-white hover:border-white/25 transition-all btn-press"
+            title="Reset Timer"
+          >
+            <RotateCcw className="h-5 w-5" />
+          </button>
+        </div>
       </div>
+
+      {/* Soundscape Synthesizer Controls */}
+      <div className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 text-left">
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div className="flex items-center gap-2">
+            <Radio className="h-4 w-4 text-zinc-400" />
+            <h3 className="text-xs font-semibold text-white tracking-wide uppercase font-mono">
+              Procedural Soundscape
+            </h3>
+          </div>
+          <span className="text-[11px] font-mono text-zinc-500">Zero Audio Lag</span>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          <button
+            onClick={() => setActiveSound('none')}
+            className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+              activeSound === 'none' ? 'border-white bg-white text-black font-semibold' : 'border-white/10 text-zinc-400'
+            }`}
+          >
+            Silent
+          </button>
+          <button
+            onClick={() => setActiveSound('binaural')}
+            className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+              activeSound === 'binaural' ? 'border-white bg-white text-black font-semibold' : 'border-white/10 text-zinc-400'
+            }`}
+          >
+            Binaural 40Hz
+          </button>
+          <button
+            onClick={() => setActiveSound('brown')}
+            className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+              activeSound === 'brown' ? 'border-white bg-white text-black font-semibold' : 'border-white/10 text-zinc-400'
+            }`}
+          >
+            Brown Noise
+          </button>
+          <button
+            onClick={() => setActiveSound('rain')}
+            className={`py-2 rounded-xl text-xs font-medium border transition-all ${
+              activeSound === 'rain' ? 'border-white bg-white text-black font-semibold' : 'border-white/10 text-zinc-400'
+            }`}
+          >
+            Rain
+          </button>
+        </div>
+      </div>
+
+      {/* Course & Task Binding (Hidden in Zen Mode) */}
+      {!isZenMode && (
+        <div className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 text-left">
+          <h3 className="text-xs font-semibold text-white tracking-wide uppercase font-mono border-b border-white/[0.06] pb-2">
+            Session Attribution
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-mono text-zinc-400 mb-1">Link to Course</label>
+              <select
+                value={selectedCourseId}
+                onChange={e => setSelectedCourseId(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+              >
+                {courses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono text-zinc-400 mb-1">Focus Intention / Notes</label>
+              <input
+                type="text"
+                placeholder="What are you working on?"
+                value={intention}
+                onChange={e => setIntention(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

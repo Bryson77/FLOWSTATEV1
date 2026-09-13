@@ -31,6 +31,7 @@
   --color-warning: #F59E0B;
   --color-error: #EF4444;
   --color-info: #3B82F6;
+  --color-emerald-accent: #10B981;
 
   /* Course preset palette */
   --color-course-blue: #3B82F6;
@@ -51,10 +52,15 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Glass panel utility */
-.glass {
-  backdrop-filter: blur(40px) saturate(150%);
-  -webkit-backdrop-filter: blur(40px) saturate(150%);
+/* Tactile true-black card surfaces (Emil Kowalski / Apple HIG) */
+.surface-card {
+  background-color: #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.surface-elevated {
+  background-color: #121215;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Skeleton shimmer animation */

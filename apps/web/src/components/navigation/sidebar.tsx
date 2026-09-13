@@ -38,7 +38,7 @@ export function Sidebar() {
     <div className="flex h-full w-[240px] flex-col bg-[rgba(255,255,255,0.01)] backdrop-blur-[40px] border-r border-white/5 saturate-[150%]">
       {/* Logo */}
       <div className="flex h-16 items-center px-6">
-        <span className="font-display text-xl font-bold text-white tracking-tight">FlowState</span>
+        <span className="font-display text-xl font-bold text-white tracking-tight">Saktus</span>
       </div>
 
       {/* Main Nav */}

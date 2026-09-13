@@ -77,7 +77,7 @@ export default function MobileLoginScreen() {
         >
           {/* Logo & Header */}
           <View style={styles.header}>
-            <Text style={styles.brandTitle}>FlowState</Text>
+            <Text style={styles.brandTitle}>Saktus</Text>
             <Text style={styles.brandSubtitle}>
               {isSignUp ? 'Create your student cockpit' : 'Welcome back'}
             </Text>

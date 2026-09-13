@@ -61,7 +61,7 @@ export default function LoginPage() {
         {/* Logo & Subtitle */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-block">
-            <span className="font-display text-2xl font-bold tracking-tight text-white">FlowState</span>
+            <span className="font-display text-2xl font-bold tracking-tight text-white">Saktus</span>
           </Link>
           <h2 className="text-lg font-semibold text-white tracking-tight">
             {isSignUp ? 'Create your academic cockpit' : 'Welcome back'}

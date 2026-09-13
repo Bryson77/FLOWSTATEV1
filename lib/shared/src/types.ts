@@ -3,6 +3,7 @@ export interface Profile {
   id: string;
   email: string;
   fullName: string;
+  username: string | null;
   avatarUrl: string | null;
   university: string | null;
   degree: string | null;
@@ -56,6 +57,20 @@ export interface Assessment {
   createdAt: string;
 }
 
+/** Task or academic reminder */
+export interface Task {
+  id: string;
+  userId: string;
+  courseId: string | null;
+  text: string;
+  prio: 'urgent' | 'high' | 'normal' | 'low';
+  done: boolean;
+  notes: string | null;
+  due: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Flashcard deck */
 export interface FlashcardDeck {
   id: string;
@@ -63,6 +78,7 @@ export interface FlashcardDeck {
   userId: string;
   title: string;
   description: string | null;
+  tags: string[];
   isPublic: boolean;
   createdAt: string;
 }
@@ -74,6 +90,9 @@ export interface Flashcard {
   userId: string;
   frontText: string;
   backText: string;
+  cardType: 'standard' | 'true_false' | 'multiple_choice';
+  options: string[];
+  correctAnswer: string | null;
   repetitionNumber: number;
   intervalDays: number;
   easeFactor: number;
@@ -93,13 +112,23 @@ export interface StudySession {
   notes: string | null;
 }
 
-/** Friendship between users */
-export interface Friendship {
+/** One-way follow relationship */
+export interface Follow {
   id: string;
-  userId: string;
-  friendId: string;
-  status: 'pending' | 'accepted' | 'blocked';
+  followerId: string;
+  followeeId: string;
   createdAt: string;
+}
+
+/** Server-managed streak */
+export interface Streak {
+  userId: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string | null;
+  freezesAvailable: number;
+  freezesUsedTotal: number;
+  updatedAt: string;
 }
 
 /** Study squad */
@@ -117,3 +146,40 @@ export interface SquadMember {
   userId: string;
   joinedAt: string;
 }
+
+/** Synchronized study room */
+export interface StudyRoom {
+  id: string;
+  hostId: string;
+  name: string;
+  code: string;
+  courseId: string | null;
+  durationSeconds: number;
+  elapsedSecondsAtPause: number;
+  status: 'active' | 'paused' | 'completed';
+  lastResumedAt: string | null;
+  createdAt: string;
+}
+
+/** Study room member */
+export interface StudyRoomMember {
+  roomId: string;
+  userId: string;
+  joinedAt: string;
+  completed: boolean;
+}
+
+/** In-app notification */
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'deadline' | 'class' | 'streak' | 'social' | 'system';
+  read: boolean;
+  link: string | null;
+  createdAt: string;
+}
+
+/** Database schema mapping for Supabase client */
+export type Database = any;

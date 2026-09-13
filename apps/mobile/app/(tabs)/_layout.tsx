@@ -47,17 +47,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="timer"
-        options={{
-          title: 'Timer',
-          tabBarIcon: ({ color, size }) => <Timer size={size || 20} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="social"
         options={{
           title: 'Social',
           tabBarIcon: ({ color, size }) => <Users size={size || 20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="timer"
+        options={{
+          href: null, // Hidden from bottom bar, accessible via quick action
         }}
       />
     </Tabs>

@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "flowstate-web",
+  "name": "saktus-web",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": [
@@ -12,8 +12,5 @@
   },
   "observability": {
     "enabled": true
-  },
-  "tail_consumers": [
-    { "service": "alerts-tail" }
-  ]
+  }
 }

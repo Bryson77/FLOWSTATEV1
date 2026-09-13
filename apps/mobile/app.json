@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Kestra",
-    "slug": "kestra",
+    "name": "Saktus",
+    "slug": "saktus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "flowstate",
+    "scheme": "saktus",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -13,13 +13,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.flowstate.app"
+      "bundleIdentifier": "com.saktus.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#000000"
       },
-      "package": "com.flowstate.app"
+      "package": "com.saktus.app"
     },
     "plugins": [
       "expo-router",

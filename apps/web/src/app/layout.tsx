@@ -29,8 +29,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'FlowState',
-  description: 'The all-in-one academic cockpit for students.',
+  title: 'Saktus — The Calm Academic Cockpit',
+  description: 'Timetable matrix, assessment countdowns, SM-2 flashcards, deep work timer, and squad leaderboards.',
 };
 
 import { ToastProvider } from '@/components/ui/toast';
