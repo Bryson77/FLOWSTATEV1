@@ -230,7 +230,7 @@ export default function TimerPage() {
 
         // 2. If Pomodoro (>= 25 min), invoke server-side streak maintenance function
         if (loggedSeconds >= 25 * 60) {
-          await supabase.rpc('record_study_activity', {
+          await (supabase.rpc as any)('record_study_activity', {
             p_user_id: user.id,
             p_activity_type: 'session',
           });

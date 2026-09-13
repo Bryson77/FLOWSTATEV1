@@ -71,6 +71,8 @@ jobs:
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: 1
         run: |
           BRANCH_NAME="${{ github.event.inputs.branch || 'production' }}"
-          eas update --auto --branch "$BRANCH_NAME" --message "Deploy from GitHub Actions (commit ${{ github.sha }})"
+          eas update --auto --branch "$BRANCH_NAME" --message "Deploy from GitHub Actions (commit ${{ github.sha }})" --non-interactive
+

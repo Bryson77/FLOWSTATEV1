@@ -343,6 +343,11 @@ export type Database = {
           university: string | null
           updated_at: string | null
           username: string | null
+          timezone: string | null
+          has_completed_onboarding: boolean | null
+          daily_study_goal_minutes: number | null
+          email_notifications_opt_in: boolean | null
+          tier: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -361,6 +366,11 @@ export type Database = {
           university?: string | null
           updated_at?: string | null
           username?: string | null
+          timezone?: string | null
+          has_completed_onboarding?: boolean | null
+          daily_study_goal_minutes?: number | null
+          email_notifications_opt_in?: boolean | null
+          tier?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -379,6 +389,11 @@ export type Database = {
           university?: string | null
           updated_at?: string | null
           username?: string | null
+          timezone?: string | null
+          has_completed_onboarding?: boolean | null
+          daily_study_goal_minutes?: number | null
+          email_notifications_opt_in?: boolean | null
+          tier?: string | null
         }
         Relationships: []
       }
@@ -768,7 +783,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_study_activity: {
+        Args: {
+          p_user_id: string
+          p_activity_type: string
+        }
+        Returns: Json
+      }
+      delete_user_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      get_my_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

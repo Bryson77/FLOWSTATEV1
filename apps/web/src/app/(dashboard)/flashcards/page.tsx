@@ -247,7 +247,7 @@ export default function FlashcardsPage() {
       if (newCount === 15) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await supabase.rpc('record_study_activity', {
+          await (supabase.rpc as any)('record_study_activity', {
             p_user_id: user.id,
             p_activity_type: 'flashcards'
           });
