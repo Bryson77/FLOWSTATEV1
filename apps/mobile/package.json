@@ -10,6 +10,7 @@
     "clean": "rm -rf .expo node_modules"
   },
   "dependencies": {
+    "@babel/runtime": "^7.26.0",
     "@flowstate/shared": "workspace:*",
     "@flowstate/study-engine": "workspace:*",
     "@react-native-async-storage/async-storage": "1.23.1",
