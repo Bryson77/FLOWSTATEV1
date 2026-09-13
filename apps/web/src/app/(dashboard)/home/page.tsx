@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
-import { getLocalISODate } from '@flowstate/study-engine';
+import { getLocalISODate } from '@saktus/study-engine';
 
 interface NextClass {
   name: string;
@@ -99,12 +99,12 @@ export default function HomePage() {
   const { toast } = useToast();
   const supabase = createClient();
 
-  const fetchCockpitData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
       const { data: { user }, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !user) throw new Error('Please sign in to view your cockpit.');
+      if (authErr || !user) throw new Error('Please sign in to view your dashboard.');
 
       const today = new Date();
       const currentDayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); // 1=Mon, 7=Sun
@@ -204,15 +204,15 @@ export default function HomePage() {
         setNextClass(null);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load cockpit data.');
+      setErrorMsg(err.message || 'Failed to load dashboard data.');
     } finally {
       setLoading(false);
     }
   }, [supabase]);
 
   useEffect(() => {
-    fetchCockpitData();
-  }, [fetchCockpitData]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Handle inline task addition
   const handleAddTask = async (e: React.FormEvent) => {
@@ -364,10 +364,10 @@ export default function HomePage() {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-white">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
             {getGreeting()}
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">Here is your academic overview for today.</p>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Here is your academic overview for today.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -375,12 +375,12 @@ export default function HomePage() {
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2.5 rounded-xl border border-white/10 bg-[#09090b] text-zinc-300 hover:text-white hover:border-white/20 transition-all btn-press"
+              className="relative p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-all btn-press"
               aria-label="Notifications"
             >
               <Bell className="h-4 w-4" />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-white text-black font-mono text-[10px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-zinc-900 text-white dark:bg-white dark:text-black font-mono text-[10px] font-bold flex items-center justify-center">
                   {unreadNotificationsCount}
                 </span>
               )}
@@ -388,9 +388,9 @@ export default function HomePage() {
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-white/10 bg-[#09090b] shadow-2xl p-4 z-50 space-y-3">
-                <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
-                  <span className="text-xs font-semibold text-white">Notifications</span>
+              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl p-4 z-50 space-y-3">
+                <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                  <span className="text-xs font-semibold text-zinc-900 dark:text-white">Notifications</span>
                   <span className="text-[10px] font-mono text-zinc-500">{unreadNotificationsCount} unread</span>
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2">
@@ -398,9 +398,9 @@ export default function HomePage() {
                     <div className="text-center py-4 text-xs text-zinc-500">No alerts right now</div>
                   ) : (
                     notifications.map(n => (
-                      <div key={n.id} className="rounded-lg border border-white/[0.04] bg-black/60 p-2.5 space-y-1">
-                        <div className="text-xs font-medium text-white">{n.title}</div>
-                        <div className="text-[11px] text-zinc-400 leading-snug">{n.message}</div>
+                      <div key={n.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-2.5 space-y-1">
+                        <div className="text-xs font-medium text-zinc-900 dark:text-white">{n.title}</div>
+                        <div className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-snug">{n.message}</div>
                       </div>
                     ))
                   )}
@@ -410,9 +410,9 @@ export default function HomePage() {
           </div>
 
           {/* Streak Status Pill */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#09090b] px-4 py-2">
-            <Flame className="h-4 w-4 text-amber-400" />
-            <span className="font-mono text-xs font-semibold text-white">
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2">
+            <Flame className="h-4 w-4 text-amber-500" />
+            <span className="font-mono text-xs font-semibold text-zinc-900 dark:text-white">
               {profile?.study_streak_days || 0} Day Streak
             </span>
             <span className="text-[11px] text-zinc-500 font-mono">
@@ -424,28 +424,28 @@ export default function HomePage() {
 
       {/* Error state */}
       {errorMsg && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-400 flex items-center justify-between">
+        <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
-          <button onClick={fetchCockpitData} className="underline hover:text-white">Retry</button>
+          <button onClick={fetchDashboardData} className="underline hover:text-black dark:hover:text-white">Retry</button>
         </div>
       )}
 
-      {/* Next Up Class Dynamic Island */}
+      {/* Next Up Class Island */}
       {nextClass ? (
-        <div className="rounded-2xl border border-white/10 bg-[#09090b] p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-medium text-emerald-400 uppercase tracking-wide">Next Up</span>
-                <span className="text-xs text-zinc-500 font-mono">·</span>
-                <span className="text-xs font-mono text-zinc-400">{nextClass.code}</span>
+                <span className="text-xs font-mono font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Next Up</span>
+                <span className="text-xs text-zinc-400 font-mono">·</span>
+                <span className="text-xs font-mono text-zinc-600 dark:text-zinc-400">{nextClass.code}</span>
               </div>
-              <h2 className="text-base font-semibold text-white mt-0.5">{nextClass.name}</h2>
-              <p className="text-xs text-zinc-400 flex items-center gap-2 mt-1">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-white mt-0.5">{nextClass.name}</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 flex items-center gap-2 mt-1">
                 <span>{nextClass.time}</span>
                 <span>·</span>
                 <span>{nextClass.venue}</span>
@@ -455,37 +455,37 @@ export default function HomePage() {
 
           <Link
             href="/timetable"
-            className="inline-flex items-center gap-1.5 self-start sm:self-center rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-zinc-200 hover:text-white hover:bg-white/[0.08] transition-all btn-press"
+            className="inline-flex items-center gap-1.5 self-start sm:self-center rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 px-3.5 py-2 text-xs font-medium text-zinc-800 dark:text-zinc-200 hover:text-black dark:hover:text-white transition-all btn-press"
           >
             View Timetable
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/[0.06] bg-[#09090b] p-5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-xs font-mono text-zinc-500 uppercase">Schedule Status</span>
-            <div className="text-sm font-medium text-zinc-300 mt-0.5">No classes scheduled for today.</div>
+            <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mt-0.5">No classes scheduled for today.</div>
           </div>
           <Link
             href="/timetable"
-            className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white"
+            className="inline-flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
           >
             Manage Timetable <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
       )}
 
-      {/* Main Cockpit Grid */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 Cols): Tasks & Upcoming Assessments */}
         <div className="lg:col-span-2 space-y-6">
           {/* Tasks & Reminders Widget with In-line Quick-Add */}
-          <div className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-zinc-300" />
-                <h3 className="text-sm font-semibold text-white tracking-tight">Today's Tasks & Reminders</h3>
+                <CheckCircle2 className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Today's Tasks</h3>
               </div>
               <span className="text-xs font-mono text-zinc-500">
                 {tasks.filter(t => t.done).length}/{tasks.length} Completed
@@ -496,16 +496,16 @@ export default function HomePage() {
             <form onSubmit={handleAddTask} className="flex gap-2">
               <input
                 type="text"
-                placeholder="Add an academic task... (Press Enter)"
+                placeholder="Add a task... (Press Enter)"
                 value={newTaskText}
                 onChange={e => setNewTaskText(e.target.value)}
                 disabled={isAddingTask}
-                className="flex-1 rounded-xl border border-white/10 bg-black px-3.5 py-2 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/25 transition-all"
+                className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3.5 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all"
               />
               <select
                 value={newTaskPrio}
                 onChange={e => setNewTaskPrio(e.target.value)}
-                className="rounded-xl border border-white/10 bg-black px-2.5 py-2 text-xs text-zinc-300 focus:outline-none focus:border-white/25"
+                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2.5 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
               >
                 <option value="normal">Normal</option>
                 <option value="high">High</option>
@@ -514,7 +514,7 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={isAddingTask || !newTaskText.trim()}
-                className="rounded-xl bg-white px-3.5 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all disabled:opacity-50 btn-press"
+                className="rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-3.5 py-2 text-xs font-semibold transition-all disabled:opacity-50 btn-press"
               >
                 Add
               </button>
@@ -523,47 +523,47 @@ export default function HomePage() {
             {/* Task Item List */}
             <div className="space-y-2 pt-1">
               {tasks.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-white/[0.06] rounded-xl text-xs text-zinc-600">
-                  No active tasks. Add your first academic item above.
+                <div className="text-center py-8 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-500">
+                  No active tasks. Add your first item above.
                 </div>
               ) : (
                 tasks.map(task => (
                   <div
                     key={task.id}
-                    className={`group flex items-center justify-between gap-3 rounded-xl border border-white/[0.04] p-3 transition-all ${
-                      task.done ? 'bg-white/[0.01] opacity-50' : 'bg-black/60 hover:border-white/10'
+                    className={`group flex items-center justify-between gap-3 rounded-xl border border-zinc-200 dark:border-zinc-800/80 p-3 transition-all ${
+                      task.done ? 'bg-zinc-50/50 dark:bg-zinc-900/30 opacity-60' : 'bg-zinc-50/80 dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <button
                         onClick={() => handleToggleTask(task)}
-                        className="text-zinc-400 hover:text-white transition-colors shrink-0"
+                        className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shrink-0"
                       >
                         {task.done ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                         ) : (
                           <Circle className="h-4 w-4" />
                         )}
                       </button>
-                      <span className={`text-xs truncate ${task.done ? 'line-through text-zinc-500' : 'text-zinc-200'}`}>
+                      <span className={`text-xs truncate ${task.done ? 'line-through text-zinc-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
                         {task.text}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       {task.prio === 'urgent' && (
-                        <span className="rounded px-1.5 py-0.5 text-[10px] font-mono uppercase bg-red-500/10 border border-red-500/30 text-red-400">
+                        <span className="rounded px-1.5 py-0.5 text-[10px] font-mono uppercase bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400">
                           Urgent
                         </span>
                       )}
                       {task.course_name && (
-                        <span className="rounded px-1.5 py-0.5 text-[10px] font-mono text-zinc-400 bg-white/[0.04]">
+                        <span className="rounded px-1.5 py-0.5 text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800">
                           {task.course_name}
                         </span>
                       )}
                       <button
                         onClick={() => handleDeleteTask(task.id)}
-                        className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-opacity p-1"
+                        className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-opacity p-1"
                         aria-label="Delete task"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -576,41 +576,41 @@ export default function HomePage() {
           </div>
 
           {/* Upcoming Assessments HUD with In-place CRUD */}
-          <div className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-zinc-300" />
-                <h3 className="text-sm font-semibold text-white tracking-tight">Critical Assessment Countdowns</h3>
+                <Clock className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Upcoming Assessments & Exams</h3>
               </div>
               <button
                 onClick={() => setIsAssessmentModalOpen(true)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-zinc-300 hover:text-white btn-press"
+                className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-black dark:hover:text-white btn-press"
               >
-                <Plus className="h-3.5 w-3.5" /> Add Exam
+                <Plus className="h-3.5 w-3.5" /> Add Assessment
               </button>
             </div>
 
             <div className="space-y-2.5">
               {assessments.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-white/[0.06] rounded-xl text-xs text-zinc-600">
+                <div className="text-center py-8 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-500">
                   No upcoming exams or assignments logged.
                 </div>
               ) : (
                 assessments.map(exam => {
                   const daysLeft = calculateDaysRemaining(exam.due_date);
-                  const isCritical = daysLeft <= 7;
+                  const isSoon = daysLeft <= 7;
                   const isModerate = daysLeft > 7 && daysLeft <= 14;
 
                   return (
                     <div
                       key={exam.id}
-                      className="flex items-center justify-between p-3.5 rounded-xl border border-white/[0.04] bg-black/60 hover:border-white/10 transition-all"
+                      className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
                     >
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-white">{exam.title}</span>
+                          <span className="text-xs font-semibold text-zinc-900 dark:text-white">{exam.title}</span>
                           {exam.course_code && (
-                            <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.04] px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                               {exam.course_code}
                             </span>
                           )}
@@ -622,11 +622,11 @@ export default function HomePage() {
                       </div>
 
                       <div className={`px-2.5 py-1 rounded-full text-xs font-mono font-medium ${
-                        isCritical
-                          ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        isSoon
+                          ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
                           : isModerate
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'bg-white/[0.04] text-zinc-300 border border-white/[0.08]'
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700'
                       }`}>
                         {daysLeft <= 0 ? 'Due Today' : `${daysLeft}d left`}
                       </div>
@@ -641,18 +641,18 @@ export default function HomePage() {
         {/* Right Column (1 Col): Flashcard SRS Due Ring & Enrolled Courses */}
         <div className="space-y-6">
           {/* Flashcard Due Review Ring */}
-          <div className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4">
-            <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
-              <Layers className="h-4 w-4 text-purple-400" />
-              <h3 className="text-sm font-semibold text-white tracking-tight">Active Recall (SM-2)</h3>
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4">
+            <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <Layers className="h-4 w-4 text-purple-500" />
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Flashcards</h3>
             </div>
 
             <div className="text-center py-4 space-y-3">
-              <div className="inline-flex items-center justify-center h-20 w-20 rounded-full border-2 border-purple-500/30 bg-purple-500/10 font-mono text-2xl font-bold text-white tnum">
+              <div className="inline-flex items-center justify-center h-20 w-20 rounded-full border-2 border-purple-500/30 bg-purple-500/10 font-mono text-2xl font-bold text-zinc-900 dark:text-white tnum">
                 {cardsDueCount}
               </div>
               <div>
-                <div className="text-xs font-medium text-white">
+                <div className="text-xs font-medium text-zinc-900 dark:text-white">
                   {cardsDueCount > 0 ? `${cardsDueCount} Cards Due Today` : 'All Decks Caught Up'}
                 </div>
                 <p className="text-[11px] text-zinc-500 mt-0.5">
@@ -662,7 +662,7 @@ export default function HomePage() {
 
               <Link
                 href="/flashcards"
-                className="inline-flex items-center justify-center gap-1.5 w-full rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
+                className="inline-flex items-center justify-center gap-1.5 w-full rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2.5 text-xs font-semibold transition-all btn-press"
               >
                 Review Deck Queue
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -671,26 +671,26 @@ export default function HomePage() {
           </div>
 
           {/* Enrolled Courses / Subject Matrix */}
-          <div className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-blue-400" />
-                <h3 className="text-sm font-semibold text-white tracking-tight">Enrolled Subjects</h3>
+                <BookOpen className="h-4 w-4 text-blue-500" />
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Courses</h3>
               </div>
               <span className="text-xs font-mono text-zinc-500">{courses.length} courses</span>
             </div>
 
             <div className="space-y-3">
               {courses.length === 0 ? (
-                <div className="text-center py-6 text-xs text-zinc-600">
+                <div className="text-center py-6 text-xs text-zinc-500">
                   No courses registered yet.
                 </div>
               ) : (
                 courses.map(course => (
-                  <div key={course.id} className="p-3 rounded-xl border border-white/[0.04] bg-black/60 space-y-2">
+                  <div key={course.id} className="p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-white">{course.name}</span>
-                      <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.06] px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-semibold text-zinc-900 dark:text-white">{course.name}</span>
+                      <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-200/60 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                         {course.code}
                       </span>
                     </div>
@@ -699,7 +699,7 @@ export default function HomePage() {
                       <span>Target: {course.target_hours_per_week || 6}h / week</span>
                       <Link
                         href={`/timer?course=${course.id}`}
-                        className="text-xs font-semibold text-zinc-300 hover:text-white"
+                        className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
                       >
                         Start Focus
                       </Link>
@@ -714,37 +714,37 @@ export default function HomePage() {
 
       {/* In-place Add Assessment Modal */}
       {isAssessmentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h3 className="text-sm font-semibold text-white">Log Upcoming Assessment</h3>
-              <button onClick={() => setIsAssessmentModalOpen(false)} className="text-zinc-500 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Add Assessment</h3>
+              <button onClick={() => setIsAssessmentModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
                 Cancel
               </button>
             </div>
 
             <form onSubmit={handleCreateAssessment} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Title</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Title</label>
                 <input
                   type="text"
                   placeholder="e.g. Midterm Exam 1"
                   value={newExamTitle}
                   onChange={e => setNewExamTitle(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Subject</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Course</label>
                 <select
                   value={newExamCourseId}
                   onChange={e => setNewExamCourseId(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   required
                 >
-                  <option value="">Select subject...</option>
+                  <option value="">Select course...</option>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                   ))}
@@ -753,23 +753,23 @@ export default function HomePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-mono text-zinc-400 mb-1">Due Date</label>
+                  <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Due Date</label>
                   <input
                     type="date"
                     value={newExamDate}
                     onChange={e => setNewExamDate(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-mono text-zinc-400 mb-1">Weight (%)</label>
+                  <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Weight (%)</label>
                   <input
                     type="number"
                     placeholder="e.g. 25"
                     value={newExamWeight}
                     onChange={e => setNewExamWeight(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   />
                 </div>
               </div>
@@ -778,14 +778,14 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => setIsAssessmentModalOpen(false)}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white"
+                  className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingExam}
-                  className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
+                  className="rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2 text-xs font-semibold transition-all btn-press"
                 >
                   {isSavingExam ? 'Saving...' : 'Save Assessment'}
                 </button>

@@ -45,6 +45,8 @@ studyRouter.get("/decks", async (c) => {
 // Record a completed study session
 const sessionSchema = z.object({
   course_id: z.string().uuid().optional().nullable(),
+  task_id: z.string().optional().nullable(),
+  assessment_id: z.string().uuid().optional().nullable(),
   duration_seconds: z.number().int().positive(),
   mode: z.string().optional().default("pomodoro"),
   notes: z.string().optional().nullable(),

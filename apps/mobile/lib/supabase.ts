@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Database } from '@flowstate/shared';
+import type { Database } from '@saktus/shared';
 
 declare const process: { env: Record<string, string | undefined> };
 

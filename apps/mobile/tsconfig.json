@@ -8,8 +8,8 @@
     "strict": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@flowstate/study-engine": ["../../lib/study-engine/src/index.ts"],
-      "@flowstate/shared": ["../../lib/shared/src/index.ts"]
+      "@saktus/study-engine": ["../../lib/study-engine/src/index.ts"],
+      "@saktus/shared": ["../../lib/shared/src/index.ts"]
     },
     "tsBuildInfoFile": ".turbo/tsconfig.tsbuildinfo"
   },

@@ -10,10 +10,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AtSign } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
-
 
 export default function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -21,15 +20,37 @@ export default function MobileLoginScreen() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const sanitizeUsername = (val: string) => {
+    return val.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  };
+
   const handleAuth = async () => {
     if (!email.trim() || !password.trim()) {
-      setErrorMsg('Please fill in all required fields.');
+      setErrorMsg('Please enter your email and password.');
       return;
     }
+
+    if (isSignUp) {
+      if (!fullName.trim()) {
+        setErrorMsg('Please enter your name.');
+        return;
+      }
+      const cleanUser = sanitizeUsername(username);
+      if (!cleanUser || cleanUser.length < 3) {
+        setErrorMsg('Username must be at least 3 letters, numbers, or underscores.');
+        return;
+      }
+      if (cleanUser.length > 20) {
+        setErrorMsg('Username cannot exceed 20 characters.');
+        return;
+      }
+    }
+
     setLoading(true);
     setErrorMsg('');
 
@@ -40,17 +61,45 @@ export default function MobileLoginScreen() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const cleanUser = sanitizeUsername(username);
+
+        // Check if username is already taken
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', cleanUser)
+          .maybeSingle();
+
+        if (existing) {
+          setErrorMsg('This username is already taken. Please choose another.');
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password: password.trim(),
           options: {
             data: {
               full_name: fullName.trim(),
+              username: cleanUser,
               timezone: userTimezone,
             },
           },
         });
         if (error) throw error;
+
+        // If user returned immediately, ensure profiles table has the username
+        if (data?.user?.id) {
+          await supabase
+            .from('profiles')
+            .update({
+              username: cleanUser,
+              full_name: fullName.trim(),
+              timezone: userTimezone,
+            })
+            .eq('id', data.user.id);
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim().toLowerCase(),
@@ -81,21 +130,24 @@ export default function MobileLoginScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 },
+            { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo & Header */}
+          {/* Saktus Tactile S Brand Emblem */}
           <View style={styles.header}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoLetter}>S</Text>
+            </View>
             <Text style={styles.brandTitle}>Saktus</Text>
             <Text style={styles.brandSubtitle}>
-              {isSignUp ? 'Create your student cockpit' : 'Welcome back'}
+              {isSignUp ? 'Create your student account' : 'Productivity app for students'}
             </Text>
             <Text style={styles.brandDescription}>
               {isSignUp
-                ? 'Sign up to sync courses, timetable & flashcards'
-                : 'Sign in to access your timetable and focus sessions'}
+                ? 'Join Saktus to organize your schedule, flashcards, and study sessions.'
+                : 'Sign in to access your calendar, flashcards, and timer.'}
             </Text>
           </View>
 
@@ -110,45 +162,47 @@ export default function MobileLoginScreen() {
                       setIsSignUp(true);
                       setErrorMsg('');
                     }}
-                    style={{
-                      marginTop: 8,
-                      paddingTop: 8,
-                      borderTopWidth: 1,
-                      borderTopColor: 'rgba(239,68,68,0.2)',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
+                    style={styles.errorActionRow}
                   >
-                    <Text style={{ fontSize: 11, color: '#A1A1AA' }}>New here?</Text>
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        color: '#FFFFFF',
-                        fontWeight: '600',
-                        textDecorationLine: 'underline',
-                      }}
-                    >
-                      Create an account
-                    </Text>
+                    <Text style={styles.errorActionMuted}>New here?</Text>
+                    <Text style={styles.errorActionHighlight}>Create an account</Text>
                   </Pressable>
                 )}
               </View>
             ) : null}
 
             {isSignUp && (
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>FULL NAME</Text>
-                <View style={styles.inputRow}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. Alex Ndlovu"
-                    placeholderTextColor="#52525B"
-                    value={fullName}
-                    onChangeText={setFullName}
-                  />
+              <>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>FULL NAME</Text>
+                  <View style={styles.inputRow}>
+                    <UserIcon size={16} color="#71717A" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. Alex Ndlovu"
+                      placeholderTextColor="#52525B"
+                      value={fullName}
+                      onChangeText={setFullName}
+                    />
+                  </View>
                 </View>
-              </View>
+
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>USERNAME</Text>
+                  <View style={styles.inputRow}>
+                    <AtSign size={16} color="#71717A" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. alex_dev"
+                      placeholderTextColor="#52525B"
+                      value={username}
+                      onChangeText={(val: string) => setUsername(sanitizeUsername(val))}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                </View>
+              </>
             )}
 
             <View style={styles.field}>
@@ -180,7 +234,7 @@ export default function MobileLoginScreen() {
                   onChangeText={setPassword}
                   autoCapitalize="none"
                 />
-                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
                   {showPassword ? (
                     <EyeOff size={16} color="#71717A" />
                   ) : (
@@ -216,7 +270,12 @@ export default function MobileLoginScreen() {
             <Text style={styles.toggleText}>
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             </Text>
-            <Pressable onPress={() => setIsSignUp(!isSignUp)}>
+            <Pressable
+              onPress={() => {
+                setIsSignUp(!isSignUp);
+                setErrorMsg('');
+              }}
+            >
               <Text style={styles.toggleHighlight}>
                 {isSignUp ? 'Sign in' : 'Sign up'}
               </Text>
@@ -237,37 +296,54 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
-    gap: 24,
+    gap: 20,
   },
   header: {
     alignItems: 'center',
     gap: 6,
   },
+  logoBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  logoLetter: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#000000',
+    letterSpacing: -1,
+  },
   brandTitle: {
     color: '#FFFFFF',
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '700',
     letterSpacing: -0.5,
   },
   brandSubtitle: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: 2,
+    textAlign: 'center',
   },
   brandDescription: {
     color: '#71717A',
     fontSize: 13,
     textAlign: 'center',
-    maxWidth: 280,
+    maxWidth: 300,
+    lineHeight: 18,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 20,
+    backgroundColor: '#09090B',
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 20,
-    gap: 16,
+    gap: 14,
   },
   errorBox: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -279,6 +355,25 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#F87171',
     fontSize: 12,
+  },
+  errorActionRow: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(239,68,68,0.2)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  errorActionMuted: {
+    fontSize: 11,
+    color: '#A1A1AA',
+  },
+  errorActionHighlight: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   field: {
     gap: 6,
@@ -292,7 +387,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: '#000000',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -311,7 +406,7 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 6,
   },
   btnRow: {
     flexDirection: 'row',

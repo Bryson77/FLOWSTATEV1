@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { Home, Calendar, Layers, Users } from 'lucide-react-native';
+import { Home, Calendar, Layers, Users, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -39,7 +39,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Schedule',
+          title: 'Calendar',
           tabBarIcon: ({ color, size }) => <Calendar size={size || 20} color={color} />,
         }}
       />
@@ -53,14 +53,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="social"
         options={{
-          title: 'Social',
+          title: 'Friends',
           tabBarIcon: ({ color, size }) => <Users size={size || 20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <User size={size || 20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="timer"
         options={{
-          href: null, // Floating mini-player paradigm
+          href: null, // Full timer screen accessible via floating pill or direct link
         }}
       />
     </Tabs>

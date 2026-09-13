@@ -30,6 +30,8 @@ const DAYS = [
   { num: 3, label: 'Wed' },
   { num: 4, label: 'Thu' },
   { num: 5, label: 'Fri' },
+  { num: 6, label: 'Sat' },
+  { num: 7, label: 'Sun' },
 ];
 
 export default function TimetablePage() {
@@ -60,42 +62,59 @@ export default function TimetablePage() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('You must be signed in to view your timetable.');
 
-      // Parallelize queries per Estavo performance standard
-      const [classesRes, coursesRes] = await Promise.all([
-        supabase
-          .from('timetable_classes')
-          .select('*, courses(name, code, color)')
-          .eq('user_id', user.id)
-          .order('start_time', { ascending: true }),
+      // Parallelize courses and classes fetches
+      const [coursesRes, classesRes] = await Promise.all([
         supabase
           .from('courses')
-          .select('*')
+          .select('id, name, code, color')
           .eq('user_id', user.id)
           .order('name', { ascending: true }),
+        supabase
+          .from('classes')
+          .select(`
+            id,
+            course_id,
+            day_of_week,
+            start_time,
+            end_time,
+            venue,
+            class_type,
+            courses (
+              name,
+              code,
+              color
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('start_time', { ascending: true })
       ]);
 
-      if (classesRes.error) throw classesRes.error;
       if (coursesRes.error) throw coursesRes.error;
+      if (classesRes.error) throw classesRes.error;
 
+      const coursesData: CourseItem[] = coursesRes.data || [];
+      setCourses(coursesData);
+      if (coursesData.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(coursesData[0].id);
+      }
+
+      // Map relational join safely
       const mappedClasses: ClassItem[] = (classesRes.data || []).map((c: any) => ({
         id: c.id,
         course_id: c.course_id,
-        course_name: c.courses?.name || 'Class',
-        course_code: c.courses?.code || '',
         day_of_week: c.day_of_week,
-        start_time: c.start_time?.slice(0, 5) || '09:00',
-        end_time: c.end_time?.slice(0, 5) || '10:30',
+        start_time: c.start_time,
+        end_time: c.end_time,
         venue: c.venue,
-        class_type: c.class_type || 'lecture',
+        class_type: c.class_type,
+        course_name: c.courses?.name || 'Untitled Course',
+        course_code: c.courses?.code || '',
+        course_color: c.courses?.color || null,
       }));
 
       setClasses(mappedClasses);
-      setCourses(coursesRes.data || []);
-      if (coursesRes.data && coursesRes.data.length > 0 && !selectedCourseId) {
-        setSelectedCourseId(coursesRes.data[0].id);
-      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load timetable. Check connection.');
+      setErrorMsg(err.message || 'Failed to load timetable.');
     } finally {
       setLoading(false);
     }
@@ -110,38 +129,37 @@ export default function TimetablePage() {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Unauthorized');
+      if (!user) throw new Error('Not authenticated.');
 
-      let courseIdToUse = selectedCourseId;
+      let activeCourseId = selectedCourseId;
 
-      // If user is adding a new course inline
-      if (!courseIdToUse && newCourseName.trim()) {
+      // Handle in-place course creation if none existed
+      if (!activeCourseId && newCourseName.trim()) {
         const { data: newCourse, error: courseErr } = await supabase
           .from('courses')
           .insert({
             user_id: user.id,
             name: newCourseName.trim(),
-            code: newCourseCode.trim() || newCourseName.slice(0, 3).toUpperCase() + '101',
-            color: '#3B82F6',
+            code: newCourseCode.trim() || newCourseName.substring(0, 4).toUpperCase(),
           })
-          .select()
+          .select('id')
           .single();
 
         if (courseErr) throw courseErr;
-        courseIdToUse = newCourse.id;
-        setCourses(prev => [...prev, newCourse]);
+        activeCourseId = newCourse.id;
       }
 
-      if (!courseIdToUse) {
-        throw new Error('Please select or specify a course.');
+      if (!activeCourseId) {
+        throw new Error('Please select or provide a course name.');
       }
 
+      // 1. Insert class into timetable
       const { error: classErr } = await supabase
-        .from('timetable_classes')
+        .from('classes')
         .insert({
           user_id: user.id,
-          course_id: courseIdToUse,
-          day_of_week: Number(dayOfWeek),
+          course_id: activeCourseId,
+          day_of_week: dayOfWeek,
           start_time: startTime,
           end_time: endTime,
           venue: venue.trim() || null,
@@ -150,31 +168,30 @@ export default function TimetablePage() {
 
       if (classErr) throw classErr;
 
-      toast('Class saved', 'success');
+      // 2. Clear state, notify user, refresh
+      toast('Class added to schedule.', 'success');
       setIsModalOpen(false);
-      setNewCourseName('');
-      setNewCourseCode('');
       setVenue('');
-      await fetchData();
+      fetchData();
     } catch (err: any) {
-      toast(err.message || 'Failed to save. Try again.', 'error');
+      toast(err.message || 'Failed to add class.', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (classId: string) => {
     try {
       const { error } = await supabase
-        .from('timetable_classes')
+        .from('classes')
         .delete()
-        .eq('id', id);
+        .eq('id', classId);
 
       if (error) throw error;
-      setClasses(prev => prev.filter(c => c.id !== id));
-      toast('Class removed', 'info');
+      setClasses(prev => prev.filter(c => c.id !== classId));
+      toast('Class removed.', 'default');
     } catch (err: any) {
-      toast('Failed to remove. Try again.', 'error');
+      toast(err.message || 'Failed to remove class.', 'error');
     }
   };
 
@@ -183,13 +200,13 @@ export default function TimetablePage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white">Timetable</h1>
-          <p className="mt-1 text-sm text-[#A0A0A0]">Weekly class matrix & venue coordinates.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Timetable</h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Weekly calendar & venue schedule.</p>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97]"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2 text-xs font-semibold transition-all btn-press"
         >
           <Plus className="h-4 w-4" />
           <span>Add Class</span>
@@ -198,43 +215,43 @@ export default function TimetablePage() {
 
       {/* Error State */}
       {errorMsg && (
-        <div className="rounded-xl border border-[#E74C3C]/30 bg-[#E74C3C]/10 p-4 text-xs text-[#E74C3C] flex items-center justify-between">
+        <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>{errorMsg}</span>
           </div>
           <button
             onClick={fetchData}
-            className="font-medium underline hover:text-white ml-4"
+            className="font-medium underline hover:text-black dark:hover:text-white ml-4"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* Loading State (Skeletons Only — No Spinners per Estavo Spec) */}
+      {/* Loading State */}
       {loading && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           {DAYS.map((d) => (
-            <div key={d.num} className="space-y-3 rounded-xl border border-[#2A2A2A] bg-[#111111] p-4">
+            <div key={d.num} className="space-y-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
               <div className="h-4 w-12 skeleton" />
-              <div className="h-24 w-full skeleton rounded-lg" />
-              <div className="h-24 w-full skeleton rounded-lg" />
+              <div className="h-24 w-full skeleton rounded-xl" />
+              <div className="h-24 w-full skeleton rounded-xl" />
             </div>
           ))}
         </div>
       )}
 
-      {/* Empty State (Centered, Display Heading, Inter Body, CTA Button, No Illustrations) */}
+      {/* Empty State */}
       {!loading && !errorMsg && classes.length === 0 && (
-        <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-12 text-center space-y-4 max-w-lg mx-auto my-12">
-          <h2 className="font-display text-xl font-bold text-white">No classes scheduled yet</h2>
-          <p className="text-sm text-[#A0A0A0] leading-relaxed">
-            Add your lectures, tutorials, and labs to build your weekly schedule matrix and enable Next Up countdowns.
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-12 text-center space-y-4 max-w-lg mx-auto my-12">
+          <h2 className="font-display text-xl font-bold text-zinc-900 dark:text-white">No classes scheduled yet</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            Add your lectures, tutorials, and labs to build your weekly schedule.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97]"
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-5 py-2.5 text-xs font-semibold transition-all btn-press"
           >
             <Plus className="h-4 w-4" />
             <span>Add Your First Class</span>
@@ -242,67 +259,67 @@ export default function TimetablePage() {
         </div>
       )}
 
-      {/* Weekly Matrix Grid */}
+      {/* Weekly 7-Day Grid */}
       {!loading && !errorMsg && classes.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           {DAYS.map((day) => {
             const dayClasses = classes.filter(c => c.day_of_week === day.num);
 
             return (
               <div
                 key={day.num}
-                className="flex flex-col rounded-xl border border-[#2A2A2A] bg-[#111111] p-4 min-h-[380px]"
+                className="flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 min-h-[380px]"
               >
-                <div className="border-b border-[#2A2A2A] pb-3 mb-3 flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3 mb-3 flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">
                     {day.label}
                   </span>
-                  <span className="font-mono text-[11px] text-[#A0A0A0]">
+                  <span className="font-mono text-[11px] text-zinc-500">
                     {dayClasses.length} {dayClasses.length === 1 ? 'class' : 'classes'}
                   </span>
                 </div>
 
                 <div className="flex-1 space-y-2.5 overflow-y-auto">
                   {dayClasses.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-[#4A4A4A] italic">
+                    <div className="py-8 text-center text-xs text-zinc-400 italic">
                       No classes
                     </div>
                   ) : (
                     dayClasses.map((cls) => (
                       <div
                         key={cls.id}
-                        className="group relative rounded-lg border border-[#2A2A2A] bg-[#1A1A1A] p-3 transition-all hover:border-white/20"
+                        className="group relative rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/60 p-3 transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest bg-white/10 text-white">
+                          <span className="rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-widest bg-zinc-200/60 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
                             {cls.class_type}
                           </span>
                           <button
                             onClick={() => handleDelete(cls.id)}
-                            className="opacity-0 group-hover:opacity-100 text-[#A0A0A0] hover:text-[#E74C3C] transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-opacity p-0.5"
                             title="Delete class"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
 
-                        <h3 className="font-semibold text-sm text-white mt-1.5 leading-snug">
+                        <h3 className="font-semibold text-sm text-zinc-900 dark:text-white mt-1.5 leading-snug">
                           {cls.course_name}
                         </h3>
                         {cls.course_code && (
-                          <div className="text-[11px] font-mono text-[#A0A0A0] mt-0.5">
+                          <div className="text-[11px] font-mono text-zinc-500 mt-0.5">
                             {cls.course_code}
                           </div>
                         )}
 
-                        <div className="mt-2.5 pt-2 border-t border-white/5 space-y-1 text-[11px] text-[#A0A0A0]">
+                        <div className="mt-2.5 pt-2 border-t border-zinc-200/60 dark:border-zinc-800 space-y-1 text-[11px] text-zinc-600 dark:text-zinc-400">
                           <div className="flex items-center gap-1.5 font-mono">
-                            <Clock className="h-3 w-3 text-zinc-500" />
+                            <Clock className="h-3 w-3 text-zinc-400" />
                             <span>{cls.start_time} - {cls.end_time}</span>
                           </div>
                           {cls.venue && (
                             <div className="flex items-center gap-1.5">
-                              <MapPin className="h-3 w-3 text-zinc-500" />
+                              <MapPin className="h-3 w-3 text-zinc-400" />
                               <span className="truncate">{cls.venue}</span>
                             </div>
                           )}
@@ -319,13 +336,13 @@ export default function TimetablePage() {
 
       {/* Modal: Add Class */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-xl border border-[#2A2A2A] bg-[#1A1A1A] p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-3">
-              <h2 className="font-display text-lg font-bold text-white">Add Class to Schedule</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h2 className="font-display text-lg font-bold text-zinc-900 dark:text-white">Add Class to Schedule</h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-[#A0A0A0] hover:text-white transition-colors"
+                className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -334,14 +351,14 @@ export default function TimetablePage() {
             <form onSubmit={handleAddClass} className="space-y-4">
               {/* Course Selection or Create */}
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
                   Course
                 </label>
                 {courses.length > 0 ? (
                   <select
                     value={selectedCourseId}
                     onChange={(e) => setSelectedCourseId(e.target.value)}
-                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   >
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -357,14 +374,14 @@ export default function TimetablePage() {
                       placeholder="Course Name (e.g. Computer Science)"
                       value={newCourseName}
                       onChange={(e) => setNewCourseName(e.target.value)}
-                      className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                      className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                     <input
                       type="text"
                       placeholder="Course Code (e.g. CSC2001F)"
                       value={newCourseCode}
                       onChange={(e) => setNewCourseCode(e.target.value)}
-                      className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                      className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                     />
                   </div>
                 )}
@@ -373,13 +390,13 @@ export default function TimetablePage() {
               {/* Day & Type */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
                     Day
                   </label>
                   <select
                     value={dayOfWeek}
                     onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   >
                     {DAYS.map((d) => (
                       <option key={d.num} value={d.num}>{d.label}</option>
@@ -387,13 +404,13 @@ export default function TimetablePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
                     Type
                   </label>
                   <select
                     value={classType}
                     onChange={(e) => setClassType(e.target.value)}
-                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   >
                     <option value="lecture">Lecture</option>
                     <option value="tutorial">Tutorial</option>
@@ -406,7 +423,7 @@ export default function TimetablePage() {
               {/* Times */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
                     Start Time
                   </label>
                   <input
@@ -414,11 +431,11 @@ export default function TimetablePage() {
                     required
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40 font-mono"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
+                  <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
                     End Time
                   </label>
                   <input
@@ -426,22 +443,22 @@ export default function TimetablePage() {
                     required
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white focus:outline-none focus:border-white/40 font-mono"
+                    className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 font-mono"
                   />
                 </div>
               </div>
 
               {/* Venue */}
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#A0A0A0] mb-1.5">
-                  Venue Coordinates
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-1.5">
+                  Venue / Room
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Science Block LT2"
                   value={venue}
                   onChange={(e) => setVenue(e.target.value)}
-                  className="w-full rounded-lg border border-[#2A2A2A] bg-[#111111] px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/40"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                 />
               </div>
 
@@ -449,14 +466,14 @@ export default function TimetablePage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-lg px-4 py-2 text-xs font-medium text-[#A0A0A0] hover:text-white transition-colors"
+                  className="rounded-xl px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all active:scale-[0.97] disabled:opacity-50"
+                  className="rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-5 py-2 text-xs font-semibold transition-all btn-press disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Save Class'}
                 </button>

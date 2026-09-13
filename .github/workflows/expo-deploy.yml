@@ -60,8 +60,8 @@ jobs:
 
       - name: 🏗️ Build Shared Packages
         run: |
-          pnpm --filter @flowstate/shared build || true
-          pnpm --filter @flowstate/study-engine build
+          pnpm --filter @saktus/shared build || true
+          pnpm --filter @saktus/study-engine build
 
       - name: 🔍 Typecheck Mobile App
         working-directory: apps/mobile

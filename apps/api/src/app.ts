@@ -58,7 +58,7 @@ app.use("*", initSupabaseMiddleware);
 // Root greeting
 app.get("/", (c) => {
   return c.json({
-    name: "FlowState API",
+    name: "Saktus API",
     status: "running",
     version: "1.0.0",
     docs: "/api/health",

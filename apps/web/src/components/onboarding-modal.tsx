@@ -76,7 +76,7 @@ export function OnboardingModal() {
         .eq('id', userId);
 
       setIsOpen(false);
-      toast('Academic cockpit configured!', 'success');
+      toast('Account configured!', 'success');
     } catch {
       toast('Failed to save preferences. You can update these anytime in settings.', 'error');
       setIsOpen(false);
@@ -206,7 +206,7 @@ export function OnboardingModal() {
                 onClick={() => setStep(3)}
                 className="flex-1 btn-press rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black py-2.5 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
               >
-                <span>Next: Cockpit Walkthrough</span>
+                <span>Next: App Overview</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
@@ -219,10 +219,10 @@ export function OnboardingModal() {
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
                 <Sparkles className="h-5 w-5" />
-                <h3 className="text-lg font-bold">Your Academic System</h3>
+                <h3 className="text-lg font-bold">What's in Saktus</h3>
               </div>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Five focused modules designed for serious coursework.
+                Core tools to manage your studies every day.
               </p>
             </div>
 
@@ -246,8 +246,8 @@ export function OnboardingModal() {
               <div className="p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-start gap-3">
                 <Clock className="h-4 w-4 text-zinc-700 dark:text-zinc-300 mt-0.5 shrink-0" />
                 <div>
-                  <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Focus Timer & Dual Zen Mode</h4>
-                  <p className="text-[11px] text-zinc-500">White Paper and Obsidian Dark modes with built-in procedural soundscapes.</p>
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-white">Focus Timer & Fullscreen</h4>
+                  <p className="text-[11px] text-zinc-500">Focus sessions with ambient soundscapes and task tracking.</p>
                 </div>
               </div>
 
@@ -283,7 +283,7 @@ export function OnboardingModal() {
                 className="flex-1 btn-press rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black py-2.5 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
               >
                 <Check className="h-4 w-4" />
-                <span>{saving ? 'Saving...' : 'Enter Academic Cockpit'}</span>
+                <span>{saving ? 'Saving...' : 'Get Started'}</span>
               </button>
             </div>
           </div>

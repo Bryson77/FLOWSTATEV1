@@ -31,8 +31,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Saktus — The Calm Academic Cockpit',
-  description: 'Timetable matrix, assessment countdowns, SM-2 flashcards, deep work timer, and squad leaderboards.',
+  title: 'Saktus — Productivity app for students',
+  description: 'Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({
@@ -47,6 +51,8 @@ export default function RootLayout({
       className={`${plusJakarta.variable} ${inter.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable}`}
     >
       <head>
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

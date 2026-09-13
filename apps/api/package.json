@@ -1,5 +1,5 @@
 {
-  "name": "@flowstate/api",
+  "name": "@saktus/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@flowstate/shared": "workspace:*",
+    "@saktus/shared": "workspace:*",
     "@supabase/supabase-js": "^2.49.1",
     "hono": "^4.7.4",
     "zod": "catalog:"

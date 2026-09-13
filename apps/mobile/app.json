@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Saktus",
-    "slug": "kestra",
+    "slug": "saktus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -27,10 +27,7 @@
       },
       "package": "com.saktus.app"
     },
-    "plugins": [
-      "expo-router",
-      "expo-font"
-    ],
+    "plugins": ["expo-router", "expo-font"],
     "extra": {
       "eas": {
         "projectId": "6f650258-7ddc-4e76-9f7d-f63f573b5744"

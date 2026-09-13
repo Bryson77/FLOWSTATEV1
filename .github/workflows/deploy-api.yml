@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Build Shared Packages
-        run: pnpm --filter @flowstate/shared build || true
+        run: pnpm --filter @saktus/shared build || true
 
       - name: Build API Server
         working-directory: apps/api

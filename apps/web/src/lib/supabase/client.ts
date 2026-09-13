@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
-import type { Database } from '@flowstate/shared';
+import type { Database } from '@saktus/shared';
 
 let client: ReturnType<typeof createBrowserClient<Database>> | undefined;
 

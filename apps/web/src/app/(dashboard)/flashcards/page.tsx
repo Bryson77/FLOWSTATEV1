@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
-import { calculateNextReview, type ReviewRating } from '@flowstate/study-engine';
+import { calculateNextReview, type ReviewRating } from '@saktus/study-engine';
 
 interface CardItem {
   id: string;
@@ -518,9 +518,9 @@ export default function FlashcardsPage() {
         {/* 3D Flip Flashcard */}
         <div
           onClick={() => setFlipped(!flipped)}
-          className="relative min-h-[340px] w-full cursor-pointer rounded-2xl border border-white/10 bg-[#09090b] p-8 shadow-2xl flex flex-col justify-between select-none transition-all hover:border-white/20 active:scale-[0.99]"
+          className="relative min-h-[340px] w-full cursor-pointer rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-8 shadow-sm dark:shadow-2xl flex flex-col justify-between select-none transition-all hover:border-zinc-300 dark:hover:border-zinc-700 active:scale-[0.99]"
         >
-          <div className="flex items-center justify-between text-zinc-500 text-[11px] font-mono">
+          <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400 text-[11px] font-mono">
             <span>{flipped ? 'ANSWER / EXPLANATION' : 'QUESTION'}</span>
             <span className="inline-flex items-center gap-1">
               <RotateCw className="h-3 w-3" /> Tap or Space to flip
@@ -528,7 +528,7 @@ export default function FlashcardsPage() {
           </div>
 
           <div className="py-8 text-center space-y-4">
-            <p className="font-display text-xl sm:text-2xl font-semibold text-white leading-relaxed">
+            <p className="font-display text-xl sm:text-2xl font-semibold text-zinc-900 dark:text-white leading-relaxed">
               {flipped ? (currentCard.back_text || currentCard.correct_answer) : currentCard.front_text}
             </p>
 
@@ -656,7 +656,7 @@ export default function FlashcardsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleResetSRS(managingDeck.id)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#09090b] px-3 py-2 text-xs font-medium text-zinc-300 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Reset Intervals
             </button>
@@ -667,7 +667,7 @@ export default function FlashcardsPage() {
                 setCardBack('');
                 setIsCardModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-semibold text-black hover:bg-zinc-200 btn-press"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-3.5 py-2 text-xs font-semibold btn-press"
             >
               <Plus className="h-3.5 w-3.5" /> Add Card
             </button>
@@ -677,37 +677,37 @@ export default function FlashcardsPage() {
         {/* Cards Table */}
         <div className="space-y-3">
           {deckCards.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl text-xs text-zinc-500">
+            <div className="text-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs text-zinc-500">
               This deck has no cards. Click "Add Card" to create your first card.
             </div>
           ) : (
             deckCards.map((card, index) => (
               <div
                 key={card.id}
-                className="flex items-center justify-between p-4 rounded-xl border border-white/[0.06] bg-[#09090b] hover:border-white/15 transition-all"
+                className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
               >
                 <div className="space-y-1 flex-1 pr-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono text-zinc-500">#{index + 1}</span>
-                    <span className="text-xs font-semibold text-white">{card.front_text}</span>
-                    <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.04] px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-mono text-zinc-400">#{index + 1}</span>
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-white">{card.front_text}</span>
+                    <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                       {card.card_type}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-400 line-clamp-1">{card.back_text || card.correct_answer}</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-1">{card.back_text || card.correct_answer}</p>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleDuplicateCard(card)}
-                    className="p-1.5 text-zinc-500 hover:text-white transition-colors"
+                    className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                     title="Duplicate Card"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => handleDeleteCard(card.id)}
-                    className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                    className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
                     title="Delete Card"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -720,13 +720,13 @@ export default function FlashcardsPage() {
 
         {/* Add / Edit Card Modal */}
         {isCardModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-                <h3 className="text-sm font-semibold text-white">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
                   {editingCardId ? 'Edit Card' : `Add Card to ${managingDeck.title}`}
                 </h3>
-                <button onClick={() => setIsCardModalOpen(false)} className="text-zinc-500 hover:text-white">
+                <button onClick={() => setIsCardModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
                   Cancel
                 </button>
               </div>
@@ -876,17 +876,17 @@ export default function FlashcardsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white">
-            Flashcard SRS Engine
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">
+            Flashcards
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Spaced repetition decks organized strictly by academic subjects.
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Spaced repetition decks organized by subject.
           </p>
         </div>
 
         <button
           onClick={() => setIsDeckModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
+          className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2.5 text-xs font-semibold transition-all btn-press"
         >
           <Plus className="h-4 w-4" /> Create Deck
         </button>
@@ -896,13 +896,13 @@ export default function FlashcardsPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
           <input
             type="text"
             placeholder="Search decks, topics (#Chapter1), and cards..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-[#09090b] pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-white/30"
+            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-10 pr-4 py-2.5 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
           />
         </div>
 
@@ -910,7 +910,7 @@ export default function FlashcardsPage() {
         <select
           value={selectedCourseFilter}
           onChange={e => setSelectedCourseFilter(e.target.value)}
-          className="rounded-xl border border-white/10 bg-[#09090b] px-3 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-white/30"
+          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-3 py-2.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
         >
           <option value="all">All Subjects</option>
           {courses.map(c => (
@@ -919,11 +919,11 @@ export default function FlashcardsPage() {
         </select>
 
         {/* Review Status Filter */}
-        <div className="flex rounded-xl border border-white/10 bg-[#09090b] p-1 text-xs">
+        <div className="flex rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-1 text-xs">
           <button
             onClick={() => setReviewFilter('all')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              reviewFilter === 'all' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
+              reviewFilter === 'all' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-semibold shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white'
             }`}
           >
             All
@@ -931,7 +931,7 @@ export default function FlashcardsPage() {
           <button
             onClick={() => setReviewFilter('due')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              reviewFilter === 'due' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
+              reviewFilter === 'due' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-semibold shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white'
             }`}
           >
             Due Today
@@ -939,7 +939,7 @@ export default function FlashcardsPage() {
           <button
             onClick={() => setReviewFilter('learning')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              reviewFilter === 'learning' ? 'bg-white text-black font-semibold' : 'text-zinc-400 hover:text-white'
+              reviewFilter === 'learning' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-semibold shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white'
             }`}
           >
             Learning
@@ -950,23 +950,23 @@ export default function FlashcardsPage() {
       {/* Decks Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredDecks.length === 0 ? (
-          <div className="col-span-full text-center py-16 border border-dashed border-white/10 rounded-2xl space-y-2">
-            <p className="text-sm font-semibold text-zinc-400">No decks found</p>
-            <p className="text-xs text-zinc-600">Create a flashcard deck or adjust your filters above.</p>
+          <div className="col-span-full text-center py-16 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-2">
+            <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">No decks found</p>
+            <p className="text-xs text-zinc-500">Create a flashcard deck or adjust your filters above.</p>
           </div>
         ) : (
           filteredDecks.map(deck => (
             <div
               key={deck.id}
-              className="rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 hover:border-white/20 transition-all flex flex-col justify-between"
+              className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-zinc-400 bg-white/[0.04] px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
                     {deck.course_code || deck.course_name}
                   </span>
                   {(deck.due_count || 0) > 0 ? (
-                    <span className="rounded-full bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-[10px] font-mono font-medium text-purple-400">
+                    <span className="rounded-full bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-[10px] font-mono font-medium text-purple-600 dark:text-purple-400">
                       {deck.due_count} Due
                     </span>
                   ) : (
@@ -974,7 +974,7 @@ export default function FlashcardsPage() {
                   )}
                 </div>
 
-                <h3 className="text-base font-bold text-white tracking-tight">{deck.title}</h3>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">{deck.title}</h3>
 
                 {deck.tags && deck.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 pt-1">
@@ -987,12 +987,12 @@ export default function FlashcardsPage() {
                 )}
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-white/[0.06]">
+              <div className="space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
                   <span>{deck.card_count} Total Cards</span>
                   <button
                     onClick={() => setManagingDeck(deck)}
-                    className="text-zinc-400 hover:text-white underline text-[11px]"
+                    className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white underline text-[11px]"
                   >
                     Manage Cards
                   </button>
@@ -1001,13 +1001,13 @@ export default function FlashcardsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleStartStudy(deck, 'srs')}
-                    className="flex-1 rounded-xl bg-white py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
+                    className="flex-1 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 py-2 text-xs font-semibold transition-all btn-press"
                   >
                     Study Deck
                   </button>
                   <button
                     onClick={() => handleDeleteDeck(deck.id)}
-                    className="p-2 rounded-xl border border-white/10 text-zinc-500 hover:text-red-400 transition-colors"
+                    className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
                     title="Delete Deck"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1021,36 +1021,37 @@ export default function FlashcardsPage() {
 
       {/* Create Deck Modal */}
       {isDeckModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#09090b] p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <h3 className="text-sm font-semibold text-white">Create Flashcard Deck</h3>
-              <button onClick={() => setIsDeckModalOpen(false)} className="text-zinc-500 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Create Flashcard Deck</h3>
+              <button onClick={() => setIsDeckModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
                 Cancel
               </button>
             </div>
 
             <form onSubmit={handleCreateDeck} className="space-y-3">
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Deck Title</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Deck Title</label>
                 <input
                   type="text"
                   placeholder="e.g. Chapter 4: Data Structures"
                   value={newDeckTitle}
                   onChange={e => setNewDeckTitle(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Subject</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Course</label>
                 <select
                   value={newDeckCourseId}
                   onChange={e => setNewDeckCourseId(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                   required
                 >
+                  <option value="">Select course...</option>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                   ))}
@@ -1058,13 +1059,13 @@ export default function FlashcardsPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-zinc-400 mb-1">Tags (Comma-separated)</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Tags (Comma-separated)</label>
                 <input
                   type="text"
                   placeholder="e.g. Trees, Algorithms, Midterm"
                   value={newDeckTags}
                   onChange={e => setNewDeckTags(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-black px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
                 />
               </div>
 
@@ -1072,14 +1073,14 @@ export default function FlashcardsPage() {
                 <button
                   type="button"
                   onClick={() => setIsDeckModalOpen(false)}
-                  className="rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400 hover:text-white"
+                  className="rounded-xl border border-zinc-200 dark:border-zinc-800 px-4 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingDeck}
-                  className="rounded-xl bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-zinc-200 transition-all btn-press"
+                  className="rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-2 text-xs font-semibold transition-all btn-press"
                 >
                   {isSavingDeck ? 'Creating...' : 'Create Deck'}
                 </button>

@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Saktus — The Calm Academic Cockpit</title>
+  <title>Saktus — Productivity app for students</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -170,7 +172,7 @@
     }
 
     /* Solid Tactile Card (No Glassmorphism Slop) */
-    .cockpit-card {
+    .main-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: 28px;
@@ -182,7 +184,7 @@
       transition: background 200ms ease, border-color 200ms ease;
     }
 
-    body.dark .cockpit-card {
+    body.dark .main-card {
       box-shadow: none;
     }
 
@@ -443,15 +445,7 @@
   <div class="bg-grid"></div>
 
   <div class="main-wrapper">
-    <div class="top-row">
-      <div class="island-badge">
-        <div class="status-dot-wrap">
-          <div class="status-ping"></div>
-          <div class="status-dot"></div>
-        </div>
-        <span>Saktus Academic OS · Dual Edition</span>
-      </div>
-
+    <div class="top-row" style="justify-content: flex-end;">
       <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn btn-press" title="Toggle Pure White / Pure Black">
         <svg id="themeIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -460,65 +454,38 @@
       </button>
     </div>
 
-    <div class="cockpit-card">
+    <div class="main-card">
       <div class="logo-container">
-        <svg class="logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
+        <span style="font-size: 30px; font-weight: 800; color: var(--text-primary); letter-spacing: -1.5px; line-height: 1;">S</span>
       </div>
 
-      <h1>The Calm Academic Cockpit.</h1>
+      <h1>One app for your whole semester.</h1>
       <p class="subtitle">
-        Built for actual university coursework: your 5-day timetable matrix, SM-2 flashcard decks, procedural focus timer, and assessment deadlines without switching between five tabs.
+        Timetable. Flashcards. Focus timer. Study group. Saktus runs all of it.
       </p>
 
       <div class="actions">
         <a href="/login" class="btn-primary btn-press">
-          Launch Cockpit
+          Start studying
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
         </a>
         <a href="/timer" class="btn-secondary btn-press">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          Zen Focus Timer
+          Focus Timer
         </a>
       </div>
 
-      <div class="waitlist-wrap">
-        <form class="waitlist-form" id="waitlistForm" onsubmit="handleWaitlist(event)">
-          <input type="email" id="emailInput" class="waitlist-input" placeholder="Enter student email for early access..." required>
-          <button type="submit" class="waitlist-btn btn-press">Get Notified</button>
-        </form>
-        <div class="waitlist-success" id="waitlistSuccess">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          <span>You're on the priority list. Watch your inbox.</span>
-        </div>
+      <div style="margin-bottom: 2rem; padding: 1.25rem 1.5rem; border-radius: 18px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
+        You're using four apps to manage one semester. A calendar for classes, a flashcard app for exams, a timer for focus, a group chat for your study group. Saktus replaces all four.
       </div>
 
       <div class="feature-grid">
-        <div class="feature-pill">
-          <div class="feature-icon-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-              <polyline points="2 17 12 22 22 17"></polyline>
-              <polyline points="2 12 12 17 22 12"></polyline>
-            </svg>
-          </div>
-          <div>
-            <div class="feature-title">SM-2 Flashcard Engine</div>
-            <div class="feature-desc">Active recall with standard, T/F, and MCQ formats.</div>
-          </div>
-        </div>
-
         <div class="feature-pill">
           <div class="feature-icon-box">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -529,8 +496,22 @@
             </svg>
           </div>
           <div>
-            <div class="feature-title">5 & 7-Day Timetable</div>
-            <div class="feature-desc">Auto-highlight current period and exam countdowns.</div>
+            <div class="feature-title">Built for a semester</div>
+            <div class="feature-desc">Add your classes once, including the ones that repeat every week. Track assignment deadlines and exam dates in the same view. No setup beyond the first ten minutes.</div>
+          </div>
+        </div>
+
+        <div class="feature-pill">
+          <div class="feature-icon-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="feature-title">Spaced repetition, done properly</div>
+            <div class="feature-desc">Saktus schedules your reviews using the same spacing model researchers use to test memory retention. Tag your cards by subject and study whatever's actually due today.</div>
           </div>
         </div>
 
@@ -542,8 +523,8 @@
             </svg>
           </div>
           <div>
-            <div class="feature-title">Floating Island Timer</div>
-            <div class="feature-desc">Dual Zen (White Paper & Obsidian Dark) with soundscapes.</div>
+            <div class="feature-title">Time you can actually see</div>
+            <div class="feature-desc">Start a session. Saktus logs it. Check your total hours for the day, the week, the month. That's the whole feature.</div>
           </div>
         </div>
 
@@ -557,17 +538,17 @@
             </svg>
           </div>
           <div>
-            <div class="feature-title">Study Rooms & Squads</div>
-            <div class="feature-desc">Host-synchronized focus timers, cheers, & leaderboards.</div>
+            <div class="feature-title">Study with people, on your terms</div>
+            <div class="feature-desc">Join a live study room with friends when you want company. Keep a streak going without a guilt notification. Check the leaderboard against people you know, not strangers on the internet.</div>
           </div>
         </div>
       </div>
     </div>
 
     <footer>
-      <span>SAKTUS ARCHITECTURE V3</span>
+      <span>&copy; Saktus</span>
       <span class="tabular-nums" id="liveClock">--:--:--</span>
-      <span>APPLE HIG · EMIL KOWALSKI CRAFT</span>
+      <span>One app for your whole semester</span>
     </footer>
   </div>
 

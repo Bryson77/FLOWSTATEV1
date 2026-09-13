@@ -1,9 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  RefreshControl,
+  TextInput,
+  Modal,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Layers, ArrowLeft, AlertCircle, RotateCw } from 'lucide-react-native';
+import {
+  Layers,
+  ArrowLeft,
+  AlertCircle,
+  RotateCw,
+  Plus,
+  Trash2,
+  Check,
+  X,
+  PlusCircle,
+} from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { calculateNextReview, type ReviewRating } from '@flowstate/study-engine';
+import { useAuth } from '../../lib/auth-context';
+import { calculateNextReview, type ReviewRating } from '@saktus/study-engine';
 
 interface CardItem {
   id: string;
@@ -24,7 +46,9 @@ interface DeckItem {
 }
 
 export default function CardsScreen() {
+  const { user } = useAuth();
   const [decks, setDecks] = useState<DeckItem[]>([]);
+  const [courses, setCourses] = useState<{ id: string; name: string; code: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -34,25 +58,42 @@ export default function CardsScreen() {
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
+  // New Deck Modal
+  const [isNewDeckModalOpen, setIsNewDeckModalOpen] = useState(false);
+  const [newDeckTitle, setNewDeckTitle] = useState('');
+  const [newDeckCourseId, setNewDeckCourseId] = useState('');
+  const [creatingDeck, setCreatingDeck] = useState(false);
+  const [deckError, setDeckError] = useState('');
+
+  // Add Card Modal
+  const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
+  const [targetDeckId, setTargetDeckId] = useState<string>('');
+  const [frontText, setFrontText] = useState('');
+  const [backText, setBackText] = useState('');
+  const [addingCard, setAddingCard] = useState(false);
+  const [cardError, setCardError] = useState('');
+
   const fetchDecks = useCallback(async () => {
     setErrorMsg(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setDecks([]);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('flashcard_decks')
-        .select('*, courses(name, code), flashcards(*)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const [decksRes, coursesRes] = await Promise.all([
+        supabase
+          .from('flashcard_decks')
+          .select('*, courses(name, code), flashcards(*)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('courses').select('id, name, code').eq('user_id', user.id).order('name'),
+      ]);
 
-      if (error) throw error;
+      if (decksRes.error) throw decksRes.error;
 
-      const mapped: DeckItem[] = (data || []).map((d: any) => ({
+      const mapped: DeckItem[] = (decksRes.data || []).map((d: any) => ({
         id: d.id,
         title: d.title,
         course_id: d.course_id,
@@ -61,13 +102,17 @@ export default function CardsScreen() {
       }));
 
       setDecks(mapped);
+      setCourses(coursesRes.data || []);
+      if (coursesRes.data && coursesRes.data.length > 0 && !newDeckCourseId) {
+        setNewDeckCourseId(coursesRes.data[0].id);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to load decks.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user, newDeckCourseId]);
 
   useEffect(() => {
     fetchDecks();
@@ -78,6 +123,106 @@ export default function CardsScreen() {
     fetchDecks();
   };
 
+  // Create New Deck
+  const handleCreateDeck = async () => {
+    if (!user) return;
+    if (!newDeckTitle.trim()) {
+      setDeckError('Please enter a deck title.');
+      return;
+    }
+
+    setCreatingDeck(true);
+    setDeckError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('flashcard_decks')
+        .insert({
+          user_id: user.id,
+          title: newDeckTitle.trim(),
+          course_id: newDeckCourseId || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setIsNewDeckModalOpen(false);
+      setNewDeckTitle('');
+      await fetchDecks();
+
+      // Open Add Card modal for the newly created deck
+      if (data?.id) {
+        setTargetDeckId(data.id);
+        setIsAddCardModalOpen(true);
+      }
+    } catch (e: any) {
+      setDeckError(e.message || 'Failed to create deck.');
+    } finally {
+      setCreatingDeck(false);
+    }
+  };
+
+  // Add Card to Deck
+  const handleAddCard = async (addAnother = false) => {
+    if (!user || !targetDeckId) return;
+    if (!frontText.trim() || !backText.trim()) {
+      setCardError('Please fill in both the front question and back answer.');
+      return;
+    }
+
+    setAddingCard(true);
+    setCardError('');
+
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { error } = await supabase.from('flashcards').insert({
+        user_id: user.id,
+        deck_id: targetDeckId,
+        front_text: frontText.trim(),
+        back_text: backText.trim(),
+        interval_days: 0,
+        ease_factor: 2.5,
+        repetition_number: 0,
+        due_date: todayStr,
+      });
+
+      if (error) throw error;
+
+      setFrontText('');
+      setBackText('');
+
+      if (!addAnother) {
+        setIsAddCardModalOpen(false);
+      }
+      await fetchDecks();
+    } catch (e: any) {
+      setCardError(e.message || 'Failed to add card.');
+    } finally {
+      setAddingCard(false);
+    }
+  };
+
+  // Delete Deck
+  const handleDeleteDeck = (deckId: string) => {
+    Alert.alert('Delete Deck', 'Are you sure you want to delete this deck and all its cards?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDecks((prev) => prev.filter((d) => d.id !== deckId));
+          try {
+            await supabase.from('flashcard_decks').delete().eq('id', deckId);
+          } catch {
+            fetchDecks();
+          }
+        },
+      },
+    ]);
+  };
+
+  // SM-2 Review
   const handleRateCard = async (rating: ReviewRating) => {
     if (!activeDeck || !activeDeck.cards || activeDeck.cards.length === 0) return;
     const currentCard = activeDeck.cards[cardIndex];
@@ -100,106 +245,90 @@ export default function CardsScreen() {
           interval_days: result.intervalDays,
           ease_factor: result.easeFactor,
           due_date: nextDate.toISOString().split('T')[0],
-          updated_at: new Date().toISOString(),
         })
         .eq('id', currentCard.id);
 
+      setFlipped(false);
       if (cardIndex + 1 < activeDeck.cards.length) {
         setCardIndex((prev) => prev + 1);
-        setFlipped(false);
       } else {
+        Alert.alert('Review Complete', 'You reviewed all cards in this deck.');
         setActiveDeck(null);
         setCardIndex(0);
-        setFlipped(false);
         fetchDecks();
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error rating card:', err);
     }
   };
 
-  // Study Screen Active
-  if (activeDeck && activeDeck.cards && activeDeck.cards.length > 0) {
-    const card = activeDeck.cards[cardIndex];
-
+  // If in active study mode
+  if (activeDeck) {
+    const currentCard = activeDeck.cards[cardIndex];
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.studyContent}>
-          {/* Top Bar */}
-          <View style={styles.studyTopBar}>
-            <Pressable
-              onPress={() => {
-                setActiveDeck(null);
-                setCardIndex(0);
-                setFlipped(false);
-              }}
-              style={styles.exitButton}
-            >
-              <ArrowLeft size={16} color="#A0A0A0" />
-              <Text style={styles.exitText}>Exit</Text>
-            </Pressable>
-            <Text style={styles.cardCounter}>
-              Card {cardIndex + 1} of {activeDeck.cards.length}
-            </Text>
-          </View>
-
-          {/* Flashcard Body */}
+        <View style={styles.reviewHeader}>
           <Pressable
-            onPress={() => setFlipped(!flipped)}
-            style={styles.flashcard}
+            onPress={() => {
+              setActiveDeck(null);
+              setCardIndex(0);
+              setFlipped(false);
+            }}
+            hitSlop={8}
+            style={styles.backBtn}
           >
-            <View style={styles.flashcardHeader}>
-              <Text style={styles.cardSideLabel}>
-                {flipped ? 'SOLUTION' : 'PROMPT'}
-              </Text>
-              <RotateCw size={14} color="#71717A" />
-            </View>
+            <ArrowLeft size={20} color="#FFFFFF" />
+          </Pressable>
+          <Text style={styles.reviewTitle} numberOfLines={1}>
+            {activeDeck.title}
+          </Text>
+          <Text style={styles.reviewProgress}>
+            {cardIndex + 1}/{activeDeck.cards.length}
+          </Text>
+        </View>
 
-            <View style={styles.cardCenter}>
-              <Text style={styles.cardText}>
-                {flipped ? card.back_text : card.front_text}
-              </Text>
-            </View>
-
-            <Text style={styles.tapToFlip}>
-              {flipped ? 'Rate your recall below' : 'Tap to reveal answer'}
+        <View style={styles.reviewContent}>
+          <Pressable style={styles.cardFace} onPress={() => setFlipped(!flipped)}>
+            <Text style={styles.cardLabel}>{flipped ? 'ANSWER' : 'QUESTION'}</Text>
+            <Text style={styles.cardText}>
+              {flipped ? currentCard?.back_text : currentCard?.front_text}
             </Text>
+            <View style={styles.flipHintRow}>
+              <RotateCw size={14} color="#71717A" />
+              <Text style={styles.flipHint}>Tap card to flip</Text>
+            </View>
           </Pressable>
 
-          {/* Recall Actions */}
           {flipped ? (
             <View style={styles.ratingRow}>
               <Pressable
+                style={[styles.rateBtn, { backgroundColor: '#EF4444' }]}
                 onPress={() => handleRateCard('again')}
-                style={[styles.rateButton, { borderColor: 'rgba(231, 76, 60, 0.4)', backgroundColor: 'rgba(231, 76, 60, 0.1)' }]}
               >
-                <Text style={[styles.rateText, { color: '#E74C3C' }]}>Again (1d)</Text>
+                <Text style={styles.rateBtnText}>Again</Text>
               </Pressable>
               <Pressable
+                style={[styles.rateBtn, { backgroundColor: '#F59E0B' }]}
                 onPress={() => handleRateCard('hard')}
-                style={[styles.rateButton, { borderColor: 'rgba(245, 158, 11, 0.4)', backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}
               >
-                <Text style={[styles.rateText, { color: '#F59E0B' }]}>Hard</Text>
+                <Text style={styles.rateBtnText}>Hard</Text>
               </Pressable>
               <Pressable
+                style={[styles.rateBtn, { backgroundColor: '#3B82F6' }]}
                 onPress={() => handleRateCard('good')}
-                style={[styles.rateButton, { borderColor: 'rgba(59, 130, 246, 0.4)', backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}
               >
-                <Text style={[styles.rateText, { color: '#3B82F6' }]}>Good</Text>
+                <Text style={styles.rateBtnText}>Good</Text>
               </Pressable>
               <Pressable
+                style={[styles.rateBtn, { backgroundColor: '#10B981' }]}
                 onPress={() => handleRateCard('easy')}
-                style={[styles.rateButton, { borderColor: 'rgba(34, 197, 94, 0.4)', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}
               >
-                <Text style={[styles.rateText, { color: '#22C55E' }]}>Easy</Text>
+                <Text style={styles.rateBtnText}>Easy</Text>
               </Pressable>
             </View>
           ) : (
-            <Pressable
-              onPress={() => setFlipped(true)}
-              style={styles.flipButton}
-            >
-              <Text style={styles.flipButtonText}>Show Answer</Text>
+            <Pressable style={styles.showAnswerBtn} onPress={() => setFlipped(true)}>
+              <Text style={styles.showAnswerText}>Show Answer</Text>
             </Pressable>
           )}
         </View>
@@ -220,289 +349,420 @@ export default function CardsScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Flashcards</Text>
-            <Text style={styles.subtitle}>Active recall & spaced repetition</Text>
+            <Text style={styles.subtitle}>Active recall with spaced repetition</Text>
           </View>
+          <Pressable
+            style={({ pressed }: { pressed: boolean }) => [styles.addDeckBtn, pressed && styles.pressed]}
+            onPress={() => {
+              setDeckError('');
+              setIsNewDeckModalOpen(true);
+            }}
+          >
+            <Plus size={16} color="#000000" />
+            <Text style={styles.addDeckBtnText}>New Deck</Text>
+          </Pressable>
         </View>
 
-        {/* Error State */}
         {errorMsg && (
           <View style={styles.errorBox}>
-            <AlertCircle size={16} color="#E74C3C" />
+            <AlertCircle size={14} color="#EF4444" />
             <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         )}
 
-        {/* Loading Skeletons */}
-        {loading && (
-          <View style={styles.skeletonContainer}>
-            <View style={styles.skeletonCard} />
-            <View style={styles.skeletonCard} />
-          </View>
-        )}
-
-        {/* Empty State */}
-        {!loading && decks.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Layers size={36} color="#4A4A4A" style={{ marginBottom: 12 }} />
-            <Text style={styles.emptyTitle}>No flashcard decks yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Create decks with active recall cards from the web cockpit to start training with SuperMemo SM-2.
-            </Text>
-          </View>
-        )}
-
         {/* Decks List */}
-        {!loading && decks.length > 0 && (
-          <View style={styles.deckGrid}>
-            {decks.map((deck) => (
-              <Pressable
-                key={deck.id}
-                onPress={() => {
-                  if (deck.cards.length > 0) {
-                    setActiveDeck(deck);
-                    setCardIndex(0);
-                    setFlipped(false);
-                  }
-                }}
-                style={styles.deckCard}
-              >
-                <View>
-                  <View style={styles.deckHeader}>
-                    <Text style={styles.deckCode}>{deck.courses?.code || 'STUDY'}</Text>
-                    <Layers size={14} color="#71717A" />
-                  </View>
-                  <Text style={styles.deckTitle}>{deck.title}</Text>
-                </View>
+        <View style={styles.deckList}>
+          {decks.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Layers size={28} color="#52525B" />
+              <Text style={styles.emptyTitle}>No flashcard decks yet</Text>
+              <Text style={styles.emptySub}>
+                Create your first deck to start practicing active recall.
+              </Text>
+            </View>
+          ) : (
+            decks.map((deck: DeckItem) => {
+              const todayStr = new Date().toISOString().split('T')[0];
+              const dueCount = deck.cards.filter(
+                (c: CardItem) => !c.due_date || c.due_date <= todayStr
+              ).length;
 
-                <View style={styles.deckFooter}>
-                  <Text style={styles.cardCountText}>
-                    {deck.cards.length} cards
-                  </Text>
-                  <Text style={styles.dueText}>
-                    {deck.cards.length > 0 ? 'Ready to Review' : 'No Cards'}
-                  </Text>
+              return (
+                <View key={deck.id} style={styles.deckCard}>
+                  <View style={styles.deckHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.deckTitle}>{deck.title}</Text>
+                      <Text style={styles.deckMeta}>
+                        {deck.courses?.code ? `${deck.courses.code} · ` : ''}
+                        {deck.cards.length} cards · {dueCount} due
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => handleDeleteDeck(deck.id)}
+                      hitSlop={8}
+                      style={styles.trashBtn}
+                    >
+                      <Trash2 size={15} color="#52525B" />
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.deckActionsRow}>
+                    <Pressable
+                      style={({ pressed }: { pressed: boolean }) => [
+                        styles.addCardBtn,
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => {
+                        setTargetDeckId(deck.id);
+                        setCardError('');
+                        setIsAddCardModalOpen(true);
+                      }}
+                    >
+                      <Plus size={14} color="#FFFFFF" />
+                      <Text style={styles.addCardText}>Add Card</Text>
+                    </Pressable>
+
+                    {deck.cards.length > 0 ? (
+                      <Pressable
+                        style={({ pressed }: { pressed: boolean }) => [
+                          styles.reviewBtn,
+                          pressed && styles.pressed,
+                        ]}
+                        onPress={() => {
+                          setActiveDeck(deck);
+                          setCardIndex(0);
+                          setFlipped(false);
+                        }}
+                      >
+                        <Text style={styles.reviewBtnText}>Review Deck</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
-              </Pressable>
-            ))}
-          </View>
-        )}
+              );
+            })
+          )}
+        </View>
       </ScrollView>
+
+      {/* New Deck Modal */}
+      <Modal visible={isNewDeckModalOpen} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create Flashcard Deck</Text>
+              <Pressable onPress={() => setIsNewDeckModalOpen(false)} hitSlop={8}>
+                <X size={20} color="#71717A" />
+              </Pressable>
+            </View>
+
+            {deckError ? (
+              <View style={styles.modalErrorBox}>
+                <Text style={styles.modalErrorText}>{deckError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.modalField}>
+              <Text style={styles.modalLabel}>DECK TITLE</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Organic Chemistry Reactions"
+                placeholderTextColor="#52525B"
+                value={newDeckTitle}
+                onChangeText={setNewDeckTitle}
+              />
+            </View>
+
+            {courses.length > 0 && (
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>LINK TO COURSE</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 6 }}>
+                  {courses.map((c: any) => (
+                    <Pressable
+                      key={c.id}
+                      style={[
+                        styles.courseChip,
+                        newDeckCourseId === c.id && styles.courseChipActive,
+                      ]}
+                      onPress={() => setNewDeckCourseId(c.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.courseChipText,
+                          newDeckCourseId === c.id && styles.courseChipTextActive,
+                        ]}
+                      >
+                        {c.code || c.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            <Pressable
+              style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
+              onPress={handleCreateDeck}
+              disabled={creatingDeck}
+            >
+              {creatingDeck ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <View style={styles.saveBtnRow}>
+                  <Check size={16} color="#000000" />
+                  <Text style={styles.saveBtnText}>Create Deck & Add Cards</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Add Card Modal */}
+      <Modal visible={isAddCardModalOpen} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Flashcard</Text>
+              <Pressable onPress={() => setIsAddCardModalOpen(false)} hitSlop={8}>
+                <X size={20} color="#71717A" />
+              </Pressable>
+            </View>
+
+            {cardError ? (
+              <View style={styles.modalErrorBox}>
+                <Text style={styles.modalErrorText}>{cardError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.modalField}>
+              <Text style={styles.modalLabel}>FRONT (QUESTION / PROMPT)</Text>
+              <TextInput
+                style={[styles.modalInput, styles.multilineInput]}
+                placeholder="e.g. What is the Henderson-Hasselbalch equation?"
+                placeholderTextColor="#52525B"
+                value={frontText}
+                onChangeText={setFrontText}
+                multiline
+              />
+            </View>
+
+            <View style={styles.modalField}>
+              <Text style={styles.modalLabel}>BACK (ANSWER / EXPLANATION)</Text>
+              <TextInput
+                style={[styles.modalInput, styles.multilineInput]}
+                placeholder="e.g. pH = pKa + log([A-]/[HA])"
+                placeholderTextColor="#52525B"
+                value={backText}
+                onChangeText={setBackText}
+                multiline
+              />
+            </View>
+
+            <View style={styles.cardActionsRow}>
+              <Pressable
+                style={({ pressed }: { pressed: boolean }) => [styles.saveAnotherBtn, pressed && styles.pressed]}
+                onPress={() => handleAddCard(true)}
+                disabled={addingCard}
+              >
+                <PlusCircle size={15} color="#FFFFFF" />
+                <Text style={styles.saveAnotherText}>Save & Add Another</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, { flex: 1 }, pressed && styles.pressed]}
+                onPress={() => handleAddCard(false)}
+                disabled={addingCard}
+              >
+                {addingCard ? (
+                  <ActivityIndicator size="small" color="#000000" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Save Card</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0A0A0A',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
+  container: { flex: 1, backgroundColor: '#000000' },
+  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 100 },
   header: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
+  title: { fontSize: 20, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.4 },
+  subtitle: { fontSize: 12, color: '#71717A', marginTop: 2 },
+  addDeckBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#A0A0A0',
-    marginTop: 4,
-  },
+  addDeckBtnText: { color: '#000000', fontSize: 12, fontWeight: '700' },
+  pressed: { transform: [{ scale: 0.97 }] },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    backgroundColor: 'rgba(239,68,68,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(231, 76, 60, 0.3)',
+    borderColor: 'rgba(239,68,68,0.2)',
+    padding: 12,
     borderRadius: 12,
-    padding: 14,
     marginBottom: 16,
   },
-  errorText: {
-    color: '#E74C3C',
-    fontSize: 13,
-    flex: 1,
+  errorText: { color: '#EF4444', fontSize: 12 },
+  deckList: { gap: 12 },
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    gap: 6,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(9,9,11,0.5)',
   },
-  skeletonContainer: {
+  emptyTitle: { color: '#A1A1AA', fontSize: 13, fontWeight: '600' },
+  emptySub: { color: '#52525B', fontSize: 11, textAlign: 'center', maxWidth: 240 },
+  deckCard: {
+    backgroundColor: '#09090B',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    padding: 16,
     gap: 12,
   },
-  skeletonCard: {
-    height: 130,
-    backgroundColor: '#111111',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  emptyContainer: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 16,
-    padding: 36,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: '#A0A0A0',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  deckGrid: {
-    gap: 14,
-  },
-  deckCard: {
-    backgroundColor: '#111111',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    padding: 18,
-    minHeight: 140,
-    justifyContent: 'space-between',
-  },
-  deckHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  deckCode: {
-    fontSize: 11,
-    color: '#A0A0A0',
-    fontFamily: 'monospace',
-    fontWeight: '700',
-  },
-  deckTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    lineHeight: 22,
-  },
-  deckFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#2A2A2A',
-  },
-  cardCountText: {
-    fontSize: 12,
-    color: '#A0A0A0',
-    fontFamily: 'monospace',
-  },
-  dueText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F59E0B',
-    fontFamily: 'monospace',
-  },
-  studyContent: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'space-between',
-  },
-  studyTopBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  exitButton: {
+  deckHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  deckTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  deckMeta: { color: '#71717A', fontSize: 11, marginTop: 3 },
+  trashBtn: { padding: 4 },
+  deckActionsRow: { flexDirection: 'row', gap: 8 },
+  addCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  exitText: {
-    fontSize: 12,
-    color: '#A0A0A0',
-    fontWeight: '600',
-  },
-  cardCounter: {
-    fontSize: 12,
-    color: '#A0A0A0',
-    fontFamily: 'monospace',
-  },
-  flashcard: {
+  addCardText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  reviewBtn: {
     flex: 1,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 20,
-    padding: 24,
-    marginVertical: 24,
-    justifyContent: 'space-between',
-  },
-  flashcardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardSideLabel: {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: '#A0A0A0',
-    letterSpacing: 1,
-  },
-  cardCenter: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  cardText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 30,
+  reviewBtnText: { color: '#000000', fontSize: 12, fontWeight: '700' },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  tapToFlip: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#4A4A4A',
+  backBtn: { padding: 4 },
+  reviewTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', flex: 1, marginHorizontal: 12 },
+  reviewProgress: { color: '#71717A', fontSize: 12, fontWeight: '600' },
+  reviewContent: { flex: 1, paddingHorizontal: 20, paddingBottom: 30, justifyContent: 'center' },
+  cardFace: {
+    backgroundColor: '#09090B',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 24,
+    minHeight: 260,
+    justifyContent: 'space-between',
+    marginBottom: 30,
   },
-  flipButton: {
+  cardLabel: { color: '#71717A', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  cardText: { color: '#FFFFFF', fontSize: 18, lineHeight: 26, fontWeight: '600', marginVertical: 20 },
+  flipHintRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  flipHint: { color: '#71717A', fontSize: 11 },
+  ratingRow: { flexDirection: 'row', gap: 8 },
+  rateBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
+  rateBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  showAnswerBtn: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 14,
-    borderRadius: 14,
     alignItems: 'center',
+    borderRadius: 14,
   },
-  flipButtonText: {
-    color: '#000000',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  rateButton: {
-    flex: 1,
+  showAnswerText: { color: '#000000', fontSize: 14, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: '#09090B',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 24,
+    gap: 14,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  modalErrorBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 8 },
+  modalErrorText: { color: '#EF4444', fontSize: 11 },
+  modalField: { gap: 6 },
+  modalLabel: { color: '#71717A', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  modalInput: {
+    backgroundColor: '#000000',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    height: 44,
+    color: '#FFFFFF',
+    fontSize: 13,
+  },
+  multilineInput: { height: 74, textAlignVertical: 'top', paddingTop: 10 },
+  courseChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginRight: 6,
+  },
+  courseChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  courseChipText: { color: '#71717A', fontSize: 11, fontWeight: '600' },
+  courseChipTextActive: { color: '#000000', fontWeight: '700' },
+  cardActionsRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  saveAnotherBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 12,
+  },
+  saveAnotherText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  saveBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  rateText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  saveBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saveBtnText: { color: '#000000', fontSize: 13, fontWeight: '700' },
 });

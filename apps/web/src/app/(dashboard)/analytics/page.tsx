@@ -119,16 +119,16 @@ export default function AnalyticsPage() {
   }, []);
 
   return (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-16">
+    <div className="space-y-8 animate-in fade-in duration-200 pb-16">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight text-white">Subject Mastery & Trends</h1>
-          <p className="mt-1 text-[#A0A0A0]">Real hours invested per subject vs. targeted weekly milestones.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Subject Mastery & Trends</h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Hours invested per subject vs. targeted weekly milestones.</p>
         </div>
         <button
           onClick={loadAnalytics}
-          className="inline-flex items-center gap-2 rounded-lg border border-[#2A2A2A] bg-[#111111] px-4 py-2 text-xs font-mono text-[#A0A0A0] hover:text-white transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2 text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors self-start sm:self-auto"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Refresh
@@ -136,10 +136,10 @@ export default function AnalyticsPage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-200">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+        <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <span className="flex-1">{error}</span>
-          <button onClick={loadAnalytics} className="font-mono text-xs text-red-300 underline hover:text-white">
+          <button onClick={loadAnalytics} className="font-mono text-xs text-red-600 dark:text-red-400 underline hover:opacity-80">
             Retry
           </button>
         </div>
@@ -147,55 +147,55 @@ export default function AnalyticsPage() {
 
       {/* Top Overview Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-6">
-          <span className="text-xs text-[#A0A0A0] uppercase font-semibold">Total Focused (Last 30 Days)</span>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Total Focused (Last 30 Days)</span>
           {loading ? (
-            <div className="h-9 w-24 bg-[#1a1a1a] animate-pulse rounded mt-2" />
+            <div className="h-9 w-24 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded mt-2" />
           ) : (
-            <p className="font-mono text-3xl sm:text-4xl font-bold text-white mt-2">{totalHoursMonth} hrs</p>
+            <p className="font-mono text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white mt-2">{totalHoursMonth} hrs</p>
           )}
-          <span className="text-xs text-zinc-400 font-mono mt-1 block">Live recorded sessions</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-1 block">Live recorded sessions</span>
         </div>
 
-        <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-6">
-          <span className="text-xs text-[#A0A0A0] uppercase font-semibold">Current / Best Streak</span>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Current / Best Streak</span>
           {loading ? (
-            <div className="h-9 w-24 bg-[#1a1a1a] animate-pulse rounded mt-2" />
+            <div className="h-9 w-24 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded mt-2" />
           ) : (
-            <p className="font-mono text-3xl sm:text-4xl font-bold text-white mt-2">{activeStreak} / {longestStreak} days</p>
+            <p className="font-mono text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white mt-2">{activeStreak} / {longestStreak} days</p>
           )}
-          <span className="text-xs text-zinc-400 font-mono mt-1 block">Consecutive study days</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-1 block">Consecutive study days</span>
         </div>
 
-        <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-6">
-          <span className="text-xs text-[#A0A0A0] uppercase font-semibold">Streak Freezes</span>
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase font-semibold">Streak Freezes</span>
           {loading ? (
-            <div className="h-9 w-24 bg-[#1a1a1a] animate-pulse rounded mt-2" />
+            <div className="h-9 w-24 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded mt-2" />
           ) : (
             <div className="flex items-center gap-2 mt-2">
-              <ShieldCheck className="h-7 w-7 text-white" />
-              <p className="font-mono text-3xl sm:text-4xl font-bold text-white">{streakFreezes}</p>
+              <ShieldCheck className="h-7 w-7 text-zinc-900 dark:text-white" />
+              <p className="font-mono text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white">{streakFreezes}</p>
             </div>
           )}
-          <span className="text-xs text-zinc-400 font-mono mt-1 block">+1 earned every 7 study days</span>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-1 block">+1 earned every 7 study days</span>
         </div>
       </div>
 
       {/* Subject Hours Progress Bar List */}
-      <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-6 space-y-6">
-        <h3 className="font-display text-lg font-semibold text-white">Subject Hours vs Target (Weekly)</h3>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-6">
+        <h3 className="font-display text-lg font-semibold text-zinc-900 dark:text-white">Subject Hours vs Target (Weekly)</h3>
 
         {loading ? (
           <div className="space-y-4">
-            <div className="h-10 bg-[#1a1a1a] animate-pulse rounded-lg" />
-            <div className="h-10 bg-[#1a1a1a] animate-pulse rounded-lg" />
-            <div className="h-10 bg-[#1a1a1a] animate-pulse rounded-lg" />
+            <div className="h-10 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-lg" />
+            <div className="h-10 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-lg" />
+            <div className="h-10 bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-lg" />
           </div>
         ) : subjectStats.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="font-display text-lg font-semibold text-white">No courses registered yet</p>
-            <p className="text-xs text-[#A0A0A0] mt-1 max-w-sm mx-auto">
-              Add your classes in the Timetable screen to automatically track focus hours per subject.
+            <p className="font-display text-lg font-semibold text-zinc-900 dark:text-white">No courses registered yet</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-sm mx-auto">
+              Add your classes in the Schedule screen to automatically track focus hours per subject.
             </p>
           </div>
         ) : (
@@ -207,19 +207,19 @@ export default function AnalyticsPage() {
                 <div key={sub.code} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-[#A0A0A0] font-semibold">{sub.code}</span>
-                      <span className="text-white font-medium">{sub.name}</span>
+                      <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400 font-semibold">{sub.code}</span>
+                      <span className="text-zinc-900 dark:text-white font-medium">{sub.name}</span>
                     </div>
-                    <span className="font-mono text-xs text-zinc-300">
+                    <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
                       {sub.hours}h / {sub.target}h ({percent}%)
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{
                         width: `${percent}%`,
-                        backgroundColor: sub.color || '#FFFFFF',
+                        backgroundColor: sub.color || '#3B82F6',
                       }}
                     />
                   </div>
@@ -231,9 +231,9 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Study Heatmap */}
-      <div className="rounded-2xl border border-[#2A2A2A] bg-[#111111] p-6">
-        <h3 className="font-display text-lg font-semibold text-white mb-2">Study Heatmap</h3>
-        <p className="text-xs text-[#A0A0A0] mb-4">Past 16 weeks of daily focus session activity from Supabase.</p>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6">
+        <h3 className="font-display text-lg font-semibold text-zinc-900 dark:text-white mb-2">Study Heatmap</h3>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">Past 16 weeks of daily focus session activity.</p>
 
         <div className="flex gap-1.5 overflow-x-auto py-2">
           {Array.from({ length: 16 }).map((_, weekIdx) => (
@@ -246,10 +246,10 @@ export default function AnalyticsPage() {
                 const count = dailyCounts[key] || 0;
 
                 const opacity =
-                  count === 0 ? 'bg-white/5' :
-                  count === 1 ? 'bg-white/20' :
-                  count === 2 ? 'bg-white/50' :
-                  count >= 3 ? 'bg-white' : 'bg-white/10';
+                  count === 0 ? 'bg-zinc-100 dark:bg-zinc-900' :
+                  count === 1 ? 'bg-zinc-300 dark:bg-zinc-700' :
+                  count === 2 ? 'bg-zinc-500 dark:bg-zinc-400' :
+                  'bg-zinc-900 dark:bg-zinc-100';
 
                 return (
                   <div

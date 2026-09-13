@@ -35,9 +35,9 @@ jobs:
 
       - name: 🏗️ Build Shared Packages
         run: |
-          pnpm --filter @flowstate/shared build || true
-          pnpm --filter @flowstate/study-engine build || true
-          pnpm --filter @flowstate/ui build || true
+          pnpm --filter @saktus/shared build || true
+          pnpm --filter @saktus/study-engine build || true
+          pnpm --filter @saktus/ui build || true
 
       - name: ⚡ Build Next.js Web App
         working-directory: apps/web

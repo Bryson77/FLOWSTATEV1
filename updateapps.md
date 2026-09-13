@@ -123,3 +123,49 @@ Replaced the 3-tab switcher in [`apps/web/src/app/(dashboard)/friends/page.tsx`]
 - Emil Kowalski snappy physics (`.btn-press:active { transform: scale(0.97); }`).
 - Tabular numbers (`tnum`) for timers and streak counts.
 - Lucide icons only. Zero emojis.
+
+---
+
+## 8. Mobile App Full Restructuring (Sept 2026 Core Functionality Overhaul)
+
+Full overhaul of [`apps/mobile`](file:///C:/Users/letha/Documents/GitHub/FLOWSTATEV1/apps/mobile) addressing missing core features, navigation structure, and brand vocabulary:
+
+1. **Brand Vocabulary & Identity Purge**:
+   - Eradicated all sci-fi/military jargon ("Cockpit", "Calm", "Critical Assessments", "War Room", "Red Zone").
+   - Standardized on plain student language: `"Saktus — Productivity app for students"`, `"Today's Tasks"`, `"Upcoming Assessments & Exams"`, `"Study Schedule"`.
+   - Built the tactile "S" brand emblem (`width: 52, height: 52, borderRadius: 15, bg: #FFFFFF, color: #000000`).
+
+2. **Session Gatekeeper & @username Registration**:
+   - Implemented `lib/auth-context.tsx` with centralized Supabase session management, profile hydration, and sign-out.
+   - Built the Expo Router root auth route guard in `app/_layout.tsx` to prevent unauthenticated empty dashboard boots, showing the tactile "S" loading splash and routing to `login.tsx`.
+   - Upgraded `app/login.tsx` to include `@username` registration with real-time uniqueness validation against `public.profiles.username`.
+
+3. **5th Tab: Profile & Settings (`app/(tabs)/profile.tsx`)**:
+   - Tab layout expanded to 5 tabs: `Home | Calendar | Cards | Friends | Profile`.
+   - Features student identity card (monogram avatar, name, `@username`, degree, academic tier badge).
+   - Streak statistics: Current streak, longest streak, streak freezes wallet (0-3).
+   - Edit Profile modal (full name, `@username`, degree, daily study goal).
+   - Timezone display, POPIA account deletion, and 1-tap working Sign Out.
+
+4. **Full 7-Day Calendar & Event Creation (`app/(tabs)/schedule.tsx`)**:
+   - Replaced hardcoded 5-day strip with full 7-day calendar matrix (`Mon` through `Sun`).
+   - Added visual dot indicators for days with scheduled events.
+   - Added "+ Add Event" modal allowing students to log classes, exam deadlines, and study sessions directly to `timetable_classes` and `assessments`.
+   - Full event deletion support.
+
+5. **Focus Timer Target Binding & Time Worked (`app/(tabs)/timer.tsx`)**:
+   - Added attachment selector: attach timer sessions directly to a **Course**, **Task**, or **Assessment / Assignment**.
+   - Added live "Time Logged" HUD showing total hours/minutes previously invested in that target item.
+   - Schema extended with `task_id TEXT` and `assessment_id UUID` on `public.study_sessions` with migration `20260913_study_sessions_attachments.sql`.
+   - On session complete, prompts student to mark attached task as done.
+
+6. **Mobile Flashcard & Deck Creation Engine (`app/(tabs)/cards.tsx`)**:
+   - Added "+ New Deck" modal (title, course selection, description).
+   - Added "+ Add Flashcard" modal (front question, back answer, rapid-fire "Save & Add Another").
+   - Integrated with existing SM-2 spaced repetition review engine (`Again`, `Hard`, `Good`, `Easy`).
+
+7. **Friends & Study Rooms Redesign (`app/(tabs)/social.tsx`)**:
+   - Replaced 3-tab switcher with single scrolling dashboard.
+   - Added "Launch Study Room" modal with custom room name, duration, and auto-generated 6-character squad code.
+   - Added "Join with Code" modal for 1-tap room joining.
+   - Added "Find Friends" search modal with real-time debounced query across student names and `@username`, with mutual follow badges.

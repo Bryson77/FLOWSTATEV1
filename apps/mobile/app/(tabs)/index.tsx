@@ -7,11 +7,9 @@ import {
   Pressable,
   RefreshControl,
   TextInput,
-  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Clock,
   Play,
   Layers,
   Flame,
@@ -20,12 +18,12 @@ import {
   Circle,
   Plus,
   Trash2,
-  Bell,
+  ChevronRight,
   BookOpen,
-  ChevronRight
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth-context';
 
 interface NextClass {
   name: string;
@@ -57,7 +55,7 @@ interface CourseItem {
 }
 
 export default function HomeScreen() {
-  const [profile, setProfile] = useState<any>(null);
+  const { user, profile } = useAuth();
   const [nextClass, setNextClass] = useState<NextClass | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [assessments, setAssessments] = useState<AssessmentItem[]>([]);
@@ -71,10 +69,9 @@ export default function HomeScreen() {
   const [newTaskText, setNewTaskText] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
 
-  const fetchCockpit = useCallback(async () => {
+  const fetchDashboardData = useCallback(async () => {
     setErrorMsg(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
         return;
@@ -84,16 +81,33 @@ export default function HomeScreen() {
       const currentDayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
       const todayDateStr = today.toISOString().split('T')[0];
 
-      const [profileRes, classesRes, coursesRes, tasksRes, assessmentsRes, cardsRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('timetable_classes').select('*, courses(name, code)').eq('user_id', user.id).order('start_time'),
+      const [classesRes, coursesRes, tasksRes, assessmentsRes, cardsRes] = await Promise.all([
+        supabase
+          .from('timetable_classes')
+          .select('*, courses(name, code)')
+          .eq('user_id', user.id)
+          .order('start_time'),
         supabase.from('courses').select('*').eq('user_id', user.id).order('name'),
-        supabase.from('tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6),
-        supabase.from('assessments').select('*, courses(name, code)').eq('user_id', user.id).eq('completed', false).order('due_date', { ascending: true }).limit(4),
-        supabase.from('flashcards').select('id, due_date').eq('user_id', user.id).lte('due_date', todayDateStr),
+        supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(6),
+        supabase
+          .from('assessments')
+          .select('*, courses(name, code)')
+          .eq('user_id', user.id)
+          .eq('completed', false)
+          .order('due_date', { ascending: true })
+          .limit(4),
+        supabase
+          .from('flashcards')
+          .select('id, due_date')
+          .eq('user_id', user.id)
+          .lte('due_date', todayDateStr),
       ]);
 
-      setProfile(profileRes.data || { study_streak_days: 0, streak_freezes_available: 1 });
       setCourses(coursesRes.data || []);
       setCardsDueCount(cardsRes.data?.length || 0);
 
@@ -101,7 +115,7 @@ export default function HomeScreen() {
         id: t.id,
         text: t.text,
         done: !!t.done,
-        prio: t.prio || 'normal'
+        prio: t.prio || 'normal',
       }));
       setTasks(mappedTasks);
 
@@ -110,16 +124,21 @@ export default function HomeScreen() {
         title: a.title,
         due_date: a.due_date,
         weight_percentage: a.weight_percentage,
-        course_code: a.courses?.code
+        course_code: a.courses?.code,
       }));
       setAssessments(mappedAssessments);
 
-      // Determine next class
+      // Determine next class or study period
       const classes = classesRes.data || [];
       const todayClasses = classes.filter((c: any) => c.day_of_week === currentDayOfWeek);
-      const currentTimeStr = `${today.getHours().toString().padStart(2, '0')}:${today.getMinutes().toString().padStart(2, '0')}`;
+      const currentTimeStr = `${today.getHours().toString().padStart(2, '0')}:${today
+        .getMinutes()
+        .toString()
+        .padStart(2, '0')}`;
 
-      const upcoming = todayClasses.find((c: any) => (c.start_time?.slice(0, 5) || '00:00') >= currentTimeStr);
+      const upcoming = todayClasses.find(
+        (c: any) => (c.start_time?.slice(0, 5) || '00:00') >= currentTimeStr
+      );
       if (upcoming) {
         setNextClass({
           name: upcoming.courses?.name || 'Class',
@@ -141,44 +160,46 @@ export default function HomeScreen() {
         setNextClass(null);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load cockpit data.');
+      setErrorMsg(err.message || 'Failed to load study data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    fetchCockpit();
-  }, [fetchCockpit]);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchCockpit();
+    fetchDashboardData();
   };
 
   // Add Task
   const handleAddTask = async () => {
-    if (!newTaskText.trim()) return;
+    if (!newTaskText.trim() || !user) return;
     setIsAddingTask(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const { data, error } = await supabase
         .from('tasks')
         .insert({
+          id: taskId,
           user_id: user.id,
           text: newTaskText.trim(),
           prio: 'normal',
           done: false,
-          due: new Date().toISOString().split('T')[0]
+          due: new Date().toISOString().split('T')[0],
         })
         .select()
         .single();
 
       if (error) throw error;
-      setTasks(prev => [{ id: data.id, text: data.text, done: false, prio: 'normal' }, ...prev]);
+      setTasks((prev) => [
+        { id: data.id, text: data.text, done: false, prio: 'normal' },
+        ...prev,
+      ]);
       setNewTaskText('');
     } catch (e) {
       console.error(e);
@@ -190,17 +211,21 @@ export default function HomeScreen() {
   // Toggle Task
   const handleToggleTask = async (task: TaskItem) => {
     const updatedDone = !task.done;
-    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: updatedDone } : t));
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, done: updatedDone } : t))
+    );
     try {
       await supabase.from('tasks').update({ done: updatedDone }).eq('id', task.id);
     } catch {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: !updatedDone } : t));
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, done: !updatedDone } : t))
+      );
     }
   };
 
   // Delete Task
   const handleDeleteTask = async (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    setTasks((prev) => prev.filter((t) => t.id !== id));
     try {
       await supabase.from('tasks').delete().eq('id', id);
     } catch {}
@@ -224,13 +249,26 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+        }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with Tactile S Logo & User Identity */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.subGreeting}>Saktus Academic Cockpit</Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.brandBadge}>
+              <Text style={styles.brandLetter}>S</Text>
+            </View>
+            <View>
+              <Text style={styles.greeting}>
+                {getGreeting()}
+                {profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}
+              </Text>
+              <Text style={styles.subGreeting}>
+                {profile?.username ? `@${profile.username} · ` : ''}Saktus
+              </Text>
+            </View>
           </View>
 
           <View style={styles.streakBadge}>
@@ -239,7 +277,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Error notice */}
+        {/* Error Notice */}
         {errorMsg && (
           <View style={styles.errorBox}>
             <AlertCircle size={14} color="#EF4444" />
@@ -247,52 +285,56 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Next Class Up Dynamic Island */}
+        {/* Next Class / Study Block */}
         {nextClass ? (
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push('/schedule')}
-          >
+          <Pressable style={styles.card} onPress={() => router.push('/schedule')}>
             <View style={styles.cardHeader}>
-              <View style={styles.statusDot} />
-              <Text style={styles.cardTag}>NEXT UP · {nextClass.code}</Text>
+              <Text style={styles.cardTag}>NEXT CLASS · {nextClass.code}</Text>
             </View>
             <Text style={styles.cardTitle}>{nextClass.name}</Text>
-            <Text style={styles.cardSubtitle}>{nextClass.time} · {nextClass.venue}</Text>
+            <Text style={styles.cardSubtitle}>
+              {nextClass.time} · {nextClass.venue}
+            </Text>
           </Pressable>
         ) : (
           <View style={styles.card}>
-            <Text style={styles.cardTag}>SCHEDULE</Text>
-            <Text style={styles.cardSubtitle}>No classes scheduled today</Text>
+            <Text style={styles.cardTag}>TODAY'S SCHEDULE</Text>
+            <Text style={styles.cardSubtitle}>No classes scheduled for today</Text>
           </View>
         )}
 
-        {/* Quick Task Checklist Widget */}
+        {/* Today's Tasks */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Tasks & Reminders</Text>
-            <Text style={styles.sectionMeta}>{tasks.filter(t => t.done).length}/{tasks.length}</Text>
+            <Text style={styles.sectionTitle}>Today's Tasks</Text>
+            <Text style={styles.sectionMeta}>
+              {tasks.filter((t) => t.done).length}/{tasks.length}
+            </Text>
           </View>
 
           <View style={styles.quickAddRow}>
             <TextInput
               style={styles.quickInput}
-              placeholder="Add academic task..."
+              placeholder="Add task..."
               placeholderTextColor="#71717A"
               value={newTaskText}
               onChangeText={setNewTaskText}
               onSubmitEditing={handleAddTask}
             />
-            <Pressable style={styles.quickAddButton} onPress={handleAddTask} disabled={isAddingTask}>
+            <Pressable
+              style={styles.quickAddButton}
+              onPress={handleAddTask}
+              disabled={isAddingTask}
+            >
               <Plus size={16} color="#000000" />
             </Pressable>
           </View>
 
           <View style={styles.taskList}>
             {tasks.length === 0 ? (
-              <Text style={styles.emptyText}>No active tasks. Add one above.</Text>
+              <Text style={styles.emptyText}>No tasks yet. Add one above.</Text>
             ) : (
-              tasks.map(t => (
+              tasks.map((t) => (
                 <View key={t.id} style={[styles.taskRow, t.done && styles.taskDone]}>
                   <Pressable onPress={() => handleToggleTask(t)} style={styles.checkButton}>
                     {t.done ? (
@@ -311,33 +353,37 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Upcoming Assessments Countdown HUD */}
+        {/* Upcoming Assessments & Deadlines */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Critical Assessments</Text>
+            <Text style={styles.sectionTitle}>Upcoming Assessments & Exams</Text>
             <Pressable onPress={() => router.push('/schedule')}>
-              <Text style={styles.sectionLink}>View All</Text>
+              <Text style={styles.sectionLink}>View Calendar</Text>
             </Pressable>
           </View>
 
           {assessments.length === 0 ? (
-            <Text style={styles.emptyText}>No upcoming exams logged.</Text>
+            <Text style={styles.emptyText}>No upcoming deadlines logged.</Text>
           ) : (
-            assessments.map(exam => {
+            assessments.map((exam) => {
               const days = calculateDaysRemaining(exam.due_date);
-              const isUrgent = days <= 7;
+              const isDueSoon = days <= 3;
 
               return (
                 <View key={exam.id} style={styles.assessmentRow}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.examTitle}>{exam.title}</Text>
                     <Text style={styles.examSub}>
-                      {new Date(exam.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      {exam.weight_percentage ? ` · ${exam.weight_percentage}%` : ''}
+                      {new Date(exam.due_date).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                      {exam.weight_percentage ? ` · ${exam.weight_percentage}% of mark` : ''}
+                      {exam.course_code ? ` · ${exam.course_code}` : ''}
                     </Text>
                   </View>
-                  <View style={[styles.daysPill, isUrgent && styles.daysPillUrgent]}>
-                    <Text style={[styles.daysText, isUrgent && styles.daysTextUrgent]}>
+                  <View style={[styles.daysPill, isDueSoon && styles.daysPillUrgent]}>
+                    <Text style={[styles.daysText, isDueSoon && styles.daysTextUrgent]}>
                       {days <= 0 ? 'Today' : `${days}d left`}
                     </Text>
                   </View>
@@ -347,48 +393,53 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Active Recall (SM-2 Flashcards Due) */}
+        {/* Flashcards Due (Active Recall) */}
         <Pressable style={styles.srsCard} onPress={() => router.push('/cards')}>
           <View style={styles.srsHeader}>
             <Layers size={18} color="#A855F7" />
-            <Text style={styles.srsTitle}>Flashcards Due</Text>
+            <Text style={styles.srsTitle}>Flashcards Review</Text>
           </View>
           <View style={styles.srsRow}>
             <Text style={styles.srsCount}>{cardsDueCount}</Text>
             <Text style={styles.srsSub}>
-              {cardsDueCount > 0 ? 'Cards due for active recall' : 'All decks reviewed today'}
+              {cardsDueCount > 0 ? 'Cards ready to review today' : 'All caught up for today'}
             </Text>
           </View>
           <View style={styles.srsButton}>
-            <Text style={styles.srsButtonText}>Review Now</Text>
+            <Text style={styles.srsButtonText}>Open Cards</Text>
             <ChevronRight size={14} color="#000000" />
           </View>
         </Pressable>
 
-        {/* Enrolled Courses */}
+        {/* Courses */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Enrolled Courses</Text>
+            <Text style={styles.sectionTitle}>Courses & Subjects</Text>
             <Text style={styles.sectionMeta}>{courses.length} Active</Text>
           </View>
 
-          {courses.map(course => (
-            <View key={course.id} style={styles.courseRow}>
-              <View>
-                <Text style={styles.courseName}>{course.name}</Text>
-                <Text style={styles.courseCode}>{course.code}</Text>
+          {courses.length === 0 ? (
+            <Text style={styles.emptyText}>No courses registered yet.</Text>
+          ) : (
+            courses.map((course) => (
+              <View key={course.id} style={styles.courseRow}>
+                <View>
+                  <Text style={styles.courseName}>{course.name}</Text>
+                  <Text style={styles.courseCode}>{course.code}</Text>
+                </View>
+                <Text style={styles.courseTarget}>
+                  {course.target_hours_per_week || 6}h / week
+                </Text>
               </View>
-              <Text style={styles.courseTarget}>{course.target_hours_per_week || 6}h / wk</Text>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
 
-      {/* Floating Focus Timer Mini-Player */}
+      {/* Floating Focus Timer Trigger */}
       <Pressable style={styles.floatingTimer} onPress={() => router.push('/timer')}>
-        <View style={styles.timerDot} />
-        <Text style={styles.timerLabel}>Focus Timer · 25:00</Text>
-        <Play size={14} color="#FFFFFF" />
+        <Text style={styles.timerLabel}>Focus Timer · Track Study Time</Text>
+        <Play size={14} color="#000000" fill="#000000" />
       </Pressable>
     </SafeAreaView>
   );
@@ -396,56 +447,195 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  greeting: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 100 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  brandBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLetter: {
+    color: '#000000',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3 },
   subGreeting: { fontSize: 12, color: '#71717A', marginTop: 2 },
-  streakBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
   streakText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', padding: 12, borderRadius: 12, marginBottom: 16 },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
   errorText: { color: '#EF4444', fontSize: 12 },
-  card: { backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 20 },
+  card: {
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 18,
+  },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
-  cardTag: { fontSize: 11, fontWeight: '600', color: '#10B981', letterSpacing: 0.5 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
+  cardTag: { fontSize: 10, fontWeight: '700', color: '#10B981', letterSpacing: 0.5 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', marginBottom: 4 },
   cardSubtitle: { fontSize: 12, color: '#71717A' },
-  section: { marginBottom: 24 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  section: { marginBottom: 22 },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   sectionMeta: { fontSize: 11, color: '#71717A' },
   sectionLink: { fontSize: 12, color: '#A0A0A0', fontWeight: '500' },
-  quickAddRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  quickInput: { flex: 1, backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, color: '#FFFFFF', fontSize: 12 },
-  quickAddButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  quickAddRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  quickInput: {
+    flex: 1,
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#FFFFFF',
+    fontSize: 12,
+  },
+  quickAddButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   taskList: { gap: 6 },
-  taskRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12 },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 12,
+  },
   taskDone: { opacity: 0.4 },
   checkButton: { marginRight: 10 },
   taskText: { flex: 1, color: '#FFFFFF', fontSize: 12 },
   taskStrike: { textDecorationLine: 'line-through', color: '#71717A' },
   trashBtn: { padding: 4 },
-  emptyText: { color: '#71717A', fontSize: 12, textAlign: 'center', paddingVertical: 12 },
-  assessmentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, marginBottom: 6 },
+  emptyText: { color: '#71717A', fontSize: 12, textAlign: 'center', paddingVertical: 10 },
+  assessmentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
+  },
   examTitle: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
   examSub: { fontSize: 11, color: '#71717A', marginTop: 2 },
-  daysPill: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  daysPillUrgent: { backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)' },
+  daysPill: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  daysPillUrgent: {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+  },
   daysText: { fontSize: 11, fontWeight: '600', color: '#A0A0A0' },
-  daysTextUrgent: { color: '#EF4444' },
-  srsCard: { backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 16, padding: 16, marginBottom: 24 },
+  daysTextUrgent: { color: '#F59E0B' },
+  srsCard: {
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.2)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 22,
+  },
   srsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   srsTitle: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
   srsRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 12 },
-  srsCount: { fontSize: 28, fontWeight: '700', color: '#FFFFFF' },
+  srsCount: { fontSize: 26, fontWeight: '700', color: '#FFFFFF' },
   srsSub: { fontSize: 12, color: '#71717A' },
-  srsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 8 },
+  srsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 8,
+  },
   srsButtonText: { fontSize: 12, fontWeight: '600', color: '#000000' },
-  courseRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#09090B', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, marginBottom: 6 },
+  courseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
+  },
   courseName: { fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
   courseCode: { fontSize: 11, color: '#71717A', marginTop: 2 },
   courseTarget: { fontSize: 11, color: '#A0A0A0' },
-  floatingTimer: { position: 'absolute', bottom: 16, left: 20, right: 20, backgroundColor: '#121215', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 24, paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 5 },
-  timerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
-  timerLabel: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' }
+  floatingTimer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 20,
+    right: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  timerLabel: { color: '#000000', fontSize: 12, fontWeight: '700' },
 });

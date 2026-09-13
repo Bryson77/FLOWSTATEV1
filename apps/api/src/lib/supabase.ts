@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { MiddlewareHandler } from "hono";
 import type { AppContext } from "../types";
-import type { Database } from "../../../../lib/shared/src/database.types";
+import type { Database } from "@saktus/shared";
 
 export const initSupabaseMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
   const supabaseUrl = c.env.SUPABASE_URL;

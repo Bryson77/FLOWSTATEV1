@@ -1,5 +1,5 @@
 {
-  "name": "@flowstate/web",
+  "name": "@saktus/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,9 +13,9 @@
     "clean": "rm -rf .next .open-next .turbo node_modules"
   },
   "dependencies": {
-    "@flowstate/ui": "workspace:*",
-    "@flowstate/shared": "workspace:*",
-    "@flowstate/study-engine": "workspace:*",
+    "@saktus/ui": "workspace:*",
+    "@saktus/shared": "workspace:*",
+    "@saktus/study-engine": "workspace:*",
     "@supabase/supabase-js": "^2.49.0",
     "@supabase/ssr": "^0.7.0",
     "@tanstack/react-query": "catalog:",

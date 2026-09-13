@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../../../lib/shared/src/database.types";
+import type { Database } from "@saktus/shared";
 
 export interface EnvBindings {
   SUPABASE_URL?: string;

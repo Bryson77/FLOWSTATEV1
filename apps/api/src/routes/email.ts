@@ -9,7 +9,7 @@ const emailPayloadSchema = z.object({
   subject: z.string().min(1).max(200),
   html: z.string().min(1),
   text: z.string().optional(),
-  from: z.string().optional().default("FlowState <onboarding@resend.dev>"),
+  from: z.string().optional().default("Saktus <onboarding@resend.dev>"),
 });
 
 emailRouter.post("/send", async (c) => {

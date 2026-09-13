@@ -13,12 +13,18 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@flowstate/study-engine": ["../../lib/study-engine/src/index.ts"],
-      "@flowstate/shared": ["../../lib/shared/src/index.ts"]
+      "@saktus/study-engine": ["../../lib/study-engine/src/index.ts"],
+      "@saktus/shared": ["../../lib/shared/src/index.ts"],
+      "@saktus/ui": ["../../lib/ui/src/index.ts"]
     },
     "outDir": "dist",
     "tsBuildInfoFile": ".turbo/tsconfig.tsbuildinfo"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

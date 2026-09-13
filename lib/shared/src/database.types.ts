@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -221,6 +223,42 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string | null
+          followee_id: string
+          follower_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          followee_id: string
+          follower_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          followee_id?: string
+          follower_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_followee_id_fkey"
+            columns: ["followee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           created_at: string | null
@@ -260,72 +298,36 @@ export type Database = {
           },
         ]
       }
-      follows: {
-        Row: {
-          id: string
-          follower_id: string
-          followee_id: string
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          follower_id: string
-          followee_id: string
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          follower_id?: string
-          followee_id?: string
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "follows_followee_id_fkey"
-            columns: ["followee_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notifications: {
         Row: {
-          id: string
-          user_id: string
-          title: string
-          message: string
-          type: string | null
-          read: boolean | null
-          link: string | null
           created_at: string | null
+          id: string
+          link: string | null
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          title: string
-          message: string
-          type?: string | null
-          read?: boolean | null
-          link?: string | null
           created_at?: string | null
+          id?: string
+          link?: string | null
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          message?: string
-          type?: string | null
-          read?: boolean | null
-          link?: string | null
           created_at?: string | null
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -355,11 +357,6 @@ export type Database = {
           university: string | null
           updated_at: string | null
           username: string | null
-          timezone: string | null
-          has_completed_onboarding: boolean | null
-          daily_study_goal_minutes: number | null
-          email_notifications_opt_in: boolean | null
-          tier: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -378,11 +375,6 @@ export type Database = {
           university?: string | null
           updated_at?: string | null
           username?: string | null
-          timezone?: string | null
-          has_completed_onboarding?: boolean | null
-          daily_study_goal_minutes?: number | null
-          email_notifications_opt_in?: boolean | null
-          tier?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -401,11 +393,6 @@ export type Database = {
           university?: string | null
           updated_at?: string | null
           username?: string | null
-          timezone?: string | null
-          has_completed_onboarding?: boolean | null
-          daily_study_goal_minutes?: number | null
-          email_notifications_opt_in?: boolean | null
-          tier?: string | null
         }
         Relationships: []
       }
@@ -537,78 +524,33 @@ export type Database = {
         }
         Relationships: []
       }
-      study_sessions: {
-        Row: {
-          completed_at: string | null
-          course_id: string | null
-          duration_seconds: number
-          id: string
-          mode: string | null
-          notes: string | null
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          course_id?: string | null
-          duration_seconds: number
-          id?: string
-          mode?: string | null
-          notes?: string | null
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          course_id?: string | null
-          duration_seconds?: number
-          id?: string
-          mode?: string | null
-          notes?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "study_sessions_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "study_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       streaks: {
         Row: {
-          user_id: string
           current_streak: number | null
-          longest_streak: number | null
-          last_active_date: string | null
           freezes_available: number | null
           freezes_used_total: number | null
+          last_active_date: string | null
+          longest_streak: number | null
           updated_at: string | null
+          user_id: string
         }
         Insert: {
-          user_id: string
           current_streak?: number | null
-          longest_streak?: number | null
-          last_active_date?: string | null
           freezes_available?: number | null
           freezes_used_total?: number | null
+          last_active_date?: string | null
+          longest_streak?: number | null
           updated_at?: string | null
+          user_id: string
         }
         Update: {
-          user_id?: string
           current_streak?: number | null
-          longest_streak?: number | null
-          last_active_date?: string | null
           freezes_available?: number | null
           freezes_used_total?: number | null
+          last_active_date?: string | null
+          longest_streak?: number | null
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -622,22 +564,22 @@ export type Database = {
       }
       study_room_members: {
         Row: {
+          completed: boolean | null
+          joined_at: string | null
           room_id: string
           user_id: string
-          joined_at: string | null
-          completed: boolean | null
         }
         Insert: {
+          completed?: boolean | null
+          joined_at?: string | null
           room_id: string
           user_id: string
-          joined_at?: string | null
-          completed?: boolean | null
         }
         Update: {
+          completed?: boolean | null
+          joined_at?: string | null
           room_id?: string
           user_id?: string
-          joined_at?: string | null
-          completed?: boolean | null
         }
         Relationships: [
           {
@@ -658,45 +600,117 @@ export type Database = {
       }
       study_rooms: {
         Row: {
-          id: string
-          host_id: string
-          name: string
           code: string
           course_id: string | null
+          created_at: string | null
           duration_seconds: number | null
           elapsed_seconds_at_pause: number | null
-          status: string | null
+          host_id: string
+          id: string
           last_resumed_at: string | null
-          created_at: string | null
+          name: string
+          status: string | null
         }
         Insert: {
-          id?: string
-          host_id: string
-          name: string
           code: string
           course_id?: string | null
+          created_at?: string | null
           duration_seconds?: number | null
           elapsed_seconds_at_pause?: number | null
-          status?: string | null
+          host_id: string
+          id?: string
           last_resumed_at?: string | null
-          created_at?: string | null
+          name: string
+          status?: string | null
         }
         Update: {
-          id?: string
-          host_id?: string
-          name?: string
           code?: string
           course_id?: string | null
+          created_at?: string | null
           duration_seconds?: number | null
           elapsed_seconds_at_pause?: number | null
-          status?: string | null
+          host_id?: string
+          id?: string
           last_resumed_at?: string | null
-          created_at?: string | null
+          name?: string
+          status?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "study_rooms_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "study_rooms_host_id_fkey"
             columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_sessions: {
+        Row: {
+          assessment_id: string | null
+          completed_at: string | null
+          course_id: string | null
+          duration_seconds: number
+          id: string
+          mode: string | null
+          notes: string | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          assessment_id?: string | null
+          completed_at?: string | null
+          course_id?: string | null
+          duration_seconds: number
+          id?: string
+          mode?: string | null
+          notes?: string | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          assessment_id?: string | null
+          completed_at?: string | null
+          course_id?: string | null
+          duration_seconds?: number
+          id?: string
+          mode?: string | null
+          notes?: string | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_sessions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_sessions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_sessions_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -721,7 +735,7 @@ export type Database = {
           created_at?: string | null
           done?: boolean | null
           due?: string | null
-          id?: string
+          id: string
           notes?: string | null
           prio?: string | null
           text: string
@@ -807,19 +821,8 @@ export type Database = {
     }
     Functions: {
       record_study_activity: {
-        Args: {
-          p_user_id: string
-          p_activity_type: string
-        }
+        Args: { p_activity_type: string; p_user_id: string }
         Returns: Json
-      }
-      delete_user_account: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      get_my_user_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
     }
     Enums: {
@@ -863,3 +866,93 @@ export type Tables<
       ? R
       : never
     : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const;

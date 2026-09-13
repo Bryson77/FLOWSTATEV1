@@ -35,12 +35,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {currentToast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
           <div
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium shadow-2xl backdrop-blur-[40px] border ${
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium shadow-xl border ${
               currentToast.type === 'error'
-                ? 'bg-[#1A1A1A] border-[#E74C3C]/40 text-[#E74C3C]'
+                ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
                 : currentToast.type === 'info'
-                ? 'bg-[#1A1A1A] border-[#3B82F6]/40 text-[#3B82F6]'
-                : 'bg-[#111111] border-[#2A2A2A] text-white'
+                ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white'
             }`}
           >
             <span>{currentToast.message}</span>

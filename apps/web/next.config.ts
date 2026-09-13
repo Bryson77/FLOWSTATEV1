@@ -8,7 +8,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   outputFileTracingRoot: path.resolve(__dirname, '../../'),
-  transpilePackages: ['@flowstate/ui', '@flowstate/shared', '@flowstate/study-engine'],
+  transpilePackages: [
+    '@saktus/ui',
+    '@saktus/shared',
+    '@saktus/study-engine',
+  ],
 };
 
 export default nextConfig;

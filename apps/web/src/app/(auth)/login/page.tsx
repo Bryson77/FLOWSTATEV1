@@ -85,12 +85,12 @@ export default function LoginPage() {
             </span>
           </Link>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white tracking-tight">
-            {isSignUp ? 'Create your academic cockpit' : 'Welcome back'}
+            {isSignUp ? 'Create your account' : 'Welcome back'}
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             {isSignUp
-              ? 'Organise courses, timetable, exams & active recall'
-              : 'Enter your credentials to enter your cockpit'}
+              ? 'Organise courses, timetable, exams & flashcards'
+              : 'Sign in to access your study space'}
           </p>
         </div>
 

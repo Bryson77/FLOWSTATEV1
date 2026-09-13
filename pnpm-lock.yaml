@@ -66,7 +66,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@flowstate/shared':
+      '@saktus/shared':
         specifier: workspace:*
         version: link:../../lib/shared
       '@supabase/supabase-js':
@@ -100,15 +100,15 @@ importers:
       '@babel/runtime':
         specifier: ^7.26.0
         version: 7.29.7
-      '@flowstate/shared':
-        specifier: workspace:*
-        version: link:../../lib/shared
-      '@flowstate/study-engine':
-        specifier: workspace:*
-        version: link:../../lib/study-engine
       '@react-native-async-storage/async-storage':
         specifier: 2.2.0
         version: 2.2.0(react-native@0.86.0(@babel/core@7.29.7)(@types/react@19.3.0)(react@19.1.0))
+      '@saktus/shared':
+        specifier: workspace:*
+        version: link:../../lib/shared
+      '@saktus/study-engine':
+        specifier: workspace:*
+        version: link:../../lib/study-engine
       '@supabase/supabase-js':
         specifier: ^2.49.1
         version: 2.116.0
@@ -185,13 +185,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@flowstate/shared':
+      '@saktus/shared':
         specifier: workspace:*
         version: link:../../lib/shared
-      '@flowstate/study-engine':
+      '@saktus/study-engine':
         specifier: workspace:*
         version: link:../../lib/study-engine
-      '@flowstate/ui':
+      '@saktus/ui':
         specifier: workspace:*
         version: link:../../lib/ui
       '@supabase/ssr':

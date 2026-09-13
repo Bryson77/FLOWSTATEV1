@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Weekly Flow State Summary</title>
+  <title>Your Weekly Saktus Summary</title>
   <style>
     body {
       margin: 0;
@@ -20,91 +20,84 @@
       padding-bottom: 40px;
     }
     .main {
-      background-color: #000000;
+      background-color: #09090b;
       margin: 0 auto;
       width: 100%;
       max-width: 600px;
       border-spacing: 0;
+      border: 1px solid #27272a;
+      border-radius: 16px;
+      overflow: hidden;
     }
     .header {
-      padding: 20px;
+      padding: 32px 32px 16px 32px;
       text-align: center;
     }
     .logo {
       font-size: 20px;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: -0.5px;
       color: #ffffff;
-      text-decoration: none;
     }
     .hero {
-      background-color: #161616;
-      border: 1px solid #27272a;
-      border-radius: 16px;
-      padding: 40px 30px;
+      padding: 16px 32px 32px 32px;
       text-align: center;
-      margin-bottom: 20px;
     }
     .streak-val {
-      font-size: 64px;
-      font-weight: 900;
+      font-size: 56px;
+      font-weight: 800;
+      color: #f59e0b;
       line-height: 1;
-      margin: 10px 0;
+      margin: 12px 0 4px 0;
+      font-family: monospace;
     }
     .streak-label {
-      font-size: 14px;
-      font-weight: 600;
-      color: #a1a1aa;
+      color: #71717a;
+      font-size: 13px;
+      font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
     .grid {
-      width: 100%;
-      border-spacing: 10px;
+      border-collapse: separate;
+      border-spacing: 8px;
+      padding: 0 24px;
     }
     .card {
-      background-color: #161616;
+      background-color: #18181b;
       border: 1px solid #27272a;
       border-radius: 12px;
-      padding: 20px;
-      text-align: left;
+      padding: 20px 16px;
+      text-align: center;
     }
     .card-val {
       font-size: 24px;
-      font-weight: 800;
+      font-weight: 700;
       color: #ffffff;
+      margin-bottom: 4px;
+      font-family: monospace;
     }
     .card-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #71717a;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-top: 4px;
-    }
-    .footer {
-      padding: 40px 20px;
-      text-align: center;
       font-size: 12px;
-      color: #4a4a4a;
+      color: #a1a1aa;
     }
     .button {
       display: inline-block;
-      padding: 14px 32px;
       background-color: #ffffff;
       color: #000000;
-      text-decoration: none;
-      border-radius: 999px;
-      font-weight: 700;
+      font-weight: 600;
       font-size: 14px;
-      margin-top: 20px;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      text-decoration: none;
+      margin-top: 16px;
     }
-    @media screen and (max-width: 600px) {
-      .card {
-        display: block;
-        width: 100% !important;
-        margin-bottom: 10px;
-      }
+    .footer {
+      padding: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: #71717a;
+      border-top: 1px solid #18181b;
     }
   </style>
 </head>
@@ -113,7 +106,7 @@
     <table class="main" align="center">
       <tr>
         <td class="header">
-          <div class="logo">Flow State</div>
+          <div class="logo">Saktus</div>
         </td>
       </tr>
       <tr>
@@ -121,9 +114,9 @@
           <div class="hero">
             <div class="streak-label">Current Streak</div>
             <div class="streak-val">{{streak}}</div>
-            <div class="streak-label">Days Locked In</div>
+            <div class="streak-label">Days Focused</div>
             <p style="color: #a1a1aa; font-size: 15px; margin-top: 20px;">
-              Great work this week, {{name}}! You're making consistent progress toward your goals.
+              Great work this week, {{name}}! You're making consistent progress toward your coursework goals.
             </p>
           </div>
         </td>
@@ -164,13 +157,13 @@
       </tr>
       <tr>
         <td style="text-align: center; padding-top: 20px;">
-          <a href="https://flowstateproductivity.xyz/dashboard.html" class="button">View Full Dashboard</a>
+          <a href="/home" class="button">Open Dashboard</a>
         </td>
       </tr>
       <tr>
         <td class="footer">
-          You're receiving this because you opted in to weekly summaries in your Flow State settings.<br>
-          <a href="#" style="color: #71717a;">Unsubscribe</a> &bull; &copy; 2026 Flow State
+          You're receiving this because you opted in to weekly summaries in your Saktus settings.<br>
+          <a href="#" style="color: #71717a;">Unsubscribe</a> &bull; &copy; 2026 Saktus
         </td>
       </tr>
     </table>

@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  // If user is already authenticated and visits login, redirect to home cockpit
+  // If user is already authenticated and visits login, redirect to home dashboard
   if (user && isAuthPage) {
     const redirectResponse = NextResponse.redirect(new URL('/home', request.url));
     response.cookies.getAll().forEach((cookie: any) => {

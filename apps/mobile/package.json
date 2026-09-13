@@ -1,5 +1,5 @@
 {
-  "name": "@flowstate/mobile",
+  "name": "@saktus/mobile",
   "version": "0.0.0",
   "private": true,
   "main": "expo-router/entry",
@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.26.0",
-    "@flowstate/shared": "workspace:*",
-    "@flowstate/study-engine": "workspace:*",
+    "@saktus/shared": "workspace:*",
+    "@saktus/study-engine": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.49.1",
     "expo": "~57.0.22",

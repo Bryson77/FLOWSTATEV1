@@ -111,6 +111,8 @@ export interface StudySession {
   id: string;
   userId: string;
   courseId: string | null;
+  taskId?: string | null;
+  assessmentId?: string | null;
   durationSeconds: number;
   mode: 'pomodoro' | 'stopwatch';
   completedAt: string;
