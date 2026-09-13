@@ -193,10 +193,11 @@ export default function HomePage() {
       } else if (classes.length > 0) {
         const first = classes[0];
         const days = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const dayLabel = first.day_of_week ? days[first.day_of_week] || 'Upcoming' : 'Upcoming';
         setNextClass({
           name: first.courses?.name || 'Class',
           code: first.courses?.code || '',
-          time: `${days[first.day_of_week]} · ${first.start_time?.slice(0, 5)}`,
+          time: `${dayLabel} · ${first.start_time?.slice(0, 5) || ''}`,
           venue: first.venue || 'Campus Venue',
         });
       } else {
