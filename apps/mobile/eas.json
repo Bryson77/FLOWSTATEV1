@@ -7,6 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "installCommand": "pnpm install --no-frozen-lockfile",
       "node": "22.16.0",
       "pnpm": "11.5.2",
       "env": {
@@ -19,6 +20,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "installCommand": "pnpm install --no-frozen-lockfile",
       "node": "22.16.0",
       "pnpm": "11.5.2",
       "env": {
@@ -31,6 +33,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "installCommand": "pnpm install --no-frozen-lockfile",
       "node": "22.16.0",
       "pnpm": "11.5.2",
       "env": {
