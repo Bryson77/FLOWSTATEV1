@@ -92,7 +92,7 @@ export default function ProfileScreen() {
           username: cleanUser || null,
           degree: editDegree.trim() || null,
           daily_study_goal_minutes: goalMinutes,
-        })
+        } as any)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase.rpc('delete_user_account');
+              const { error } = await (supabase.rpc as any)('delete_user_account');
               if (error) throw error;
               await signOut();
             } catch (err: any) {

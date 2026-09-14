@@ -140,8 +140,8 @@ export default function CardsScreen() {
         .insert({
           user_id: user.id,
           title: newDeckTitle.trim(),
-          course_id: newDeckCourseId || null,
-        })
+          ...(newDeckCourseId ? { course_id: newDeckCourseId } : {}),
+        } as any)
         .select()
         .single();
 

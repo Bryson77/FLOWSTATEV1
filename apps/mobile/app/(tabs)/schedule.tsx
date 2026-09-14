@@ -139,7 +139,7 @@ export default function ScheduleScreen() {
           end_time: formEndTime.trim() || '10:30',
           venue: formVenue.trim() || 'Campus / Room',
           class_type: 'lecture',
-        });
+        } as any);
 
         if (error) throw error;
       } else {
@@ -160,7 +160,7 @@ export default function ScheduleScreen() {
           weight_percentage: weight,
           completed: false,
           type: 'assignment',
-        });
+        } as any);
 
         if (error) throw error;
       }

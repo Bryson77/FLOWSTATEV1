@@ -254,7 +254,7 @@ export default function SocialScreen() {
         id: data.id,
         name: data.name,
         code: data.code,
-        duration_seconds: data.duration_seconds,
+        duration_seconds: data.duration_seconds ?? durationSec,
         host_id: data.host_id,
         host_name: 'You',
       });

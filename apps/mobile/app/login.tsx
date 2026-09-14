@@ -97,7 +97,7 @@ export default function MobileLoginScreen() {
               username: cleanUser,
               full_name: fullName.trim(),
               timezone: userTimezone,
-            })
+            } as any)
             .eq('id', data.user.id);
         }
       } else {

@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (!error && data) {
-        setProfile(data as StudentProfile);
+        setProfile(data as unknown as StudentProfile);
       }
     } catch (err) {
       console.error('Error fetching profile:', err);

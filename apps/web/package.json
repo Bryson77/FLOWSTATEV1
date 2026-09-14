@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3100",
-    "build": "next build && opennextjs-cloudflare build --skipNextBuild",
+    "build": "next build && node ./ensure-manifests.mjs && opennextjs-cloudflare build --skipNextBuild",
     "build:next": "next build",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev",
