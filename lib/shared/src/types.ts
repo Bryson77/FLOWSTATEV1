@@ -18,7 +18,7 @@ export interface Profile {
   hasCompletedOnboarding: boolean;
   dailyStudyGoalMinutes: number;
   emailNotificationsOptIn: boolean;
-  tier: 'free' | 'standard' | 'pro';
+  tier: "free" | "standard" | "pro";
   createdAt: string;
   updatedAt: string;
 }
@@ -41,9 +41,9 @@ export interface TimetableClass {
   userId: string;
   dayOfWeek: number; // 1=Mon, 7=Sun
   startTime: string; // HH:MM
-  endTime: string;   // HH:MM
+  endTime: string; // HH:MM
   venue: string | null;
-  classType: 'lecture' | 'tutorial' | 'lab' | 'workshop';
+  classType: "lecture" | "tutorial" | "lab" | "workshop";
   createdAt: string;
 }
 
@@ -53,7 +53,7 @@ export interface Assessment {
   courseId: string;
   userId: string;
   title: string;
-  type: 'exam' | 'test' | 'assignment' | 'project' | 'quiz';
+  type: "exam" | "test" | "assignment" | "project" | "quiz";
   dueDate: string;
   venue: string | null;
   weightPercentage: number | null;
@@ -68,7 +68,7 @@ export interface Task {
   userId: string;
   courseId: string | null;
   text: string;
-  prio: 'urgent' | 'high' | 'normal' | 'low';
+  prio: "urgent" | "high" | "normal" | "low";
   done: boolean;
   notes: string | null;
   due: string | null;
@@ -76,34 +76,123 @@ export interface Task {
   updatedAt: string;
 }
 
+/** Rich Content ProseMirror/TipTap AST */
+export interface RichContentDoc {
+  type: "doc";
+  content: RichContentNode[];
+}
+
+export interface RichContentNode {
+  type:
+    | "paragraph"
+    | "heading"
+    | "bulletList"
+    | "orderedList"
+    | "listItem"
+    | "codeBlock"
+    | "table"
+    | "tableRow"
+    | "tableCell"
+    | "image"
+    | "mathEquation"
+    | "text";
+  attrs?: Record<string, any>;
+  content?: RichContentNode[];
+  marks?: Array<{
+    type:
+      | "bold"
+      | "italic"
+      | "underline"
+      | "strike"
+      | "code"
+      | "highlight"
+      | "link";
+    attrs?: Record<string, any>;
+  }>;
+  text?: string;
+}
+
 /** Flashcard deck */
 export interface FlashcardDeck {
   id: string;
-  courseId: string;
+  courseId: string | null;
   userId: string;
   title: string;
   description: string | null;
   tags: string[];
   isPublic: boolean;
+  visibility: "private" | "friends" | "public";
+  revision: number;
+  sourceDeckId?: string | null;
+  sourceCreatorUsername?: string | null;
   createdAt: string;
+  courseName?: string;
+  courseCode?: string;
+  cardCount?: number;
+  dueCount?: number;
+  masteryPercentage?: number;
+  ownerUsername?: string;
 }
 
-/** Individual flashcard with SM-2 attributes */
+/** Individual flashcard with content AST and ordering */
 export interface Flashcard {
   id: string;
   deckId: string;
   userId: string;
+  position: number;
+  version: number;
   frontText: string;
   backText: string;
-  cardType: 'standard' | 'true_false' | 'multiple_choice';
+  frontContent?: RichContentDoc;
+  backContent?: RichContentDoc;
+  cardType: "standard" | "true_false" | "multiple_choice";
   options: string[];
   correctAnswer: string | null;
+  repetitionNumber?: number;
+  intervalDays?: number;
+  easeFactor?: number;
+  dueDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Decoupled per-user SRS progress */
+export interface FlashcardReviewState {
+  id: string;
+  userId: string;
+  cardId: string;
   repetitionNumber: number;
   intervalDays: number;
   easeFactor: number;
-  dueDate: string;
+  dueDate: string; // YYYY-MM-DD
+  lastReviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Review audit and analytics event */
+export interface FlashcardReviewEvent {
+  id: string;
+  idempotencyKey?: string;
+  userId: string;
+  cardId: string;
+  deckId: string;
+  rating: "retry" | "hard" | "good" | "easy";
+  studyMode: "standard" | "cram" | "mcq" | "true_false" | "match";
+  responseTimeMs?: number;
+  reviewedAt: string;
+}
+
+/** Deck collaboration member */
+export interface DeckMember {
+  id: string;
+  deckId: string;
+  userId: string;
+  role: "editor" | "viewer";
+  createdAt: string;
+  updatedAt: string;
+  username?: string;
+  avatarUrl?: string | null;
 }
 
 /** Completed study session log */
@@ -114,7 +203,7 @@ export interface StudySession {
   taskId?: string | null;
   assessmentId?: string | null;
   durationSeconds: number;
-  mode: 'pomodoro' | 'stopwatch';
+  mode: "pomodoro" | "stopwatch";
   completedAt: string;
   notes: string | null;
 }
@@ -163,7 +252,7 @@ export interface StudyRoom {
   courseId: string | null;
   durationSeconds: number;
   elapsedSecondsAtPause: number;
-  status: 'active' | 'paused' | 'completed';
+  status: "active" | "paused" | "completed";
   lastResumedAt: string | null;
   createdAt: string;
 }
@@ -182,24 +271,24 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
-  type: 'deadline' | 'class' | 'streak' | 'social' | 'system';
+  type: "deadline" | "class" | "streak" | "social" | "system";
   read: boolean;
   link: string | null;
   createdAt: string;
 }
 
 /** Academic Tier Definition (Feature Split Specification) */
-export type PricingTier = 'free' | 'standard' | 'pro';
+export type PricingTier = "free" | "standard" | "pro";
 
 export interface TierFeatures {
   timetable: boolean;
   examTracker: boolean;
   focusTimer: boolean;
   streaks: boolean;
-  maxFlashcardDecks: number | 'unlimited';
+  maxFlashcardDecks: number | "unlimited";
   socialAndRooms: boolean;
   leaderboards: boolean;
-  analytics: 'basic' | 'full';
+  analytics: "basic" | "full";
   aiFlashcards: boolean;
 }
 
@@ -212,7 +301,7 @@ export const PRICING_TIER_LIMITS: Record<PricingTier, TierFeatures> = {
     maxFlashcardDecks: 3,
     socialAndRooms: false,
     leaderboards: false,
-    analytics: 'basic',
+    analytics: "basic",
     aiFlashcards: false,
   },
   standard: {
@@ -220,10 +309,10 @@ export const PRICING_TIER_LIMITS: Record<PricingTier, TierFeatures> = {
     examTracker: true,
     focusTimer: true,
     streaks: true,
-    maxFlashcardDecks: 'unlimited',
+    maxFlashcardDecks: "unlimited",
     socialAndRooms: true,
     leaderboards: true,
-    analytics: 'full',
+    analytics: "full",
     aiFlashcards: false,
   },
   pro: {
@@ -231,11 +320,10 @@ export const PRICING_TIER_LIMITS: Record<PricingTier, TierFeatures> = {
     examTracker: true,
     focusTimer: true,
     streaks: true,
-    maxFlashcardDecks: 'unlimited',
+    maxFlashcardDecks: "unlimited",
     socialAndRooms: true,
     leaderboards: true,
-    analytics: 'full',
+    analytics: "full",
     aiFlashcards: true,
   },
 };
-

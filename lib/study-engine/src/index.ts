@@ -6,11 +6,11 @@ export {
   type ReviewRating,
   type NextReviewInput,
   type NextReviewOutput,
-} from './sm2';
+} from './sm2.js';
 
 export {
   calculateStreak,
   getLocalISODate,
   type StreakInput,
   type StreakResult,
-} from './streaks';
+} from './streaks.js';

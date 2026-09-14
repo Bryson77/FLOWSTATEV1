@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Standardized Zod error message formatter.
@@ -6,7 +6,7 @@ import { z } from 'zod';
  */
 export function formatZodError(error: z.ZodError): string {
   const first = error.issues[0];
-  if (!first) return 'Fill this in: Please complete all required fields.';
+  if (!first) return "Fill this in: Please complete all required fields.";
   return first.message;
 }
 
@@ -15,7 +15,7 @@ export function formatZodError(error: z.ZodError): string {
  */
 export function validateWithZod<T>(
   schema: z.ZodSchema<T>,
-  data: unknown
+  data: unknown,
 ): { success: true; data: T } | { success: false; error: string } {
   const res = schema.safeParse(data);
   if (!res.success) {
@@ -30,39 +30,42 @@ export function validateWithZod<T>(
 
 export const loginSchema = z.object({
   email: z
-    .string({ required_error: 'Fill this in: Email address is required.' })
+    .string({ required_error: "Fill this in: Email address is required." })
     .trim()
-    .min(1, 'Fill this in: Email address is required.')
-    .email('Please enter a valid email address.'),
+    .min(1, "Fill this in: Email address is required.")
+    .email("Please enter a valid email address."),
   password: z
-    .string({ required_error: 'Fill this in: Password is required.' })
-    .min(1, 'Fill this in: Password is required.')
-    .min(6, 'Password must be at least 6 characters.'),
+    .string({ required_error: "Fill this in: Password is required." })
+    .min(1, "Fill this in: Password is required.")
+    .min(6, "Password must be at least 6 characters."),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const signUpSchema = z.object({
   fullName: z
-    .string({ required_error: 'Fill this in: Full name is required.' })
+    .string({ required_error: "Fill this in: Full name is required." })
     .trim()
-    .min(1, 'Fill this in: Full name is required.')
-    .max(100, 'Name cannot exceed 100 characters.'),
+    .min(1, "Fill this in: Full name is required.")
+    .max(100, "Name cannot exceed 100 characters."),
   email: z
-    .string({ required_error: 'Fill this in: Email address is required.' })
+    .string({ required_error: "Fill this in: Email address is required." })
     .trim()
-    .min(1, 'Fill this in: Email address is required.')
-    .email('Please enter a valid email address.'),
+    .min(1, "Fill this in: Email address is required.")
+    .email("Please enter a valid email address."),
   password: z
-    .string({ required_error: 'Fill this in: Password is required.' })
-    .min(1, 'Fill this in: Password is required.')
-    .min(6, 'Password must be at least 6 characters.'),
+    .string({ required_error: "Fill this in: Password is required." })
+    .min(1, "Fill this in: Password is required.")
+    .min(6, "Password must be at least 6 characters."),
   username: z
     .string()
     .trim()
-    .min(3, 'Username must be at least 3 characters.')
-    .max(20, 'Username cannot exceed 20 characters.')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores.')
+    .min(3, "Username must be at least 3 characters.")
+    .max(20, "Username cannot exceed 20 characters.")
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "Username can only contain letters, numbers, and underscores.",
+    )
     .optional(),
 });
 
@@ -78,26 +81,29 @@ export const createClassSchema = z
     newCourseName: z.string().trim().max(100).optional(),
     dayOfWeek: z.number().int().min(1).max(7),
     startTime: z
-      .string({ required_error: 'Fill this in: Start time is required.' })
-      .min(1, 'Fill this in: Start time is required.')
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Start time must be in HH:MM format.'),
+      .string({ required_error: "Fill this in: Start time is required." })
+      .min(1, "Fill this in: Start time is required.")
+      .regex(
+        /^([01]\d|2[0-3]):[0-5]\d$/,
+        "Start time must be in HH:MM format.",
+      ),
     endTime: z
-      .string({ required_error: 'Fill this in: End time is required.' })
-      .min(1, 'Fill this in: End time is required.')
-      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'End time must be in HH:MM format.'),
+      .string({ required_error: "Fill this in: End time is required." })
+      .min(1, "Fill this in: End time is required.")
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "End time must be in HH:MM format."),
     venue: z.string().trim().max(100).optional().nullable(),
     classType: z
-      .enum(['lecture', 'tutorial', 'lab', 'workshop'])
+      .enum(["lecture", "tutorial", "lab", "workshop"])
       .optional()
-      .default('lecture'),
+      .default("lecture"),
   })
-  .refine((data) => Boolean(data.courseId || data.newCourseName?.trim()), {
-    message: 'Fill this in: Please select or enter a course name.',
-    path: ['newCourseName'],
+  .refine((data: any) => Boolean(data.courseId || data.newCourseName?.trim()), {
+    message: "Fill this in: Please select or enter a course name.",
+    path: ["newCourseName"],
   })
-  .refine((data) => data.startTime < data.endTime, {
-    message: 'Class end time must be after start time.',
-    path: ['endTime'],
+  .refine((data: any) => data.startTime < data.endTime, {
+    message: "Class end time must be after start time.",
+    path: ["endTime"],
   });
 
 export type CreateClassInput = z.infer<typeof createClassSchema>;
@@ -108,11 +114,14 @@ export type CreateClassInput = z.infer<typeof createClassSchema>;
 
 export const createTaskSchema = z.object({
   text: z
-    .string({ required_error: 'Fill this in: Please enter a task title.' })
+    .string({ required_error: "Fill this in: Please enter a task title." })
     .trim()
-    .min(1, 'Fill this in: Please enter a task title.')
-    .max(300, 'Task description cannot exceed 300 characters.'),
-  prio: z.enum(['urgent', 'high', 'normal', 'low']).optional().default('normal'),
+    .min(1, "Fill this in: Please enter a task title.")
+    .max(300, "Task description cannot exceed 300 characters."),
+  prio: z
+    .enum(["urgent", "high", "normal", "low"])
+    .optional()
+    .default("normal"),
   courseId: z.string().uuid().optional().nullable(),
   due: z.string().optional().nullable(),
 });
@@ -125,21 +134,21 @@ export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 
 export const createAssessmentSchema = z.object({
   title: z
-    .string({ required_error: 'Fill this in: Assessment title is required.' })
+    .string({ required_error: "Fill this in: Assessment title is required." })
     .trim()
-    .min(1, 'Fill this in: Assessment title is required.')
-    .max(150, 'Assessment title cannot exceed 150 characters.'),
+    .min(1, "Fill this in: Assessment title is required.")
+    .max(150, "Assessment title cannot exceed 150 characters."),
   dueDate: z
-    .string({ required_error: 'Fill this in: Due date is required.' })
-    .min(1, 'Fill this in: Due date is required.'),
+    .string({ required_error: "Fill this in: Due date is required." })
+    .min(1, "Fill this in: Due date is required."),
   courseId: z.string().uuid().optional().nullable(),
   weightPercentage: z.number().min(0).max(100).optional().nullable(),
   targetStudyHours: z.number().min(0).max(1000).optional().nullable(),
   venue: z.string().trim().max(100).optional().nullable(),
   type: z
-    .enum(['exam', 'test', 'assignment', 'project', 'quiz'])
+    .enum(["exam", "test", "assignment", "project", "quiz"])
     .optional()
-    .default('assignment'),
+    .default("assignment"),
 });
 
 export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
@@ -148,13 +157,69 @@ export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
 // 5. Flashcard Deck & Card Schemas
 // ==========================================
 
+// ==========================================
+// 5. Rich Content & Flashcard Schemas
+// ==========================================
+
+const MarkSchema = z.object({
+  type: z.enum([
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "code",
+    "highlight",
+    "link",
+  ]),
+  attrs: z
+    .record(z.any())
+    .optional()
+    .refine(
+      (attrs: any) => {
+        if (!attrs?.href) return true;
+        return /^https?:\/\//i.test(attrs.href) || attrs.href.startsWith("#");
+      },
+      { message: "Invalid or unsafe link URL" },
+    ),
+});
+
+export const RichContentNodeSchema: z.ZodType<any> = z.lazy(() =>
+  z.object({
+    type: z.enum([
+      "paragraph",
+      "heading",
+      "bulletList",
+      "orderedList",
+      "listItem",
+      "codeBlock",
+      "table",
+      "tableRow",
+      "tableCell",
+      "image",
+      "mathEquation",
+      "text",
+    ]),
+    attrs: z.record(z.any()).optional(),
+    content: z.array(RichContentNodeSchema).optional(),
+    marks: z.array(MarkSchema).optional(),
+    text: z.string().max(5000).optional(),
+  }),
+);
+
+export const RichContentDocSchema = z.object({
+  type: z.literal("doc"),
+  content: z.array(RichContentNodeSchema),
+});
+
 export const createDeckSchema = z.object({
   title: z
-    .string({ required_error: 'Fill this in: Deck title is required.' })
+    .string({ required_error: "Fill this in: Deck title is required." })
     .trim()
-    .min(1, 'Fill this in: Deck title is required.')
-    .max(100, 'Deck title cannot exceed 100 characters.'),
+    .min(1, "Fill this in: Deck title is required.")
+    .max(100, "Deck title cannot exceed 100 characters."),
+  description: z.string().trim().max(500).optional().nullable(),
   courseId: z.string().uuid().optional().nullable(),
+  visibility: z.enum(["private", "friends", "public"]).default("private"),
   tags: z.array(z.string()).optional().default([]),
 });
 
@@ -163,32 +228,61 @@ export type CreateDeckInput = z.infer<typeof createDeckSchema>;
 export const createCardSchema = z
   .object({
     deckId: z
-      .string({ required_error: 'Please select a deck first.' })
-      .min(1, 'Please select a deck first.'),
-    cardType: z.enum(['standard', 'true_false', 'multiple_choice']).default('standard'),
+      .string({ required_error: "Please select a deck first." })
+      .min(1, "Please select a deck first."),
+    cardType: z
+      .enum(["standard", "true_false", "multiple_choice"])
+      .default("standard"),
     frontText: z
-      .string({ required_error: 'Fill this in: Front prompt is required.' })
+      .string({ required_error: "Fill this in: Front prompt is required." })
       .trim()
-      .min(1, 'Fill this in: Front prompt is required.')
-      .max(2000, 'Front prompt cannot exceed 2000 characters.'),
-    backText: z.string().trim().max(2000).optional().default(''),
+      .min(1, "Fill this in: Front prompt is required.")
+      .max(2000, "Front prompt cannot exceed 2000 characters."),
+    backText: z.string().trim().max(2000).optional().default(""),
     options: z.array(z.string()).optional().default([]),
-    correctAnswer: z.string().optional().default(''),
+    correctAnswer: z.string().optional().default(""),
+    frontContent: RichContentDocSchema.optional(),
+    backContent: RichContentDocSchema.optional(),
   })
   .refine(
-    (data) => {
-      if (data.cardType === 'standard') {
+    (data: any) => {
+      if (data.cardType === "standard") {
         return Boolean(data.backText?.trim());
       }
       return true;
     },
     {
-      message: 'Fill this in: Back answer is required.',
-      path: ['backText'],
-    }
+      message: "Fill this in: Back answer is required.",
+      path: ["backText"],
+    },
   );
 
 export type CreateCardInput = z.infer<typeof createCardSchema>;
+
+export const reorderCardsSchema = z.object({
+  deckId: z.string().uuid("Invalid deck ID"),
+  cardIds: z
+    .array(z.string().uuid("Invalid card ID"))
+    .min(1, "Must provide at least one card ID"),
+  expectedRevision: z.number().int().min(1, "Invalid expected revision"),
+});
+
+export type ReorderCardsInput = z.infer<typeof reorderCardsSchema>;
+
+export const bulkImportRowSchema = z.object({
+  front: z.string().trim().min(1, "Front prompt cannot be empty"),
+  back: z.string().trim().min(1, "Back answer cannot be empty"),
+});
+
+export const bulkImportCardsSchema = z.object({
+  deckId: z.string().uuid("Invalid deck ID"),
+  cards: z
+    .array(bulkImportRowSchema)
+    .min(1, "At least 1 card is required")
+    .max(1000, "Maximum 1000 cards per import"),
+});
+
+export type BulkImportCardsInput = z.infer<typeof bulkImportCardsSchema>;
 
 // ==========================================
 // 6. Study Room Schemas
@@ -196,15 +290,15 @@ export type CreateCardInput = z.infer<typeof createCardSchema>;
 
 export const createRoomSchema = z.object({
   name: z
-    .string({ required_error: 'Fill this in: Room name is required.' })
+    .string({ required_error: "Fill this in: Room name is required." })
     .trim()
-    .min(1, 'Fill this in: Room name is required.')
-    .max(60, 'Room name cannot exceed 60 characters.'),
+    .min(1, "Fill this in: Room name is required.")
+    .max(60, "Room name cannot exceed 60 characters."),
   durationMinutes: z
     .number()
-    .int('Duration must be a whole number of minutes.')
-    .min(5, 'Duration must be at least 5 minutes.')
-    .max(180, 'Duration cannot exceed 180 minutes.')
+    .int("Duration must be a whole number of minutes.")
+    .min(5, "Duration must be at least 5 minutes.")
+    .max(180, "Duration cannot exceed 180 minutes.")
     .default(25),
 });
 
@@ -212,10 +306,15 @@ export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
 export const joinRoomSchema = z.object({
   code: z
-    .string({ required_error: 'Fill this in: Please enter a 6-character room code.' })
+    .string({
+      required_error: "Fill this in: Please enter a 6-character room code.",
+    })
     .trim()
-    .length(6, 'Fill this in: Room code must be exactly 6 characters.')
-    .regex(/^[A-Za-z0-9]{6}$/, 'Room code must only contain letters and numbers.'),
+    .length(6, "Fill this in: Room code must be exactly 6 characters.")
+    .regex(
+      /^[A-Za-z0-9]{6}$/,
+      "Room code must only contain letters and numbers.",
+    ),
 });
 
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
