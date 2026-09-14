@@ -17,7 +17,7 @@ export type Database = {
       assessments: {
         Row: {
           completed: boolean | null
-          course_id: string
+          course_id: string | null
           created_at: string | null
           due_date: string
           id: string
@@ -30,7 +30,7 @@ export type Database = {
         }
         Insert: {
           completed?: boolean | null
-          course_id: string
+          course_id?: string | null
           created_at?: string | null
           due_date: string
           id?: string
@@ -43,7 +43,7 @@ export type Database = {
         }
         Update: {
           completed?: boolean | null
-          course_id?: string
+          course_id?: string | null
           created_at?: string | null
           due_date?: string
           id?: string
@@ -111,7 +111,7 @@ export type Database = {
       }
       flashcard_decks: {
         Row: {
-          course_id: string
+          course_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -121,7 +121,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          course_id: string
+          course_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -131,7 +131,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          course_id?: string
+          course_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -735,7 +735,7 @@ export type Database = {
           created_at?: string | null
           done?: boolean | null
           due?: string | null
-          id: string
+          id?: string
           notes?: string | null
           prio?: string | null
           text: string
@@ -767,7 +767,7 @@ export type Database = {
       timetable_classes: {
         Row: {
           class_type: string | null
-          course_id: string
+          course_id: string | null
           created_at: string | null
           day_of_week: number | null
           end_time: string
@@ -778,7 +778,7 @@ export type Database = {
         }
         Insert: {
           class_type?: string | null
-          course_id: string
+          course_id?: string | null
           created_at?: string | null
           day_of_week?: number | null
           end_time: string
@@ -789,7 +789,7 @@ export type Database = {
         }
         Update: {
           class_type?: string | null
-          course_id?: string
+          course_id?: string | null
           created_at?: string | null
           day_of_week?: number | null
           end_time?: string
@@ -817,7 +817,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      classes: {
+        Row: {
+          class_type: string | null
+          course_id: string | null
+          created_at: string | null
+          day_of_week: number | null
+          end_time: string | null
+          id: string | null
+          start_time: string | null
+          user_id: string | null
+          venue: string | null
+        }
+        Insert: {
+          class_type?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time?: string | null
+          id?: string | null
+          start_time?: string | null
+          user_id?: string | null
+          venue?: string | null
+        }
+        Update: {
+          class_type?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time?: string | null
+          id?: string | null
+          start_time?: string | null
+          user_id?: string | null
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timetable_classes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timetable_classes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       record_study_activity: {

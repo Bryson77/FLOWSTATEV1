@@ -8,11 +8,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AtSign } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { getSafeErrorMessage } from '../lib/errors';
 
 export default function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -30,19 +32,27 @@ export default function MobileLoginScreen() {
   };
 
   const handleAuth = async () => {
-    if (!email.trim() || !password.trim()) {
-      setErrorMsg('Please enter your email and password.');
+    if (!email.trim()) {
+      setErrorMsg('Fill this in: Email address is required.');
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMsg('Fill this in: Password is required.');
       return;
     }
 
     if (isSignUp) {
       if (!fullName.trim()) {
-        setErrorMsg('Please enter your name.');
+        setErrorMsg('Fill this in: Full name is required.');
         return;
       }
       const cleanUser = sanitizeUsername(username);
-      if (!cleanUser || cleanUser.length < 3) {
-        setErrorMsg('Username must be at least 3 letters, numbers, or underscores.');
+      if (!cleanUser) {
+        setErrorMsg('Fill this in: Username is required.');
+        return;
+      }
+      if (cleanUser.length < 3) {
+        setErrorMsg('Username must be at least 3 characters.');
         return;
       }
       if (cleanUser.length > 20) {
@@ -110,12 +120,8 @@ export default function MobileLoginScreen() {
 
       router.replace('/(tabs)');
     } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.toLowerCase().includes('invalid login credentials')) {
-        setErrorMsg('Wrong email or password.');
-      } else {
-        setErrorMsg(msg || 'Authentication failed.');
-      }
+      console.error('Mobile auth error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Authentication failed. Something went wrong.'));
     } finally {
       setLoading(false);
     }
@@ -135,11 +141,13 @@ export default function MobileLoginScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Saktus Tactile S Brand Emblem */}
+          {/* Saktus Brand Emblem */}
           <View style={styles.header}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoLetter}>S</Text>
-            </View>
+            <Image
+              source={require('../assets/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.brandTitle}>Saktus</Text>
             <Text style={styles.brandSubtitle}>
               {isSignUp ? 'Create your student account' : 'Productivity app for students'}
@@ -295,27 +303,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
     gap: 20,
   },
   header: {
     alignItems: 'center',
     gap: 6,
   },
-  logoBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  logoLetter: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -1,
+  logoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    marginBottom: 8,
   },
   brandTitle: {
     color: '#FFFFFF',

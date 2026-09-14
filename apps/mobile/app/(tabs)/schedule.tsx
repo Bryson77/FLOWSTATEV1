@@ -10,6 +10,8 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { getSafeErrorMessage } from '../../lib/errors';
 
 const DAYS = [
   { num: 1, label: 'Mon' },
@@ -92,16 +95,14 @@ export default function ScheduleScreen() {
       setClasses(classesRes.data || []);
       setAssessments(assessmentsRes.data || []);
       setCourses(coursesRes.data || []);
-      if (coursesRes.data && coursesRes.data.length > 0 && !formCourseId) {
-        setFormCourseId(coursesRes.data[0].id);
-      }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load schedule.');
+      console.error('Schedule fetch error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load schedule. Something went wrong.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, formCourseId]);
+  }, [user]);
 
   useEffect(() => {
     fetchScheduleData();
@@ -120,20 +121,14 @@ export default function ScheduleScreen() {
     try {
       if (itemType === 'class') {
         if (!formTitle.trim()) {
-          setModalError('Please enter a class or study session name.');
+          setModalError('Fill this in: Please enter a class or study session name.');
           setSaving(false);
           return;
         }
 
-        // If no course selected, create or find general course
-        let activeCourseId = formCourseId;
-        if (!activeCourseId && courses.length > 0) {
-          activeCourseId = courses[0].id;
-        }
-
         const { error } = await supabase.from('timetable_classes').insert({
           user_id: user.id,
-          course_id: activeCourseId || null,
+          course_id: formCourseId || null,
           day_of_week: formDay,
           start_time: formStartTime.trim() || '09:00',
           end_time: formEndTime.trim() || '10:30',
@@ -145,7 +140,7 @@ export default function ScheduleScreen() {
       } else {
         // Assessment
         if (!formTitle.trim()) {
-          setModalError('Please enter an assessment title.');
+          setModalError('Fill this in: Please enter an assessment title.');
           setSaving(false);
           return;
         }
@@ -171,7 +166,8 @@ export default function ScheduleScreen() {
       setFormWeight('');
       await fetchScheduleData();
     } catch (err: any) {
-      setModalError(err.message || 'Failed to save item.');
+      console.error('Schedule save error:', err);
+      setModalError(getSafeErrorMessage(err, 'Failed to save item. Something went wrong.'));
     } finally {
       setSaving(false);
     }
@@ -297,11 +293,11 @@ export default function ScheduleScreen() {
                 <View style={styles.classLeft}>
                   <View style={styles.colorBar} />
                   <View style={styles.classInfo}>
-                    <Text style={styles.className}>
+                    <Text style={styles.className} numberOfLines={1}>
                       {item.courses?.name || 'Scheduled Class / Study Block'}
                     </Text>
                     {item.courses?.code ? (
-                      <Text style={styles.courseCode}>{item.courses.code}</Text>
+                      <Text style={styles.courseCode} numberOfLines={1}>{item.courses.code}</Text>
                     ) : null}
                     <View style={styles.metaRow}>
                       <View style={styles.metaItem}>
@@ -311,9 +307,9 @@ export default function ScheduleScreen() {
                         </Text>
                       </View>
                       {item.venue ? (
-                        <View style={styles.metaItem}>
+                        <View style={[styles.metaItem, { flex: 1, minWidth: 0 }]}>
                           <MapPin size={12} color="#71717A" />
-                          <Text style={styles.metaText}>{item.venue}</Text>
+                          <Text style={styles.metaText} numberOfLines={1}>{item.venue}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -346,9 +342,9 @@ export default function ScheduleScreen() {
           ) : (
             assessments.map((a: any) => (
               <View key={a.id} style={styles.assessmentCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.assessmentTitle}>{a.title}</Text>
-                  <Text style={styles.assessmentMeta}>
+                <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                  <Text style={styles.assessmentTitle} numberOfLines={1}>{a.title}</Text>
+                  <Text style={styles.assessmentMeta} numberOfLines={1}>
                     {new Date(a.due_date).toLocaleDateString(undefined, {
                       weekday: 'short',
                       month: 'short',
@@ -372,167 +368,206 @@ export default function ScheduleScreen() {
       </ScrollView>
 
       {/* Add Event Modal */}
-      <Modal visible={isAddModalOpen} animationType="slide" transparent>
+      <Modal visible={isAddModalOpen} animationType="slide" transparent onRequestClose={() => setIsAddModalOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add to Schedule</Text>
-              <Pressable onPress={() => setIsAddModalOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
-
-            {/* Type Selector Tabs */}
-            <View style={styles.modalTypeRow}>
-              <Pressable
-                style={[styles.modalTypeBtn, itemType === 'class' && styles.modalTypeBtnActive]}
-                onPress={() => setItemType('class')}
-              >
-                <Text
-                  style={[styles.modalTypeText, itemType === 'class' && styles.modalTypeTextActive]}
-                >
-                  Class / Session
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modalTypeBtn,
-                  itemType === 'assessment' && styles.modalTypeBtnActive,
-                ]}
-                onPress={() => setItemType('assessment')}
-              >
-                <Text
-                  style={[
-                    styles.modalTypeText,
-                    itemType === 'assessment' && styles.modalTypeTextActive,
-                  ]}
-                >
-                  Assessment / Exam
-                </Text>
-              </Pressable>
-            </View>
-
-            {modalError ? (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{modalError}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add to Schedule</Text>
+                <Pressable onPress={() => setIsAddModalOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
               </View>
-            ) : null}
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>
-                {itemType === 'class' ? 'CLASS OR SUBJECT NAME' : 'ASSESSMENT TITLE'}
-              </Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder={
-                  itemType === 'class' ? 'e.g. Mathematics Lecture' : 'e.g. Midterm Test'
-                }
-                placeholderTextColor="#52525B"
-                value={formTitle}
-                onChangeText={setFormTitle}
-              />
-            </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                {/* Type Selector Tabs */}
+                <View style={styles.modalTypeRow}>
+                  <Pressable
+                    style={[styles.modalTypeBtn, itemType === 'class' && styles.modalTypeBtnActive]}
+                    onPress={() => setItemType('class')}
+                  >
+                    <Text
+                      style={[styles.modalTypeText, itemType === 'class' && styles.modalTypeTextActive]}
+                    >
+                      Class / Session
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.modalTypeBtn,
+                      itemType === 'assessment' && styles.modalTypeBtnActive,
+                    ]}
+                    onPress={() => setItemType('assessment')}
+                  >
+                    <Text
+                      style={[
+                        styles.modalTypeText,
+                        itemType === 'assessment' && styles.modalTypeTextActive,
+                      ]}
+                    >
+                      Assessment / Exam
+                    </Text>
+                  </Pressable>
+                </View>
 
-            {itemType === 'class' ? (
-              <>
+                {modalError ? (
+                  <View style={styles.modalErrorBox}>
+                    <Text style={styles.modalErrorText}>{modalError}</Text>
+                  </View>
+                ) : null}
+
                 <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>DAY OF THE WEEK</Text>
-                  <View style={styles.modalDaysRow}>
-                    {DAYS.map((d) => (
-                      <Pressable
-                        key={d.num}
-                        style={[styles.modalDayBtn, formDay === d.num && styles.modalDayBtnActive]}
-                        onPress={() => setFormDay(d.num)}
-                      >
-                        <Text
+                  <Text style={styles.modalLabel}>
+                    {itemType === 'class' ? 'CLASS OR SUBJECT NAME' : 'ASSESSMENT TITLE'}
+                  </Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder={
+                      itemType === 'class' ? 'e.g. Mathematics Lecture' : 'e.g. Midterm Test'
+                    }
+                    placeholderTextColor="#52525B"
+                    value={formTitle}
+                    onChangeText={setFormTitle}
+                  />
+                </View>
+
+                {courses.length > 0 && (
+                  <View style={styles.modalField}>
+                    <Text style={styles.modalLabel}>COURSE (OPTIONAL)</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                      {courses.map((c: any) => (
+                        <Pressable
+                          key={c.id}
                           style={[
-                            styles.modalDayText,
-                            formDay === d.num && styles.modalDayTextActive,
+                            styles.courseChip,
+                            formCourseId === c.id && styles.courseChipActive,
                           ]}
+                          onPress={() => setFormCourseId(formCourseId === c.id ? '' : c.id)}
                         >
-                          {d.label}
-                        </Text>
-                      </Pressable>
-                    ))}
+                          <Text
+                            style={[
+                              styles.courseChipText,
+                              formCourseId === c.id && styles.courseChipTextActive,
+                            ]}
+                          >
+                            {c.code || c.name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
                   </View>
-                </View>
+                )}
 
-                <View style={styles.modalRow2}>
-                  <View style={[styles.modalField, { flex: 1 }]}>
-                    <Text style={styles.modalLabel}>START TIME</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="09:00"
-                      placeholderTextColor="#52525B"
-                      value={formStartTime}
-                      onChangeText={setFormStartTime}
-                    />
-                  </View>
-                  <View style={[styles.modalField, { flex: 1 }]}>
-                    <Text style={styles.modalLabel}>END TIME</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="10:30"
-                      placeholderTextColor="#52525B"
-                      value={formEndTime}
-                      onChangeText={setFormEndTime}
-                    />
-                  </View>
-                </View>
+                {itemType === 'class' ? (
+                  <>
+                    <View style={styles.modalField}>
+                      <Text style={styles.modalLabel}>DAY OF THE WEEK</Text>
+                      <View style={styles.modalDaysRow}>
+                        {DAYS.map((d) => (
+                          <Pressable
+                            key={d.num}
+                            style={[styles.modalDayBtn, formDay === d.num && styles.modalDayBtnActive]}
+                            onPress={() => setFormDay(d.num)}
+                          >
+                            <Text
+                              style={[
+                                styles.modalDayText,
+                                formDay === d.num && styles.modalDayTextActive,
+                              ]}
+                            >
+                              {d.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
 
-                <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>VENUE / ROOM / LINK</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="e.g. Room 302, Science Block"
-                    placeholderTextColor="#52525B"
-                    value={formVenue}
-                    onChangeText={setFormVenue}
-                  />
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>DUE DATE (YYYY-MM-DD)</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="2026-09-25"
-                    placeholderTextColor="#52525B"
-                    value={formDueDate}
-                    onChangeText={setFormDueDate}
-                  />
-                </View>
+                    <View style={styles.modalRow2}>
+                      <View style={[styles.modalField, { flex: 1 }]}>
+                        <Text style={styles.modalLabel}>START TIME</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          placeholder="09:00"
+                          placeholderTextColor="#52525B"
+                          value={formStartTime}
+                          onChangeText={setFormStartTime}
+                        />
+                      </View>
+                      <View style={[styles.modalField, { flex: 1 }]}>
+                        <Text style={styles.modalLabel}>END TIME</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          placeholder="10:30"
+                          placeholderTextColor="#52525B"
+                          value={formEndTime}
+                          onChangeText={setFormEndTime}
+                        />
+                      </View>
+                    </View>
 
-                <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>WEIGHT PERCENTAGE (%)</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="e.g. 20"
-                    placeholderTextColor="#52525B"
-                    value={formWeight}
-                    onChangeText={setFormWeight}
-                    keyboardType="numeric"
-                  />
-                </View>
-              </>
-            )}
+                    <View style={styles.modalField}>
+                      <Text style={styles.modalLabel}>VENUE / ROOM / LINK</Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="e.g. Room 302, Science Block"
+                        placeholderTextColor="#52525B"
+                        value={formVenue}
+                        onChangeText={setFormVenue}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.modalField}>
+                      <Text style={styles.modalLabel}>DUE DATE (YYYY-MM-DD)</Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="2026-09-25"
+                        placeholderTextColor="#52525B"
+                        value={formDueDate}
+                        onChangeText={setFormDueDate}
+                      />
+                    </View>
 
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
-              onPress={handleAddItem}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#000000" />
-              ) : (
-                <View style={styles.saveBtnRow}>
-                  <Check size={16} color="#000000" />
-                  <Text style={styles.saveBtnText}>Save to Calendar</Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
+                    <View style={styles.modalField}>
+                      <Text style={styles.modalLabel}>WEIGHT PERCENTAGE (%)</Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        placeholder="e.g. 20"
+                        placeholderTextColor="#52525B"
+                        value={formWeight}
+                        onChangeText={setFormWeight}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </>
+                )}
+
+                <Pressable
+                  style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={handleAddItem}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#000000" />
+                  ) : (
+                    <View style={styles.saveBtnRow}>
+                      <Check size={16} color="#000000" />
+                      <Text style={styles.saveBtnText}>Save to Calendar</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -622,9 +657,9 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 8,
   },
-  classLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  classLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 },
   colorBar: { width: 3, height: 36, borderRadius: 2, backgroundColor: '#FFFFFF' },
-  classInfo: { flex: 1, gap: 2 },
+  classInfo: { flex: 1, minWidth: 0, gap: 2 },
   className: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   courseCode: { color: '#A1A1AA', fontSize: 11, fontWeight: '500' },
   metaRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
@@ -649,19 +684,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'flex-end',
   },
+  keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: '#09090B',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    padding: 24,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
     gap: 14,
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   modalTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   modalTypeRow: {
@@ -699,6 +740,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
   },
+  courseChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginRight: 6,
+  },
+  courseChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  courseChipText: { color: '#71717A', fontSize: 11, fontWeight: '600' },
+  courseChipTextActive: { color: '#000000', fontWeight: '700' },
   modalDaysRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

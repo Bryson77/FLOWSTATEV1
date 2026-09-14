@@ -10,6 +10,8 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { getSafeErrorMessage } from '../../lib/errors';
 import { calculateNextReview, type ReviewRating } from '@saktus/study-engine';
 
 interface CardItem {
@@ -107,7 +110,8 @@ export default function CardsScreen() {
         setNewDeckCourseId(coursesRes.data[0].id);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load decks.');
+      console.error('Decks fetch error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load decks. Something went wrong.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -127,7 +131,7 @@ export default function CardsScreen() {
   const handleCreateDeck = async () => {
     if (!user) return;
     if (!newDeckTitle.trim()) {
-      setDeckError('Please enter a deck title.');
+      setDeckError('Fill this in: Deck title is required.');
       return;
     }
 
@@ -157,7 +161,8 @@ export default function CardsScreen() {
         setIsAddCardModalOpen(true);
       }
     } catch (e: any) {
-      setDeckError(e.message || 'Failed to create deck.');
+      console.error('Create deck error:', e);
+      setDeckError(getSafeErrorMessage(e, 'Failed to create deck. Something went wrong.'));
     } finally {
       setCreatingDeck(false);
     }
@@ -166,8 +171,12 @@ export default function CardsScreen() {
   // Add Card to Deck
   const handleAddCard = async (addAnother = false) => {
     if (!user || !targetDeckId) return;
-    if (!frontText.trim() || !backText.trim()) {
-      setCardError('Please fill in both the front question and back answer.');
+    if (!frontText.trim()) {
+      setCardError('Fill this in: Front prompt is required.');
+      return;
+    }
+    if (!backText.trim()) {
+      setCardError('Fill this in: Back answer is required.');
       return;
     }
 
@@ -197,7 +206,8 @@ export default function CardsScreen() {
       }
       await fetchDecks();
     } catch (e: any) {
-      setCardError(e.message || 'Failed to add card.');
+      console.error('Add card error:', e);
+      setCardError(getSafeErrorMessage(e, 'Failed to add card. Something went wrong.'));
     } finally {
       setAddingCard(false);
     }
@@ -290,9 +300,16 @@ export default function CardsScreen() {
         <View style={styles.reviewContent}>
           <Pressable style={styles.cardFace} onPress={() => setFlipped(!flipped)}>
             <Text style={styles.cardLabel}>{flipped ? 'ANSWER' : 'QUESTION'}</Text>
-            <Text style={styles.cardText}>
-              {flipped ? currentCard?.back_text : currentCard?.front_text}
-            </Text>
+            <ScrollView
+              style={styles.cardTextScroll}
+              contentContainerStyle={styles.cardTextContainer}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              <Text style={styles.cardText}>
+                {flipped ? currentCard?.back_text : currentCard?.front_text}
+              </Text>
+            </ScrollView>
             <View style={styles.flipHintRow}>
               <RotateCw size={14} color="#71717A" />
               <Text style={styles.flipHint}>Tap card to flip</Text>
@@ -446,142 +463,166 @@ export default function CardsScreen() {
       </ScrollView>
 
       {/* New Deck Modal */}
-      <Modal visible={isNewDeckModalOpen} animationType="slide" transparent>
+      <Modal visible={isNewDeckModalOpen} animationType="slide" transparent onRequestClose={() => setIsNewDeckModalOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Flashcard Deck</Text>
-              <Pressable onPress={() => setIsNewDeckModalOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
-
-            {deckError ? (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{deckError}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Create Flashcard Deck</Text>
+                <Pressable onPress={() => setIsNewDeckModalOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
               </View>
-            ) : null}
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>DECK TITLE</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Organic Chemistry Reactions"
-                placeholderTextColor="#52525B"
-                value={newDeckTitle}
-                onChangeText={setNewDeckTitle}
-              />
-            </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                {deckError ? (
+                  <View style={styles.modalErrorBox}>
+                    <Text style={styles.modalErrorText}>{deckError}</Text>
+                  </View>
+                ) : null}
 
-            {courses.length > 0 && (
-              <View style={styles.modalField}>
-                <Text style={styles.modalLabel}>LINK TO COURSE</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 6 }}>
-                  {courses.map((c: any) => (
-                    <Pressable
-                      key={c.id}
-                      style={[
-                        styles.courseChip,
-                        newDeckCourseId === c.id && styles.courseChipActive,
-                      ]}
-                      onPress={() => setNewDeckCourseId(c.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.courseChipText,
-                          newDeckCourseId === c.id && styles.courseChipTextActive,
-                        ]}
-                      >
-                        {c.code || c.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
-              onPress={handleCreateDeck}
-              disabled={creatingDeck}
-            >
-              {creatingDeck ? (
-                <ActivityIndicator size="small" color="#000000" />
-              ) : (
-                <View style={styles.saveBtnRow}>
-                  <Check size={16} color="#000000" />
-                  <Text style={styles.saveBtnText}>Create Deck & Add Cards</Text>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>DECK TITLE</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="e.g. Organic Chemistry Reactions"
+                    placeholderTextColor="#52525B"
+                    value={newDeckTitle}
+                    onChangeText={setNewDeckTitle}
+                  />
                 </View>
-              )}
-            </Pressable>
-          </View>
+
+                {courses.length > 0 && (
+                  <View style={styles.modalField}>
+                    <Text style={styles.modalLabel}>LINK TO COURSE (OPTIONAL)</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                      {courses.map((c: any) => (
+                        <Pressable
+                          key={c.id}
+                          style={[
+                            styles.courseChip,
+                            newDeckCourseId === c.id && styles.courseChipActive,
+                          ]}
+                          onPress={() => setNewDeckCourseId(newDeckCourseId === c.id ? '' : c.id)}
+                        >
+                          <Text
+                            style={[
+                              styles.courseChipText,
+                              newDeckCourseId === c.id && styles.courseChipTextActive,
+                            ]}
+                          >
+                            {c.code || c.name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <Pressable
+                  style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={handleCreateDeck}
+                  disabled={creatingDeck}
+                >
+                  {creatingDeck ? (
+                    <ActivityIndicator size="small" color="#000000" />
+                  ) : (
+                    <View style={styles.saveBtnRow}>
+                      <Check size={16} color="#000000" />
+                      <Text style={styles.saveBtnText}>Create Deck & Add Cards</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
       {/* Add Card Modal */}
-      <Modal visible={isAddCardModalOpen} animationType="slide" transparent>
+      <Modal visible={isAddCardModalOpen} animationType="slide" transparent onRequestClose={() => setIsAddCardModalOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Flashcard</Text>
-              <Pressable onPress={() => setIsAddCardModalOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
-
-            {cardError ? (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{cardError}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Flashcard</Text>
+                <Pressable onPress={() => setIsAddCardModalOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
               </View>
-            ) : null}
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>FRONT (QUESTION / PROMPT)</Text>
-              <TextInput
-                style={[styles.modalInput, styles.multilineInput]}
-                placeholder="e.g. What is the Henderson-Hasselbalch equation?"
-                placeholderTextColor="#52525B"
-                value={frontText}
-                onChangeText={setFrontText}
-                multiline
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>BACK (ANSWER / EXPLANATION)</Text>
-              <TextInput
-                style={[styles.modalInput, styles.multilineInput]}
-                placeholder="e.g. pH = pKa + log([A-]/[HA])"
-                placeholderTextColor="#52525B"
-                value={backText}
-                onChangeText={setBackText}
-                multiline
-              />
-            </View>
-
-            <View style={styles.cardActionsRow}>
-              <Pressable
-                style={({ pressed }: { pressed: boolean }) => [styles.saveAnotherBtn, pressed && styles.pressed]}
-                onPress={() => handleAddCard(true)}
-                disabled={addingCard}
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
               >
-                <PlusCircle size={15} color="#FFFFFF" />
-                <Text style={styles.saveAnotherText}>Save & Add Another</Text>
-              </Pressable>
+                {cardError ? (
+                  <View style={styles.modalErrorBox}>
+                    <Text style={styles.modalErrorText}>{cardError}</Text>
+                  </View>
+                ) : null}
 
-              <Pressable
-                style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, { flex: 1 }, pressed && styles.pressed]}
-                onPress={() => handleAddCard(false)}
-                disabled={addingCard}
-              >
-                {addingCard ? (
-                  <ActivityIndicator size="small" color="#000000" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save Card</Text>
-                )}
-              </Pressable>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>FRONT (QUESTION / PROMPT)</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.multilineInput]}
+                    placeholder="e.g. What is the Henderson-Hasselbalch equation?"
+                    placeholderTextColor="#52525B"
+                    value={frontText}
+                    onChangeText={setFrontText}
+                    multiline
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>BACK (ANSWER / EXPLANATION)</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.multilineInput]}
+                    placeholder="e.g. pH = pKa + log([A-]/[HA])"
+                    placeholderTextColor="#52525B"
+                    value={backText}
+                    onChangeText={setBackText}
+                    multiline
+                  />
+                </View>
+
+                <View style={styles.cardActionsRow}>
+                  <Pressable
+                    style={({ pressed }: { pressed: boolean }) => [styles.saveAnotherBtn, pressed && styles.pressed]}
+                    onPress={() => handleAddCard(true)}
+                    disabled={addingCard}
+                  >
+                    <PlusCircle size={15} color="#FFFFFF" />
+                    <Text style={styles.saveAnotherText}>Save & Add Another</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, { flex: 1, minWidth: 120 }, pressed && styles.pressed]}
+                    onPress={() => handleAddCard(false)}
+                    disabled={addingCard}
+                  >
+                    {addingCard ? (
+                      <ActivityIndicator size="small" color="#000000" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save Card</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -687,12 +728,28 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
     padding: 24,
     minHeight: 260,
+    maxHeight: 400,
     justifyContent: 'space-between',
     marginBottom: 30,
   },
   cardLabel: { color: '#71717A', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  cardText: { color: '#FFFFFF', fontSize: 18, lineHeight: 26, fontWeight: '600', marginVertical: 20 },
-  flipHintRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardTextScroll: {
+    flexGrow: 0,
+    maxHeight: 240,
+    marginVertical: 14,
+  },
+  cardTextContainer: {
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  cardText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  flipHintRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   flipHint: { color: '#71717A', fontSize: 11 },
   ratingRow: { flexDirection: 'row', gap: 8 },
   rateBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
@@ -705,16 +762,21 @@ const styles = StyleSheet.create({
   },
   showAnswerText: { color: '#000000', fontSize: 14, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+  keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: '#09090B',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    padding: 24,
-    gap: 14,
+    padding: 20,
+    maxHeight: '90%',
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalScrollContent: {
+    gap: 14,
+    paddingBottom: 20,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   modalTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
   modalErrorBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 8 },
   modalErrorText: { color: '#EF4444', fontSize: 11 },
@@ -743,10 +805,13 @@ const styles = StyleSheet.create({
   courseChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
   courseChipText: { color: '#71717A', fontSize: 11, fontWeight: '600' },
   courseChipTextActive: { color: '#000000', fontWeight: '700' },
-  cardActionsRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  cardActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
   saveAnotherBtn: {
+    flex: 1,
+    minWidth: 140,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: '#18181B',
     borderWidth: 1,
@@ -757,6 +822,8 @@ const styles = StyleSheet.create({
   },
   saveAnotherText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
   saveBtn: {
+    flex: 1,
+    minWidth: 120,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     height: 44,

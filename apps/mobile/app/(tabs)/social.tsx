@@ -11,6 +11,8 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -31,6 +33,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { getSafeErrorMessage } from '../../lib/errors';
 
 interface StudentProfile {
   id: string;
@@ -91,7 +94,11 @@ export default function SocialScreen() {
       }
 
       const [profilesRes, followsRes, roomsRes] = await Promise.all([
-        supabase.from('profiles').select('*').neq('id', user.id).limit(40),
+        supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url, university, degree, study_streak_days, is_studying_now, current_subject, last_study_date')
+          .neq('id', user.id)
+          .limit(40),
         supabase.from('follows').select('*'),
         supabase
           .from('study_rooms')
@@ -131,7 +138,8 @@ export default function SocialScreen() {
       }));
       setStudyRooms(mappedRooms);
     } catch (e: any) {
-      setErrorMsg(e.message || 'Failed to load friends.');
+      console.error('Social load error:', e);
+      setErrorMsg(getSafeErrorMessage(e, 'Failed to load friends. Something went wrong.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -222,7 +230,11 @@ export default function SocialScreen() {
 
   // Create Study Room
   const handleCreateRoom = async () => {
-    if (!user || !roomName.trim()) return;
+    if (!roomName.trim()) {
+      Alert.alert('Notice', 'Fill this in: Room name is required.');
+      return;
+    }
+    if (!user) return;
     setCreatingRoom(true);
 
     try {
@@ -264,7 +276,8 @@ export default function SocialScreen() {
       setRoomName('');
       loadData();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to create room.');
+      console.error('Create room error:', e);
+      Alert.alert('Error', getSafeErrorMessage(e, 'Failed to create room. Something went wrong.'));
     } finally {
       setCreatingRoom(false);
     }
@@ -272,7 +285,11 @@ export default function SocialScreen() {
 
   // Join Room by Code
   const handleJoinWithCode = async () => {
-    if (!user || !joinCodeInput.trim()) return;
+    if (!joinCodeInput.trim()) {
+      setJoinError('Fill this in: Please enter a room code.');
+      return;
+    }
+    if (!user) return;
     setJoiningRoom(true);
     setJoinError('');
 
@@ -309,7 +326,8 @@ export default function SocialScreen() {
       setJoinCodeInput('');
       loadData();
     } catch (e: any) {
-      setJoinError(e.message || 'Failed to join room.');
+      console.error('Join room error:', e);
+      setJoinError(getSafeErrorMessage(e, 'Failed to join room. Something went wrong.'));
     } finally {
       setJoiningRoom(false);
     }
@@ -471,16 +489,16 @@ export default function SocialScreen() {
                       {s.name.substring(0, 1).toUpperCase()}
                     </Text>
                   </View>
-                  <View>
+                  <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                     <View style={styles.nameRow}>
-                      <Text style={styles.friendName}>{s.name}</Text>
+                      <Text style={styles.friendName} numberOfLines={1}>{s.name}</Text>
                       {s.isMutual && (
                         <View style={styles.mutualBadge}>
                           <Text style={styles.mutualText}>Mutual</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.friendSub}>
+                    <Text style={styles.friendSub} numberOfLines={1}>
                       {s.username ? `@${s.username} · ` : ''}
                       {s.streak}d streak
                       {s.isStudying ? ' · Studying Now' : ''}
@@ -510,9 +528,9 @@ export default function SocialScreen() {
               <Text style={[styles.rankNum, idx === 0 && styles.rankNumFirst]}>
                 {idx + 1}
               </Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.lbName}>{s.name}</Text>
-                <Text style={styles.lbSub}>
+              <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                <Text style={styles.lbName} numberOfLines={1}>{s.name}</Text>
+                <Text style={styles.lbSub} numberOfLines={1}>
                   {s.username ? `@${s.username}` : s.degree || 'Student'}
                 </Text>
               </View>
@@ -526,182 +544,211 @@ export default function SocialScreen() {
       </ScrollView>
 
       {/* Find Friends Search Modal */}
-      <Modal visible={isFindModalOpen} animationType="slide" transparent>
+      <Modal visible={isFindModalOpen} animationType="slide" transparent onRequestClose={() => setIsFindModalOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { height: '80%' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Find Friends</Text>
-              <Pressable onPress={() => setIsFindModalOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={[styles.modalCard, { height: '80%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Find Friends</Text>
+                <Pressable onPress={() => setIsFindModalOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
+              </View>
 
-            {/* Search Input */}
-            <View style={styles.searchBar}>
-              <Search size={16} color="#71717A" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by name or @username..."
-                placeholderTextColor="#52525B"
-                value={searchQuery}
-                onChangeText={handleSearchStudents}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+              {/* Search Input */}
+              <View style={styles.searchBar}>
+                <Search size={16} color="#71717A" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by name or @username..."
+                  placeholderTextColor="#52525B"
+                  value={searchQuery}
+                  onChangeText={handleSearchStudents}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
 
-            {searching ? (
-              <ActivityIndicator style={{ marginTop: 20 }} color="#FFFFFF" />
-            ) : (
-              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-                {searchResults.length === 0 && searchQuery ? (
-                  <Text style={styles.modalEmptyText}>
-                    No students found matching "{searchQuery}".
-                  </Text>
-                ) : (
-                  (searchQuery ? searchResults : students.slice(0, 15)).map((s: StudentProfile) => (
-                    <View key={s.id} style={styles.searchItem}>
-                      <View style={styles.friendLeft}>
-                        <View style={styles.avatarMini}>
-                          <Text style={styles.avatarMiniText}>
-                            {s.name.substring(0, 1).toUpperCase()}
-                          </Text>
+              {searching ? (
+                <ActivityIndicator style={{ marginTop: 20 }} color="#FFFFFF" />
+              ) : (
+                <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  {searchResults.length === 0 && searchQuery ? (
+                    <Text style={styles.modalEmptyText}>
+                      No students found matching "{searchQuery}".
+                    </Text>
+                  ) : (
+                    (searchQuery ? searchResults : students.slice(0, 15)).map((s: StudentProfile) => (
+                      <View key={s.id} style={styles.searchItem}>
+                        <View style={styles.friendLeft}>
+                          <View style={styles.avatarMini}>
+                            <Text style={styles.avatarMiniText}>
+                              {s.name.substring(0, 1).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                            <Text style={styles.friendName} numberOfLines={1}>{s.name}</Text>
+                            <Text style={styles.friendSub} numberOfLines={1}>
+                              {s.username ? `@${s.username}` : ''}
+                              {s.streak > 0 ? ` · ${s.streak}d streak` : ''}
+                            </Text>
+                          </View>
                         </View>
-                        <View>
-                          <Text style={styles.friendName}>{s.name}</Text>
-                          <Text style={styles.friendSub}>
-                            {s.username ? `@${s.username}` : ''}
-                            {s.streak > 0 ? ` · ${s.streak}d streak` : ''}
-                          </Text>
-                        </View>
-                      </View>
 
-                      <Pressable
-                        style={[styles.followActionBtn, s.isFollowing && styles.followActionBtnActive]}
-                        onPress={() => handleToggleFollow(s)}
-                      >
-                        <Text
-                          style={[
-                            styles.followActionText,
-                            s.isFollowing && styles.followActionTextActive,
-                          ]}
+                        <Pressable
+                          style={[styles.followActionBtn, s.isFollowing && styles.followActionBtnActive]}
+                          onPress={() => handleToggleFollow(s)}
                         >
-                          {s.isFollowing ? 'Following' : 'Follow'}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-            )}
-          </View>
+                          <Text
+                            style={[
+                              styles.followActionText,
+                              s.isFollowing && styles.followActionTextActive,
+                            ]}
+                          >
+                            {s.isFollowing ? 'Following' : 'Follow'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+              )}
+            </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
       {/* Create Room Modal */}
-      <Modal visible={isCreateRoomOpen} animationType="slide" transparent>
+      <Modal visible={isCreateRoomOpen} animationType="slide" transparent onRequestClose={() => setIsCreateRoomOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Launch Study Room</Text>
-              <Pressable onPress={() => setIsCreateRoomOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>ROOM NAME</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Late Night Problem Set"
-                placeholderTextColor="#52525B"
-                value={roomName}
-                onChangeText={setRoomName}
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>DURATION</Text>
-              <View style={styles.durationPillsRow}>
-                {[25, 45, 60].map((mins) => (
-                  <Pressable
-                    key={mins}
-                    style={[
-                      styles.durationBtn,
-                      roomDuration === mins && styles.durationBtnActive,
-                    ]}
-                    onPress={() => setRoomDuration(mins)}
-                  >
-                    <Text
-                      style={[
-                        styles.durationBtnText,
-                        roomDuration === mins && styles.durationBtnTextActive,
-                      ]}
-                    >
-                      {mins} mins
-                    </Text>
-                  </Pressable>
-                ))}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Launch Study Room</Text>
+                <Pressable onPress={() => setIsCreateRoomOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
               </View>
-            </View>
 
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
-              onPress={handleCreateRoom}
-              disabled={creatingRoom}
-            >
-              {creatingRoom ? (
-                <ActivityIndicator size="small" color="#000000" />
-              ) : (
-                <Text style={styles.saveBtnText}>Launch & Generate Code</Text>
-              )}
-            </Pressable>
-          </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>ROOM NAME</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="e.g. Late Night Problem Set"
+                    placeholderTextColor="#52525B"
+                    value={roomName}
+                    onChangeText={setRoomName}
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>DURATION</Text>
+                  <View style={styles.durationPillsRow}>
+                    {[25, 45, 60].map((mins) => (
+                      <Pressable
+                        key={mins}
+                        style={[
+                          styles.durationBtn,
+                          roomDuration === mins && styles.durationBtnActive,
+                        ]}
+                        onPress={() => setRoomDuration(mins)}
+                      >
+                        <Text
+                          style={[
+                            styles.durationBtnText,
+                            roomDuration === mins && styles.durationBtnTextActive,
+                          ]}
+                        >
+                          {mins} mins
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                <Pressable
+                  style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={handleCreateRoom}
+                  disabled={creatingRoom}
+                >
+                  {creatingRoom ? (
+                    <ActivityIndicator size="small" color="#000000" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Launch & Generate Code</Text>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
       {/* Join Room with Code Modal */}
-      <Modal visible={isJoinCodeOpen} animationType="slide" transparent>
+      <Modal visible={isJoinCodeOpen} animationType="slide" transparent onRequestClose={() => setIsJoinCodeOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Join with Squad Code</Text>
-              <Pressable onPress={() => setIsJoinCodeOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
-
-            {joinError ? (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{joinError}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Join with Squad Code</Text>
+                <Pressable onPress={() => setIsJoinCodeOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
               </View>
-            ) : null}
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>6-CHARACTER ROOM CODE</Text>
-              <TextInput
-                style={[styles.modalInput, styles.codeInput]}
-                placeholder="e.g. X7K9P2"
-                placeholderTextColor="#52525B"
-                value={joinCodeInput}
-                onChangeText={(val: string) => setJoinCodeInput(val.toUpperCase())}
-                autoCapitalize="characters"
-                maxLength={6}
-              />
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                {joinError ? (
+                  <View style={styles.modalErrorBox}>
+                    <Text style={styles.modalErrorText}>{joinError}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>6-CHARACTER ROOM CODE</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.codeInput]}
+                    placeholder="e.g. X7K9P2"
+                    placeholderTextColor="#52525B"
+                    value={joinCodeInput}
+                    onChangeText={(val: string) => setJoinCodeInput(val.toUpperCase())}
+                    autoCapitalize="characters"
+                    maxLength={6}
+                  />
+                </View>
+
+                <Pressable
+                  style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={handleJoinWithCode}
+                  disabled={joiningRoom}
+                >
+                  {joiningRoom ? (
+                    <ActivityIndicator size="small" color="#000000" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Join Study Room</Text>
+                  )}
+                </Pressable>
+              </ScrollView>
             </View>
-
-            <Pressable
-              style={({ pressed }: { pressed: boolean }) => [styles.saveBtn, pressed && styles.pressed]}
-              onPress={handleJoinWithCode}
-              disabled={joiningRoom}
-            >
-              {joiningRoom ? (
-                <ActivityIndicator size="small" color="#000000" />
-              ) : (
-                <Text style={styles.saveBtnText}>Join Study Room</Text>
-              )}
-            </Pressable>
-          </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -840,7 +887,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  friendLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  friendLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
   avatarMini: {
     width: 36,
     height: 36,
@@ -895,16 +942,21 @@ const styles = StyleSheet.create({
   },
   streakPillText: { color: '#F59E0B', fontSize: 11, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+  keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: '#09090B',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    padding: 24,
-    gap: 14,
+    padding: 20,
+    maxHeight: '90%',
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalScrollContent: {
+    gap: 14,
+    paddingBottom: 20,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   modalTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
   modalErrorBox: { backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 8 },
   modalErrorText: { color: '#EF4444', fontSize: 11 },

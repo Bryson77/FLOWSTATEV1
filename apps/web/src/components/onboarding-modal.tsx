@@ -77,8 +77,9 @@ export function OnboardingModal() {
 
       setIsOpen(false);
       toast('Account configured!', 'success');
-    } catch {
-      toast('Failed to save preferences. You can update these anytime in settings.', 'error');
+    } catch (err: any) {
+      console.error('Onboarding save error:', err);
+      toast('Something went wrong saving preferences. You can update these anytime in settings.', 'error');
       setIsOpen(false);
     } finally {
       setSaving(false);

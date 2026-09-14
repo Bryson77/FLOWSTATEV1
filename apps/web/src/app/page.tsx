@@ -20,9 +20,11 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-6 py-4 transition-colors">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center font-display font-bold text-sm btn-press">
-              S
-            </div>
+            <img
+              src="/icon.png"
+              alt="Saktus Logo"
+              className="h-8 w-8 rounded-xl object-contain shadow-xs transition-transform hover:scale-105 btn-press"
+            />
             <span className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-white">Saktus</span>
           </div>
 

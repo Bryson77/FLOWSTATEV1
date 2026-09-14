@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, useColorScheme } from 'react-native';
+import { View, Text, useColorScheme, Image } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../lib/auth-context';
@@ -24,21 +24,11 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Saktus Tactile S Brand Emblem */}
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 15,
-            backgroundColor: '#FFFFFF',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontSize: 26, fontWeight: '800', color: '#000000', letterSpacing: -1 }}>
-            S
-          </Text>
-        </View>
+        <Image
+          source={require('../assets/icon.png')}
+          style={{ width: 64, height: 64, borderRadius: 16 }}
+          resizeMode="contain"
+        />
       </View>
     );
   }

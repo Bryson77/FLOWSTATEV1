@@ -25,10 +25,10 @@ const contactTemplate = (name, email, subject, message) => `
 <body>
   <div class="wrapper">
     <table align="center" style="background-color: #161616; margin: 0 auto; width: 100%; max-width: 600px; border: 1px solid #27272a; border-radius: 12px; overflow: hidden;">
-      <tr><td style="padding: 40px 30px 20px; text-align: center;"><div style="font-size: 24px; font-weight: 800; color: #ffffff;">Flow State</div></td></tr>
+      <tr><td style="padding: 40px 30px 20px; text-align: center;"><div style="font-size: 24px; font-weight: 800; color: #ffffff;">Saktus</div></td></tr>
       <tr><td style="padding: 20px 30px;">
         <div style="font-size: 20px; font-weight: 700; margin-bottom: 10px; color: #ffffff;">New Contact Form Message</div>
-        <p style="font-size: 15px; line-height: 1.6; color: #a1a1aa;">You have received a new message from the Flow State website.</p>
+        <p style="font-size: 15px; line-height: 1.6; color: #a1a1aa;">You have received a new message from the Saktus website.</p>
         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #71717a; margin-top: 20px; margin-bottom: 4px;">From</div>
         <div style="font-size: 15px; line-height: 1.6; color: #a1a1aa;">${name} (${email})</div>
         <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #71717a; margin-top: 20px; margin-bottom: 4px;">Subject</div>
@@ -39,7 +39,7 @@ const contactTemplate = (name, email, subject, message) => `
         </div>
         <center><a href="mailto:${email}" style="display: inline-block; padding: 12px 24px; background-color: #ffffff; color: #000000; text-decoration: none; border-radius: 6px; font-weight: 700; margin-top: 30px;">Reply to User</a></center>
       </td></tr>
-      <tr><td style="padding: 30px; text-align: center; font-size: 12px; color: #4a4a4a;">&copy; 2026 Flow State Productivity. All rights reserved.</td></tr>
+      <tr><td style="padding: 30px; text-align: center; font-size: 12px; color: #4a4a4a;">&copy; 2026 Saktus Productivity. All rights reserved.</td></tr>
     </table>
   </div>
 </body>
@@ -54,12 +54,20 @@ export default {
 
     try {
       const { name, email, subject, message } = await request.json();
+
+      if (!name || !email || !message) {
+        return new Response(JSON.stringify({ error: 'Fill this in: Name, email, and message are required.' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       const resend = new Resend(env.RESEND_API_KEY);
 
       const data = await resend.emails.send({
-        from: 'Flow State <onboarding@resend.dev>', // Update with your verified domain
+        from: 'Saktus <onboarding@resend.dev>', // Update with your verified domain
         to: ['lethabomabilo53@gmail.com'], // Update with your email
-        subject: `[Flow State] New Message: ${subject}`,
+        subject: `[Saktus] New Message: ${subject || 'Contact Inquiry'}`,
         html: contactTemplate(name, email, subject, message),
       });
 
@@ -67,7 +75,8 @@ export default {
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {
-      return new Response(JSON.stringify({ error: error.message }), {
+      console.error('Worker contact email error:', error);
+      return new Response(JSON.stringify({ error: 'Failed to send message. Something went wrong.' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });

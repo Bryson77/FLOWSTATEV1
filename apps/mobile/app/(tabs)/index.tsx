@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   TextInput,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -24,6 +25,7 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
+import { getSafeErrorMessage } from '../../lib/errors';
 
 interface NextClass {
   name: string;
@@ -160,7 +162,8 @@ export default function HomeScreen() {
         setNextClass(null);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load study data.');
+      console.error('Mobile dashboard error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load study data. Something went wrong.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -257,9 +260,11 @@ export default function HomeScreen() {
         {/* Header with Tactile S Logo & User Identity */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <View style={styles.brandBadge}>
-              <Text style={styles.brandLetter}>S</Text>
-            </View>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.brandImage}
+              resizeMode="contain"
+            />
             <View>
               <Text style={styles.greeting}>
                 {getGreeting()}
@@ -343,7 +348,7 @@ export default function HomeScreen() {
                       <Circle size={18} color="#71717A" />
                     )}
                   </Pressable>
-                  <Text style={[styles.taskText, t.done && styles.taskStrike]}>{t.text}</Text>
+                  <Text style={[styles.taskText, t.done && styles.taskStrike]} numberOfLines={2}>{t.text}</Text>
                   <Pressable onPress={() => handleDeleteTask(t.id)} style={styles.trashBtn}>
                     <Trash2 size={14} color="#71717A" />
                   </Pressable>
@@ -371,9 +376,9 @@ export default function HomeScreen() {
 
               return (
                 <View key={exam.id} style={styles.assessmentRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.examTitle}>{exam.title}</Text>
-                    <Text style={styles.examSub}>
+                  <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                    <Text style={styles.examTitle} numberOfLines={1}>{exam.title}</Text>
+                    <Text style={styles.examSub} numberOfLines={1}>
                       {new Date(exam.due_date).toLocaleDateString(undefined, {
                         month: 'short',
                         day: 'numeric',
@@ -396,7 +401,7 @@ export default function HomeScreen() {
         {/* Flashcards Due (Active Recall) */}
         <Pressable style={styles.srsCard} onPress={() => router.push('/cards')}>
           <View style={styles.srsHeader}>
-            <Layers size={18} color="#A855F7" />
+            <Layers size={18} color="#FFFFFF" />
             <Text style={styles.srsTitle}>Flashcards Review</Text>
           </View>
           <View style={styles.srsRow}>
@@ -423,9 +428,9 @@ export default function HomeScreen() {
           ) : (
             courses.map((course) => (
               <View key={course.id} style={styles.courseRow}>
-                <View>
-                  <Text style={styles.courseName}>{course.name}</Text>
-                  <Text style={styles.courseCode}>{course.code}</Text>
+                <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                  <Text style={styles.courseName} numberOfLines={1}>{course.name}</Text>
+                  <Text style={styles.courseCode} numberOfLines={1}>{course.code}</Text>
                 </View>
                 <Text style={styles.courseTarget}>
                   {course.target_hours_per_week || 6}h / week
@@ -459,18 +464,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  brandBadge: {
+  brandImage: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandLetter: {
-    color: '#000000',
-    fontSize: 18,
-    fontWeight: '800',
   },
   greeting: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3 },
   subGreeting: { fontSize: 12, color: '#71717A', marginTop: 2 },

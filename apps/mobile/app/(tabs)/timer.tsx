@@ -231,6 +231,7 @@ export default function TimerScreen() {
       }
     } catch (e) {
       console.error('Error logging session:', e);
+      Alert.alert('Notice', 'Unable to save study session. Something went wrong.');
     }
   };
 
@@ -439,7 +440,7 @@ export default function TimerScreen() {
       </ScrollView>
 
       {/* Select Item Modal */}
-      <Modal visible={isPickerOpen} animationType="slide" transparent>
+      <Modal visible={isPickerOpen} animationType="slide" transparent onRequestClose={() => setIsPickerOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
@@ -449,7 +450,7 @@ export default function TimerScreen() {
               </Pressable>
             </View>
 
-            <ScrollView style={{ maxHeight: 320 }}>
+            <ScrollView style={{ maxHeight: 340 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               {currentAttachList.length === 0 ? (
                 <Text style={styles.modalEmptyText}>
                   No active {attachmentType}s found. Add one from your dashboard.
@@ -466,10 +467,10 @@ export default function TimerScreen() {
                         setIsPickerOpen(false);
                       }}
                     >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.modalItemTitle}>{item.title}</Text>
+                      <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                        <Text style={styles.modalItemTitle} numberOfLines={1}>{item.title}</Text>
                         {item.subtitle && (
-                          <Text style={styles.modalItemSub}>{item.subtitle}</Text>
+                          <Text style={styles.modalItemSub} numberOfLines={1}>{item.subtitle}</Text>
                         )}
                       </View>
                       {isSel && <Check size={16} color="#FFFFFF" />}
@@ -567,6 +568,8 @@ const styles = StyleSheet.create({
   timeWorkedHighlight: { color: '#10B981', fontWeight: '700' },
   durationRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 8,
     marginBottom: 32,
   },
@@ -640,6 +643,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     padding: 24,
+    maxHeight: '80%',
     gap: 16,
   },
   modalHeader: {

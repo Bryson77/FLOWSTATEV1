@@ -5,8 +5,10 @@
     "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true,
-    "tsBuildInfoFile": ".turbo/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": ".turbo/tsconfig.tsbuildinfo",
+    "paths": {
+      "zod": ["../../apps/api/node_modules/zod"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

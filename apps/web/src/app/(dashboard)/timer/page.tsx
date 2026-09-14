@@ -266,8 +266,9 @@ export default function TimerPage() {
           toast('Study session recorded', 'success');
         }
       }
-    } catch {
-      toast('Failed to save study session', 'error');
+    } catch (err: any) {
+      console.error('Session save error:', err);
+      toast('Failed to save study session. Something went wrong.', 'error');
     } finally {
       setIsSaving(false);
       handleSelectMode(mode);

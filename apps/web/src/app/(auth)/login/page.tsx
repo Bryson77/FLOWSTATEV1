@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { getSafeErrorMessage } from '@/lib/errors';
+import { validateWithZod, loginSchema, signUpSchema } from '@/lib/schemas';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,10 +22,30 @@ export default function LoginPage() {
 
   const supabase = createClient();
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlErr = params.get('error');
+      if (urlErr) {
+        setErrorMsg(getSafeErrorMessage(urlErr, 'Authentication failed. Something went wrong.'));
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setInfoMsg('');
+
+    const validation = isSignUp
+      ? validateWithZod(signUpSchema, { fullName, email, password })
+      : validateWithZod(loginSchema, { email, password });
+
+    if (!validation.success) {
+      setErrorMsg(validation.error);
+      return;
+    }
+
     setLoading(true);
 
     const userTimezone =
@@ -58,12 +80,8 @@ export default function LoginPage() {
         router.push('/home');
       }
     } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.toLowerCase().includes('invalid login credentials')) {
-        setErrorMsg('Wrong email or password.');
-      } else {
-        setErrorMsg(msg || 'Authentication failed. Check your details.');
-      }
+      console.error('Auth error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Authentication failed. Something went wrong.'));
     } finally {
       setLoading(false);
     }
@@ -79,7 +97,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-8 animate-in fade-in zoom-in-95 duration-200">
         {/* Logo & Subtitle */}
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-block">
+          <Link href="/" className="inline-flex flex-col items-center gap-2 group">
+            <img
+              src="/icon.png"
+              alt="Saktus Logo"
+              className="h-12 w-12 rounded-2xl object-contain shadow-sm transition-transform group-hover:scale-105 btn-press"
+            />
             <span className="font-display text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
               Saktus
             </span>

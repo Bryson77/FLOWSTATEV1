@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
+import { getSafeErrorMessage } from '@/lib/errors';
+import { createDeckSchema, createCardSchema, validateWithZod } from '@/lib/schemas';
 import { calculateNextReview, type ReviewRating } from '@saktus/study-engine';
 
 interface CardItem {
@@ -165,7 +167,8 @@ export default function FlashcardsPage() {
         setNewDeckCourseId(mappedCourses[0].id);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load flashcard decks.');
+      console.error('Flashcards fetch error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load flashcard decks. Something went wrong.'));
     } finally {
       setLoading(false);
     }
@@ -295,23 +298,33 @@ export default function FlashcardsPage() {
   // Create new deck
   const handleCreateDeck = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDeckTitle.trim() || !newDeckCourseId) return;
+
+    const parsedTags = newDeckTags
+      .split(',')
+      .map(t => t.trim().replace(/^#/, ''))
+      .filter(Boolean);
+
+    const validation = validateWithZod(createDeckSchema, {
+      title: newDeckTitle,
+      courseId: newDeckCourseId || null,
+      tags: parsedTags,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
 
     setIsSavingDeck(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const parsedTags = newDeckTags
-        .split(',')
-        .map(t => t.trim().replace(/^#/, ''))
-        .filter(Boolean);
-
       const { data, error } = await supabase
         .from('flashcard_decks')
         .insert({
           user_id: user.id,
-          course_id: newDeckCourseId,
+          course_id: newDeckCourseId ? newDeckCourseId : null,
           title: newDeckTitle.trim(),
           tags: parsedTags,
           is_public: false,
@@ -327,7 +340,8 @@ export default function FlashcardsPage() {
       toast('Deck created', 'success');
       fetchData();
     } catch (err: any) {
-      toast(err.message || 'Failed to create deck', 'error');
+      console.error('Create deck error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to create deck. Something went wrong.'), 'error');
     } finally {
       setIsSavingDeck(false);
     }
@@ -336,23 +350,36 @@ export default function FlashcardsPage() {
   // Save Card (Create or Edit)
   const handleSaveCard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!managingDeck || !cardFront.trim()) return;
+
+    let correctAnswer = cardBack.trim();
+    let optionsPayload: string[] = [];
+
+    if (cardType === 'true_false') {
+      correctAnswer = tfCorrect;
+    } else if (cardType === 'multiple_choice') {
+      optionsPayload = mcqOptions.map(o => o.trim()).filter(Boolean);
+      const selectedIdx = parseInt(mcqCorrect, 10);
+      correctAnswer = optionsPayload[selectedIdx] || optionsPayload[0] || '';
+    }
+
+    const validation = validateWithZod(createCardSchema, {
+      deckId: managingDeck?.id || '',
+      cardType,
+      frontText: cardFront,
+      backText: cardBack,
+      options: optionsPayload,
+      correctAnswer,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
 
     setIsSavingCard(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
-      let correctAnswer = cardBack.trim();
-      let optionsPayload: string[] = [];
-
-      if (cardType === 'true_false') {
-        correctAnswer = tfCorrect;
-      } else if (cardType === 'multiple_choice') {
-        optionsPayload = mcqOptions.map(o => o.trim()).filter(Boolean);
-        const selectedIdx = parseInt(mcqCorrect, 10);
-        correctAnswer = optionsPayload[selectedIdx] || optionsPayload[0] || '';
-      }
 
       if (editingCardId) {
         const { error } = await supabase
@@ -398,7 +425,8 @@ export default function FlashcardsPage() {
       setEditingCardId(null);
       fetchData();
     } catch (err: any) {
-      toast(err.message || 'Failed to save card', 'error');
+      console.error('Save card error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to save card. Something went wrong.'), 'error');
     } finally {
       setIsSavingCard(false);
     }
@@ -414,8 +442,9 @@ export default function FlashcardsPage() {
       toast('Deck deleted', 'success');
       if (managingDeck?.id === deckId) setManagingDeck(null);
       fetchData();
-    } catch {
-      toast('Failed to delete deck', 'error');
+    } catch (err: any) {
+      console.error('Delete deck error:', err);
+      toast('Failed to delete deck. Something went wrong.', 'error');
     }
   };
 
@@ -438,8 +467,9 @@ export default function FlashcardsPage() {
       if (error) throw error;
       toast('All card intervals reset to Day 1', 'success');
       fetchData();
-    } catch {
-      toast('Failed to reset intervals', 'error');
+    } catch (err: any) {
+      console.error('Reset intervals error:', err);
+      toast('Failed to reset intervals. Something went wrong.', 'error');
     }
   };
 
@@ -450,8 +480,9 @@ export default function FlashcardsPage() {
       if (error) throw error;
       toast('Card deleted', 'success');
       fetchData();
-    } catch {
-      toast('Failed to delete card', 'error');
+    } catch (err: any) {
+      console.error('Delete card error:', err);
+      toast('Failed to delete card. Something went wrong.', 'error');
     }
   };
 
@@ -480,8 +511,9 @@ export default function FlashcardsPage() {
       if (error) throw error;
       toast('Card duplicated', 'success');
       fetchData();
-    } catch {
-      toast('Failed to duplicate card', 'error');
+    } catch (err: any) {
+      console.error('Duplicate card error:', err);
+      toast('Failed to duplicate card. Something went wrong.', 'error');
     }
   };
 
@@ -720,8 +752,8 @@ export default function FlashcardsPage() {
 
         {/* Add / Edit Card Modal */}
         {isCardModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
                   {editingCardId ? 'Edit Card' : `Add Card to ${managingDeck.title}`}
@@ -1021,8 +1053,8 @@ export default function FlashcardsPage() {
 
       {/* Create Deck Modal */}
       {isDeckModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Create Flashcard Deck</h3>
               <button onClick={() => setIsDeckModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
@@ -1044,14 +1076,13 @@ export default function FlashcardsPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Course</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Course (Optional)</label>
                 <select
                   value={newDeckCourseId}
                   onChange={e => setNewDeckCourseId(e.target.value)}
                   className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                  required
                 >
-                  <option value="">Select course...</option>
+                  <option value="">General / Independent</option>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                   ))}

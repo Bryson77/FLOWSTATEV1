@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Clock, MapPin, Trash2, X, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
+import { getSafeErrorMessage } from '@/lib/errors';
+import { createClassSchema, validateWithZod } from '@/lib/schemas';
 
 interface ClassItem {
   id: string;
@@ -70,7 +72,7 @@ export default function TimetablePage() {
           .eq('user_id', user.id)
           .order('name', { ascending: true }),
         supabase
-          .from('classes')
+          .from('timetable_classes')
           .select(`
             id,
             course_id,
@@ -114,7 +116,8 @@ export default function TimetablePage() {
 
       setClasses(mappedClasses);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load timetable.');
+      console.error('Timetable fetch error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load timetable. Something went wrong.'));
     } finally {
       setLoading(false);
     }
@@ -126,6 +129,22 @@ export default function TimetablePage() {
 
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validation = validateWithZod(createClassSchema, {
+      courseId: selectedCourseId || null,
+      newCourseName: newCourseName.trim() || undefined,
+      dayOfWeek,
+      startTime,
+      endTime,
+      venue: venue.trim() || null,
+      classType,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -150,12 +169,14 @@ export default function TimetablePage() {
       }
 
       if (!activeCourseId) {
-        throw new Error('Please select or provide a course name.');
+        toast('Fill this in: Please select or enter a course name.', 'error');
+        setSaving(false);
+        return;
       }
 
       // 1. Insert class into timetable
       const { error: classErr } = await supabase
-        .from('classes')
+        .from('timetable_classes')
         .insert({
           user_id: user.id,
           course_id: activeCourseId,
@@ -174,7 +195,8 @@ export default function TimetablePage() {
       setVenue('');
       fetchData();
     } catch (err: any) {
-      toast(err.message || 'Failed to add class.', 'error');
+      console.error('Add class error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to add class. Something went wrong.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -183,7 +205,7 @@ export default function TimetablePage() {
   const handleDelete = async (classId: string) => {
     try {
       const { error } = await supabase
-        .from('classes')
+        .from('timetable_classes')
         .delete()
         .eq('id', classId);
 
@@ -191,7 +213,8 @@ export default function TimetablePage() {
       setClasses(prev => prev.filter(c => c.id !== classId));
       toast('Class removed.', 'default');
     } catch (err: any) {
-      toast(err.message || 'Failed to remove class.', 'error');
+      console.error('Delete class error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to remove class. Something went wrong.'), 'error');
     }
   };
 
@@ -336,8 +359,8 @@ export default function TimetablePage() {
 
       {/* Modal: Add Class */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-2xl space-y-5">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <h2 className="font-display text-lg font-bold text-zinc-900 dark:text-white">Add Class to Schedule</h2>
               <button

@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
+import { getSafeErrorMessage } from '@/lib/errors';
+import { createRoomSchema, joinRoomSchema, validateWithZod } from '@/lib/schemas';
 
 interface StudentProfile {
   id: string;
@@ -81,10 +83,14 @@ export default function FriendsDashboardPage() {
       if (!user) return;
       setCurrentUserId(user.id);
 
-      // Parallel fetch: current user profile, all profiles, follows, active study rooms
+      // Parallel fetch: current user profile, public student profiles, follows, active study rooms
       const [userProfileRes, profilesRes, followsRes, roomsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-        supabase.from('profiles').select('*').neq('id', user.id).limit(50),
+        supabase
+          .from('profiles')
+          .select('id, full_name, username, avatar_url, university, degree, study_streak_days, is_studying_now, current_subject, last_study_date')
+          .neq('id', user.id)
+          .limit(50),
         supabase.from('follows').select('*'),
         supabase
           .from('study_rooms')
@@ -145,8 +151,9 @@ export default function FriendsDashboardPage() {
       }));
 
       setStudyRooms(mappedRooms);
-    } catch {
-      toast('Failed to load social and study room data', 'error');
+    } catch (err: any) {
+      console.error('Friends load error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to load social and study room data. Something went wrong.'), 'error');
     } finally {
       setLoading(false);
     }
@@ -189,8 +196,9 @@ export default function FriendsDashboardPage() {
           .eq('follower_id', currentUserId)
           .eq('followee_id', student.id);
         toast(`Unfollowed ${student.name}`, 'info');
-      } catch {
-        toast('Failed to unfollow', 'error');
+      } catch (err: any) {
+        console.error('Unfollow error:', err);
+        toast('Failed to unfollow. Something went wrong.', 'error');
         loadData();
       }
     } else {
@@ -203,8 +211,9 @@ export default function FriendsDashboardPage() {
           followee_id: student.id
         });
         toast(`Now following ${student.name}`, 'success');
-      } catch {
-        toast('Failed to follow', 'error');
+      } catch (err: any) {
+        console.error('Follow error:', err);
+        toast('Failed to follow. Something went wrong.', 'error');
         loadData();
       }
     }
@@ -213,7 +222,17 @@ export default function FriendsDashboardPage() {
   // Launch Study Room
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roomName.trim() || !currentUserId) return;
+
+    const validation = validateWithZod(createRoomSchema, {
+      name: roomName,
+      durationMinutes: roomDuration,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
+    if (!currentUserId) return;
 
     setIsCreatingRoom(true);
     try {
@@ -259,7 +278,8 @@ export default function FriendsDashboardPage() {
       setRoomTimeRemaining(durationSec);
       loadData();
     } catch (err: any) {
-      toast(err.message || 'Failed to create room', 'error');
+      console.error('Create room error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to create room. Something went wrong.'), 'error');
     } finally {
       setIsCreatingRoom(false);
     }
@@ -285,20 +305,24 @@ export default function FriendsDashboardPage() {
         setRoomTimeRemaining(room.duration_seconds - room.elapsed_seconds_at_pause);
       }
       toast(`Joined ${room.name}`, 'success');
-    } catch {
-      toast('Failed to join study room', 'error');
+    } catch (err: any) {
+      console.error('Join room error:', err);
+      toast('Failed to join study room. Something went wrong.', 'error');
     }
   };
 
   // Join by 6-char squad code
   const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = joinCodeInput.trim().toUpperCase();
-    if (code.length !== 6 || !currentUserId) {
-      toast('Please enter a valid 6-character room code', 'error');
+
+    const validation = validateWithZod(joinRoomSchema, { code: joinCodeInput });
+    if (!validation.success) {
+      toast(validation.error, 'error');
       return;
     }
+    if (!currentUserId) return;
 
+    const code = validation.data.code.toUpperCase();
     setIsJoiningWithCode(true);
     try {
       const { data, error } = await supabase
@@ -309,7 +333,7 @@ export default function FriendsDashboardPage() {
         .maybeSingle();
 
       if (error || !data) {
-        toast('No active room found with code ' + code, 'error');
+        toast('No active room found with code ' + code + '.', 'error');
         return;
       }
 
@@ -336,8 +360,9 @@ export default function FriendsDashboardPage() {
       setJoinCodeInput('');
       toast(`Joined room ${matchedRoom.name}!`, 'success');
       loadData();
-    } catch {
-      toast('Failed to join room', 'error');
+    } catch (err: any) {
+      console.error('Join by code error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to join room. Something went wrong.'), 'error');
     } finally {
       setIsJoiningWithCode(false);
     }
@@ -691,7 +716,7 @@ export default function FriendsDashboardPage() {
       {/* Follow Friends Search Modal */}
       {isFollowModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <div>
                 <h3 className="text-base font-bold text-zinc-900 dark:text-white">Follow Students</h3>
@@ -756,7 +781,7 @@ export default function FriendsDashboardPage() {
       {/* Launch Room Modal */}
       {isRoomModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] p-6 space-y-4 shadow-2xl">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <h3 className="text-base font-bold text-zinc-900 dark:text-white">Launch Study Room</h3>
               <button onClick={() => setIsRoomModalOpen(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white">

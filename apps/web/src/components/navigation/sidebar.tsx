@@ -40,9 +40,11 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800">
         <Link href="/home" className="flex items-center gap-2.5 group">
-          <div className="h-7 w-7 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center font-display font-bold text-xs transition-transform group-hover:scale-105 btn-press">
-            S
-          </div>
+          <img
+            src="/icon.png"
+            alt="Saktus Logo"
+            className="h-7 w-7 rounded-xl object-contain shadow-xs transition-transform group-hover:scale-105 btn-press"
+          />
           <span className="font-display text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Saktus</span>
         </Link>
       </div>

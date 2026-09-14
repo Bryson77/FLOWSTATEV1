@@ -9,6 +9,8 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -26,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
+import { getSafeErrorMessage } from '../../lib/errors';
 
 export default function ProfileScreen() {
   const { user, profile, refreshProfile, signOut } = useAuth();
@@ -100,7 +103,8 @@ export default function ProfileScreen() {
       await refreshProfile();
       setIsEditModalOpen(false);
     } catch (err: any) {
-      setEditError(err.message || 'Failed to update profile.');
+      console.error('Profile update error:', err);
+      setEditError(getSafeErrorMessage(err, 'Failed to update profile. Something went wrong.'));
     } finally {
       setSaving(false);
     }
@@ -134,7 +138,8 @@ export default function ProfileScreen() {
               if (error) throw error;
               await signOut();
             } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to delete account.');
+              console.error('Delete account error:', err);
+              Alert.alert('Error', getSafeErrorMessage(err, 'Failed to delete account. Something went wrong.'));
             }
           },
         },
@@ -172,15 +177,15 @@ export default function ProfileScreen() {
             <Text style={styles.avatarText}>{getInitials(profile?.full_name ?? null)}</Text>
           </View>
           <View style={styles.identityDetails}>
-            <Text style={styles.fullName}>{profile?.full_name || 'Student'}</Text>
-            <Text style={styles.username}>
+            <Text style={styles.fullName} numberOfLines={1}>{profile?.full_name || 'Student'}</Text>
+            <Text style={styles.username} numberOfLines={1}>
               {profile?.username ? `@${profile.username}` : 'No username set'}
             </Text>
             {profile?.degree ? (
-              <Text style={styles.degreeText}>{profile.degree}</Text>
+              <Text style={styles.degreeText} numberOfLines={1}>{profile.degree}</Text>
             ) : (
               <Pressable onPress={openEditModal}>
-                <Text style={styles.addDegreeLink}>+ Add your course / school program</Text>
+                <Text style={styles.addDegreeLink} numberOfLines={1}>+ Add your course / school program</Text>
               </Pressable>
             )}
             <View style={styles.tierPill}>
@@ -281,83 +286,95 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* Edit Profile Modal */}
-      <Modal visible={isEditModalOpen} animationType="slide" transparent>
+      <Modal visible={isEditModalOpen} animationType="slide" transparent onRequestClose={() => setIsEditModalOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
-              <Pressable onPress={() => setIsEditModalOpen(false)} hitSlop={8}>
-                <X size={20} color="#71717A" />
-              </Pressable>
-            </View>
-
-            {editError ? (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{editError}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Profile</Text>
+                <Pressable onPress={() => setIsEditModalOpen(false)} hitSlop={8}>
+                  <X size={20} color="#71717A" />
+                </Pressable>
               </View>
-            ) : null}
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>FULL NAME</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="e.g. Alex Ndlovu"
-                placeholderTextColor="#52525B"
-              />
-            </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                {editError ? (
+                  <View style={styles.modalErrorBox}>
+                    <Text style={styles.modalErrorText}>{editError}</Text>
+                  </View>
+                ) : null}
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>USERNAME (@username)</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editUsername}
-                onChangeText={(val) => setEditUsername(val.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="e.g. alex_dev"
-                placeholderTextColor="#52525B"
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>DEGREE / SCHOOL PROGRAM</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editDegree}
-                onChangeText={setEditDegree}
-                placeholder="e.g. BSc Computer Science"
-                placeholderTextColor="#52525B"
-              />
-            </View>
-
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>DAILY STUDY GOAL (MINUTES)</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editDailyGoal}
-                onChangeText={setEditDailyGoal}
-                placeholder="120"
-                placeholderTextColor="#52525B"
-                keyboardType="numeric"
-              />
-            </View>
-
-            <Pressable
-              style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
-              onPress={handleSaveProfile}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#000000" />
-              ) : (
-                <View style={styles.saveBtnRow}>
-                  <Check size={16} color="#000000" />
-                  <Text style={styles.saveBtnText}>Save Profile</Text>
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>FULL NAME</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="e.g. Alex Ndlovu"
+                    placeholderTextColor="#52525B"
+                  />
                 </View>
-              )}
-            </Pressable>
-          </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>USERNAME (@username)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editUsername}
+                    onChangeText={(val) => setEditUsername(val.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    placeholder="e.g. alex_dev"
+                    placeholderTextColor="#52525B"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>DEGREE / SCHOOL PROGRAM</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editDegree}
+                    onChangeText={setEditDegree}
+                    placeholder="e.g. BSc Computer Science"
+                    placeholderTextColor="#52525B"
+                  />
+                </View>
+
+                <View style={styles.modalField}>
+                  <Text style={styles.modalLabel}>DAILY STUDY GOAL (MINUTES)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editDailyGoal}
+                    onChangeText={setEditDailyGoal}
+                    placeholder="120"
+                    placeholderTextColor="#52525B"
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+                  onPress={handleSaveProfile}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#000000" />
+                  ) : (
+                    <View style={styles.saveBtnRow}>
+                      <Check size={16} color="#000000" />
+                      <Text style={styles.saveBtnText}>Save Profile</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -577,19 +594,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'flex-end',
   },
+  keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: '#09090B',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    padding: 24,
-    gap: 16,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
+    gap: 14,
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
   modalTitle: {
     color: '#FFFFFF',

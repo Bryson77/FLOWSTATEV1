@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
+import { getSafeErrorMessage } from '@/lib/errors';
+import { createTaskSchema, createAssessmentSchema, validateWithZod } from '@/lib/schemas';
 import { getLocalISODate } from '@saktus/study-engine';
 
 interface NextClass {
@@ -204,7 +206,8 @@ export default function HomePage() {
         setNextClass(null);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load dashboard data.');
+      console.error('Dashboard load error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load dashboard data. Something went wrong.'));
     } finally {
       setLoading(false);
     }
@@ -217,7 +220,17 @@ export default function HomePage() {
   // Handle inline task addition
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskText.trim()) return;
+
+    const validation = validateWithZod(createTaskSchema, {
+      text: newTaskText,
+      prio: newTaskPrio,
+      courseId: newTaskCourseId || null,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
 
     setIsAddingTask(true);
     try {
@@ -227,6 +240,7 @@ export default function HomePage() {
       const { data, error } = await supabase
         .from('tasks')
         .insert({
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined,
           user_id: user.id,
           text: newTaskText.trim(),
           prio: newTaskPrio,
@@ -252,7 +266,8 @@ export default function HomePage() {
       setNewTaskText('');
       toast('Task added', 'success');
     } catch (err: any) {
-      toast(err.message || 'Failed to add task', 'error');
+      console.error('Add task error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to add task. Something went wrong.'), 'error');
     } finally {
       setIsAddingTask(false);
     }
@@ -272,8 +287,9 @@ export default function HomePage() {
       if (error) throw error;
       toast(updatedDone ? 'Task completed' : 'Task reopened', 'success');
     } catch (err: any) {
+      console.error('Update task error:', err);
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: !updatedDone } : t));
-      toast('Failed to update task', 'error');
+      toast('Failed to update task. Something went wrong.', 'error');
     }
   };
 
@@ -286,17 +302,31 @@ export default function HomePage() {
       const { error } = await supabase.from('tasks').delete().eq('id', id);
       if (error) throw error;
       toast('Task removed', 'success');
-    } catch {
+    } catch (err: any) {
+      console.error('Delete task error:', err);
       setTasks(original);
-      toast('Failed to delete task', 'error');
+      toast('Failed to delete task. Something went wrong.', 'error');
     }
   };
 
   // Handle in-place assessment creation
   const handleCreateAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newExamTitle.trim() || !newExamCourseId || !newExamDate) {
-      toast('Please fill all required assessment fields', 'error');
+
+    const validation = validateWithZod(createAssessmentSchema, {
+      title: newExamTitle,
+      dueDate: newExamDate,
+      courseId: newExamCourseId || null,
+      weightPercentage: newExamWeight ? parseFloat(newExamWeight) : null,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
+
+    if (!newExamCourseId) {
+      toast('Fill this in: Please select a course.', 'error');
       return;
     }
 
@@ -309,7 +339,7 @@ export default function HomePage() {
         .from('assessments')
         .insert({
           user_id: user.id,
-          course_id: newExamCourseId,
+          course_id: newExamCourseId ? newExamCourseId : null,
           title: newExamTitle.trim(),
           due_date: new Date(newExamDate).toISOString(),
           weight_percentage: newExamWeight ? parseFloat(newExamWeight) : null,
@@ -337,7 +367,8 @@ export default function HomePage() {
       setNewExamDate('');
       toast('Assessment scheduled', 'success');
     } catch (err: any) {
-      toast(err.message || 'Failed to save assessment', 'error');
+      console.error('Save assessment error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to save assessment. Something went wrong.'), 'error');
     } finally {
       setIsSavingExam(false);
     }
@@ -714,8 +745,8 @@ export default function HomePage() {
 
       {/* In-place Add Assessment Modal */}
       {isAssessmentModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Add Assessment</h3>
               <button onClick={() => setIsAssessmentModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
@@ -737,14 +768,13 @@ export default function HomePage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Course</label>
+                <label className="block text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mb-1">Course (Optional)</label>
                 <select
                   value={newExamCourseId}
                   onChange={e => setNewExamCourseId(e.target.value)}
                   className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600"
-                  required
                 >
-                  <option value="">Select course...</option>
+                  <option value="">Independent / General</option>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                   ))}

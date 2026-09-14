@@ -13,15 +13,36 @@ const emailPayloadSchema = z.object({
 });
 
 emailRouter.post("/send", async (c) => {
+  // Prevent open mail relay: require valid user JWT or internal service key
+  const authHeader = c.req.header("Authorization");
+  const internalKey = c.req.header("X-Internal-Key") || c.req.header("X-API-Key");
+  const expectedKey = c.env.INTERNAL_API_KEY;
+
+  const isInternalAuthorized = expectedKey && internalKey && internalKey === expectedKey;
+
+  let isUserAuthorized = false;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const supabase = c.get("supabase");
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) isUserAuthorized = true;
+    }
+  }
+
+  if (!isInternalAuthorized && !isUserAuthorized) {
+    return c.json({ error: "Unauthorized: Access denied." }, 401);
+  }
+
   const apiKey = c.env.RESEND_API_KEY;
   if (!apiKey) {
-    return c.json({ error: "Resend API key not configured on Cloudflare Worker." }, 503);
+    return c.json({ error: "Email service is temporarily unavailable." }, 503);
   }
 
   const body = await c.req.json().catch(() => null);
   const parsed = emailPayloadSchema.safeParse(body);
   if (!parsed.success) {
-    return c.json({ error: "Invalid email payload", details: parsed.error.flatten() }, 400);
+    return c.json({ error: "Fill this in: Please provide valid email details." }, 400);
   }
 
   try {
@@ -42,12 +63,14 @@ emailRouter.post("/send", async (c) => {
 
     const resData = await res.json();
     if (!res.ok) {
-      return c.json({ error: "Failed to send email via Resend", details: resData }, res.status as any);
+      console.error("Email provider error:", resData);
+      return c.json({ error: "Failed to send email. Something went wrong." }, 502);
     }
 
     return c.json({ success: true, result: resData });
   } catch (err: any) {
-    return c.json({ error: err.message || "Failed to dispatch email" }, 500);
+    console.error("Email dispatch error:", err);
+    return c.json({ error: "Failed to dispatch email. Something went wrong." }, 500);
   }
 });
 

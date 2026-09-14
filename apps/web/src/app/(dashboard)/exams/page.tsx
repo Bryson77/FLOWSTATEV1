@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Calendar, AlertCircle, CheckCircle2, Clock, Trash2, Award, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
+import { getSafeErrorMessage } from '@/lib/errors';
+import { createAssessmentSchema, validateWithZod } from '@/lib/schemas';
 
 interface AssessmentItem {
   id: string;
@@ -94,7 +96,8 @@ export default function ExamsPage() {
         setSelectedCourseId(mappedCourses[0].id);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to load assessments. Check your connection.');
+      console.error('Assessments load error:', err);
+      setErrorMsg(getSafeErrorMessage(err, 'Failed to load assessments. Something went wrong.'));
     } finally {
       setLoading(false);
     }
@@ -106,7 +109,22 @@ export default function ExamsPage() {
 
   const handleAddAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !dueDate) return;
+
+    const validation = validateWithZod(createAssessmentSchema, {
+      title,
+      dueDate,
+      courseId: selectedCourseId || null,
+      weightPercentage: weight ? parseFloat(weight) : null,
+      targetStudyHours: targetHours ? parseFloat(targetHours) : null,
+      venue: venue.trim() || null,
+      type,
+    });
+
+    if (!validation.success) {
+      toast(validation.error, 'error');
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -155,7 +173,8 @@ export default function ExamsPage() {
       setVenue('');
       await fetchData();
     } catch (err: any) {
-      toast(err.message || 'Failed to save. Try again.', 'error');
+      console.error('Save assessment error:', err);
+      toast(getSafeErrorMessage(err, 'Failed to save assessment. Something went wrong.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -172,8 +191,9 @@ export default function ExamsPage() {
       if (error) throw error;
       setAssessments(prev => prev.map(a => a.id === id ? { ...a, completed: nextStatus } : a));
       toast(nextStatus ? 'Assessment completed' : 'Assessment reopened', 'success');
-    } catch {
-      toast('Failed to update. Try again.', 'error');
+    } catch (err: any) {
+      console.error('Update assessment error:', err);
+      toast('Failed to update assessment. Something went wrong.', 'error');
     }
   };
 
@@ -187,8 +207,9 @@ export default function ExamsPage() {
       if (error) throw error;
       setAssessments(prev => prev.filter(a => a.id !== id));
       toast('Assessment removed', 'info');
-    } catch {
-      toast('Failed to remove. Try again.', 'error');
+    } catch (err: any) {
+      console.error('Delete assessment error:', err);
+      toast('Failed to remove assessment. Something went wrong.', 'error');
     }
   };
 
@@ -338,7 +359,7 @@ export default function ExamsPage() {
       {/* Modal: Add Assessment */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-xl space-y-5">
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-xl space-y-5">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <h2 className="font-display text-lg font-bold text-zinc-900 dark:text-white">Add Assessment</h2>
               <button

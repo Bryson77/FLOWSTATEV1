@@ -37,11 +37,26 @@ app.use("*", async (c, next) => {
 });
 
 app.use("*", logger());
-app.use("*", cors({
-  origin: "*",
-  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-}));
+app.use("*", async (c, next) => {
+  const allowedOrigins = (c.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const requestOrigin = c.req.header("Origin") || "";
+
+  const isAllowed =
+    allowedOrigins.length > 0
+      ? allowedOrigins.includes(requestOrigin)
+      : /^(https?:\/\/localhost(:\d+)?|https?:\/\/127\.0\.0\.1(:\d+)?|https:\/\/(.*\.)?saktus\.com|https:\/\/(.*\.)?pages\.dev|https:\/\/(.*\.)?workers\.dev)/.test(requestOrigin);
+
+  return cors({
+    origin: isAllowed ? requestOrigin : "",
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Internal-Key", "X-API-Key"],
+    credentials: true,
+  })(c, next);
+});
 
 // Security Headers Middleware
 app.use("*", async (c, next) => {
@@ -73,7 +88,7 @@ app.onError((err, c) => {
   console.error("API Server Error Caught:", err);
   return c.json({
     success: false,
-    error: err.message || "An unexpected internal server error occurred",
+    error: "Something went wrong. Please try again later.",
   }, 500);
 });
 

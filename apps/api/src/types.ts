@@ -6,6 +6,8 @@ export interface EnvBindings {
   SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
+  INTERNAL_API_KEY?: string;
+  ALLOWED_ORIGINS?: string;
   NODE_ENV?: string;
 }
 
