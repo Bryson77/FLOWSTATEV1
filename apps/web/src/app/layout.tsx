@@ -31,11 +31,60 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Saktus — Productivity app for students',
+  metadataBase: new URL('https://saktus.app'),
+  title: {
+    default: 'Saktus — Productivity app for students',
+    template: '%s | Saktus',
+  },
   description: 'Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.',
+  keywords: [
+    'student productivity',
+    'study app',
+    'spaced repetition',
+    'pomodoro focus timer',
+    'exam countdown',
+    'university timetable',
+    'SM-2 flashcards',
+  ],
+  authors: [{ name: 'Saktus', url: 'https://saktus.app' }],
+  creator: 'Saktus',
   icons: {
     icon: '/favicon.png',
     apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
+  openGraph: {
+    title: 'Saktus — Productivity app for students',
+    description: 'Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.',
+    url: 'https://saktus.app',
+    siteName: 'Saktus',
+    images: [
+      {
+        url: '/icon.png',
+        width: 512,
+        height: 512,
+        alt: 'Saktus App Icon',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Saktus — Productivity app for students',
+    description: 'Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.',
+    images: ['/icon.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 };
 
