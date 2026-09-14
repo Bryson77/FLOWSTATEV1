@@ -1,4 +1,28 @@
-import { getLocalISODate } from "./streaks.js";
+/**
+ * Returns ISO date YYYY-MM-DD for a specific date in the given IANA timezone.
+ * Defaults to user's system timezone or 'Africa/Johannesburg'.
+ */
+export function getLocalISODate(
+  date: Date = new Date(),
+  timezone?: string,
+): string {
+  try {
+    const tz =
+      timezone ||
+      (typeof Intl !== "undefined"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : "Africa/Johannesburg");
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return formatter.format(date);
+  } catch {
+    return date.toISOString().split("T")[0];
+  }
+}
 
 export type ReviewRating = "retry" | "again" | "hard" | "good" | "easy";
 

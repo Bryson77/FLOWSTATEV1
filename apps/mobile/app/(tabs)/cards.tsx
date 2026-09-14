@@ -801,7 +801,7 @@ export default function CardsScreen() {
             >
               <ArrowLeft size={20} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerTitle}>Session Completed</Text>
+            <Text style={styles.headerDeckTitle}>Session Completed</Text>
             <View style={{ width: 20 }} />
           </View>
 
