@@ -43,20 +43,31 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/flashcards') ||
     request.nextUrl.pathname.startsWith('/timer') ||
     request.nextUrl.pathname.startsWith('/friends') ||
-    request.nextUrl.pathname.startsWith('/analytics');
+    request.nextUrl.pathname.startsWith('/analytics') ||
+    request.nextUrl.pathname.startsWith('/settings');
 
-  // If user is not authenticated and trying to access dashboard routes, redirect to login
+  // If user is not authenticated and trying to access dashboard routes, redirect to login preserving destination
   if (!user && isDashboardPage) {
-    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    const redirectUrl = new URL('/login', request.url);
+    redirectUrl.searchParams.set(
+      'redirect',
+      request.nextUrl.pathname + request.nextUrl.search
+    );
+    const redirectResponse = NextResponse.redirect(redirectUrl);
     response.cookies.getAll().forEach((cookie: any) => {
       redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
     });
     return redirectResponse;
   }
 
-  // If user is already authenticated and visits login, redirect to home dashboard
+  // If user is already authenticated and visits login, redirect to target or home
   if (user && isAuthPage) {
-    const redirectResponse = NextResponse.redirect(new URL('/home', request.url));
+    const target = request.nextUrl.searchParams.get('redirect');
+    const safeTarget =
+      target && target.startsWith('/') && !target.startsWith('//')
+        ? target
+        : '/home';
+    const redirectResponse = NextResponse.redirect(new URL(safeTarget, request.url));
     response.cookies.getAll().forEach((cookie: any) => {
       redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
     });

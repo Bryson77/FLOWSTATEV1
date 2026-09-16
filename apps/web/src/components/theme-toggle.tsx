@@ -10,7 +10,25 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ variant = 'pill', className = '' }: ThemeToggleProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, mounted } = useTheme();
+
+  if (!mounted) {
+    if (variant === 'icon') {
+      return (
+        <div
+          aria-hidden="true"
+          className={`h-9 w-9 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 ${className}`}
+        />
+      );
+    }
+    return (
+      <div
+        aria-hidden="true"
+        className={`h-8 w-28 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 ${className}`}
+      />
+    );
+  }
+
   const isDark = theme === 'dark';
 
   if (variant === 'icon') {

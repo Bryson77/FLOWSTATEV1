@@ -8,6 +8,8 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   const { session, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     if (isLoading) return;
@@ -23,7 +25,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
         <Image
           source={require('../assets/icon.png')}
           style={{ width: 64, height: 64, borderRadius: 16 }}
@@ -36,25 +38,30 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { TimerProvider } from '../lib/timer-context';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   return (
     <AuthProvider>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <NavigationGuard>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: isDark ? '#000000' : '#FFFFFF' },
-            animation: 'fade',
-          }}
-        >
-          <Stack.Screen name="login" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </NavigationGuard>
+      <TimerProvider>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <NavigationGuard>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: isDark ? '#000000' : '#FFFFFF' },
+              animation: 'fade',
+            }}
+          >
+            <Stack.Screen name="login" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </NavigationGuard>
+      </TimerProvider>
     </AuthProvider>
   );
 }
+

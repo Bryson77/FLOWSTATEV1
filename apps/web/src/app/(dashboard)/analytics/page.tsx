@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ShieldCheck, Flame, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getLocalISODate } from '@saktus/study-engine';
 
 interface SubjectStat {
   code: string;
@@ -83,7 +84,7 @@ export default function AnalyticsPage() {
         }
 
         if (completedDate) {
-          const dateKey = completedDate.toISOString().split('T')[0];
+          const dateKey = getLocalISODate(completedDate);
           heatMap[dateKey] = (heatMap[dateKey] || 0) + 1;
         }
       });
@@ -242,7 +243,7 @@ export default function AnalyticsPage() {
                 const dayOffset = (15 - weekIdx) * 7 + (6 - dayIdx);
                 const d = new Date();
                 d.setDate(d.getDate() - dayOffset);
-                const key = d.toISOString().split('T')[0];
+                const key = getLocalISODate(d);
                 const count = dailyCounts[key] || 0;
 
                 const opacity =

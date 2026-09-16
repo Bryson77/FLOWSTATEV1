@@ -15,9 +15,12 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AtSign } from 'l
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getSafeErrorMessage } from '../lib/errors';
+import { useThemeColors, type ThemeColors } from '../lib/theme';
 
 export default function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -184,11 +187,11 @@ export default function MobileLoginScreen() {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>FULL NAME</Text>
                   <View style={styles.inputRow}>
-                    <UserIcon size={16} color="#71717A" />
+                    <UserIcon size={16} color={theme.textMuted} />
                     <TextInput
                       style={styles.input}
                       placeholder="e.g. Alex Ndlovu"
-                      placeholderTextColor="#52525B"
+                      placeholderTextColor={theme.textMuted}
                       value={fullName}
                       onChangeText={setFullName}
                     />
@@ -198,11 +201,11 @@ export default function MobileLoginScreen() {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>USERNAME</Text>
                   <View style={styles.inputRow}>
-                    <AtSign size={16} color="#71717A" />
+                    <AtSign size={16} color={theme.textMuted} />
                     <TextInput
                       style={styles.input}
                       placeholder="e.g. alex_dev"
-                      placeholderTextColor="#52525B"
+                      placeholderTextColor={theme.textMuted}
                       value={username}
                       onChangeText={(val: string) => setUsername(sanitizeUsername(val))}
                       autoCapitalize="none"
@@ -216,11 +219,11 @@ export default function MobileLoginScreen() {
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
               <View style={styles.inputRow}>
-                <Mail size={16} color="#71717A" />
+                <Mail size={16} color={theme.textMuted} />
                 <TextInput
                   style={styles.input}
                   placeholder="student@university.ac.za"
-                  placeholderTextColor="#52525B"
+                  placeholderTextColor={theme.textMuted}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
@@ -232,11 +235,11 @@ export default function MobileLoginScreen() {
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>PASSWORD</Text>
               <View style={styles.inputRow}>
-                <Lock size={16} color="#71717A" />
+                <Lock size={16} color={theme.textMuted} />
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••••••"
-                  placeholderTextColor="#52525B"
+                  placeholderTextColor={theme.textMuted}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -244,9 +247,9 @@ export default function MobileLoginScreen() {
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
                   {showPassword ? (
-                    <EyeOff size={16} color="#71717A" />
+                    <EyeOff size={16} color={theme.textMuted} />
                   ) : (
-                    <Eye size={16} color="#71717A" />
+                    <Eye size={16} color={theme.textMuted} />
                   )}
                 </Pressable>
               </View>
@@ -267,7 +270,7 @@ export default function MobileLoginScreen() {
                   <Text style={styles.authButtonText}>
                     {isSignUp ? 'Create Account' : 'Sign In'}
                   </Text>
-                  <ArrowRight size={16} color="#000000" />
+                  <ArrowRight size={16} color={theme.buttonPrimaryText} />
                 </View>
               )}
             </Pressable>
@@ -295,146 +298,147 @@ export default function MobileLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    gap: 20,
-  },
-  header: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  logoImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  brandTitle: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  brandSubtitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  brandDescription: {
-    color: '#71717A',
-    fontSize: 13,
-    textAlign: 'center',
-    maxWidth: 300,
-    lineHeight: 18,
-  },
-  card: {
-    backgroundColor: '#09090B',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 20,
-    gap: 14,
-  },
-  errorBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    padding: 10,
-  },
-  errorText: {
-    color: '#F87171',
-    fontSize: 12,
-  },
-  errorActionRow: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(239,68,68,0.2)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  errorActionMuted: {
-    fontSize: 11,
-    color: '#A1A1AA',
-  },
-  errorActionHighlight: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  field: {
-    gap: 6,
-  },
-  fieldLabel: {
-    color: '#71717A',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#000000',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 14,
-    height: 48,
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  authButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
-  },
-  btnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  authButtonText: {
-    color: '#000000',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  skeletonBar: {
-    width: 80,
-    height: 14,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderRadius: 4,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toggleText: {
-    color: '#71717A',
-    fontSize: 13,
-  },
-  toggleHighlight: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      gap: 20,
+    },
+    header: {
+      alignItems: 'center',
+      gap: 6,
+    },
+    logoImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 16,
+      marginBottom: 8,
+    },
+    brandTitle: {
+      color: theme.textPrimary,
+      fontSize: 26,
+      fontWeight: '700',
+      letterSpacing: -0.5,
+    },
+    brandSubtitle: {
+      color: theme.textPrimary,
+      fontSize: 15,
+      fontWeight: '600',
+      marginTop: 2,
+      textAlign: 'center',
+    },
+    brandDescription: {
+      color: theme.textMuted,
+      fontSize: 13,
+      textAlign: 'center',
+      maxWidth: 300,
+      lineHeight: 18,
+    },
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 20,
+      gap: 14,
+    },
+    errorBox: {
+      backgroundColor: theme.errorBg,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.errorText,
+      padding: 10,
+    },
+    errorText: {
+      color: theme.errorText,
+      fontSize: 12,
+    },
+    errorActionRow: {
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderSubtle,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    errorActionMuted: {
+      fontSize: 11,
+      color: theme.textMuted,
+    },
+    errorActionHighlight: {
+      fontSize: 11,
+      color: theme.textPrimary,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
+    field: {
+      gap: 6,
+    },
+    fieldLabel: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 14,
+      height: 48,
+      gap: 10,
+    },
+    input: {
+      flex: 1,
+      color: theme.textPrimary,
+      fontSize: 14,
+    },
+    authButton: {
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 12,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 6,
+    },
+    btnRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    authButtonText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    skeletonBar: {
+      width: 80,
+      height: 14,
+      backgroundColor: theme.border,
+      borderRadius: 4,
+    },
+    toggleRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    toggleText: {
+      color: theme.textMuted,
+      fontSize: 13,
+    },
+    toggleHighlight: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
+  });

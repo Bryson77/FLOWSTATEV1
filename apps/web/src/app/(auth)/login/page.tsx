@@ -66,8 +66,15 @@ export default function LoginPage() {
           },
         });
         if (error) throw error;
+        const params = new URLSearchParams(window.location.search);
+        const redirectParam = params.get('redirect');
+        const destination =
+          redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+            ? redirectParam
+            : '/home';
+
         if (data?.session) {
-          router.push('/home');
+          router.push(destination);
         } else {
           setInfoMsg('Verification email sent. Please check your inbox.');
         }
@@ -77,7 +84,13 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push('/home');
+        const params = new URLSearchParams(window.location.search);
+        const redirectParam = params.get('redirect');
+        const destination =
+          redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')
+            ? redirectParam
+            : '/home';
+        router.push(destination);
       }
     } catch (err: any) {
       console.error('Auth error:', err);

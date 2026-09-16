@@ -46,8 +46,15 @@ import {
 } from "lucide-react-native";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
-import { getSafeErrorMessage } from "../../lib/errors";
-import { calculateNextReview, type ReviewRating } from "@saktus/study-engine";
+import {
+  calculateNextReview,
+  getLocalISODate,
+  type ReviewRating,
+} from "@saktus/study-engine";
+import { textToProseMirrorDoc, groupDecksByCourse } from "@saktus/shared";
+import { useThemeColors, type ThemeColors } from "../../lib/theme";
+import { useMobileTimer } from "../../lib/timer-context";
+
 
 interface FlashcardItem {
   id: string;
@@ -93,9 +100,13 @@ type StudyMode = "srs" | "cram";
 
 export default function CardsScreen() {
   const { user } = useAuth();
+  const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const mobileTimer = useMobileTimer();
 
   // Navigation & View Mode
   const [activeView, setActiveView] = useState<ActiveView>("library");
+
   const [activeTab, setActiveTab] = useState<LibraryTab>("my_decks");
   const [activeDeck, setActiveDeck] = useState<DeckItem | null>(null);
 
@@ -160,7 +171,7 @@ export default function CardsScreen() {
   const [matchPenalties, setMatchPenalties] = useState(0);
   const matchIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const todayStr = useMemo(() => getLocalISODate(), []);
 
   // Safe Haptic feedback helper
   const triggerHaptic = (
@@ -390,6 +401,31 @@ export default function CardsScreen() {
     selectedCourseId,
   ]);
 
+  // Group My Decks by Course for the 4-tier academic hierarchy
+  const courseGroupedMyDecks = useMemo(() => {
+    if (activeTab !== "my_decks") return null;
+
+    const formattedDecks = displayedDecks.map((d) => ({
+      ...d,
+      courseId: d.course_id,
+      cardCount: d.cards.length,
+      dueCount: d.dueCount,
+    }));
+
+    const result = groupDecksByCourse(courses as any, formattedDecks as any);
+
+    return {
+      courses: result.courses.map((g) => ({
+        course: g.course,
+        decks: g.decks as unknown as DeckItem[],
+        totalCards: g.totalCards,
+        totalDue: g.dueCount,
+        masteryPct: g.masteryPct,
+      })),
+      uncategorized: result.uncategorized as unknown as DeckItem[],
+    };
+  }, [activeTab, courses, displayedDecks]);
+
   // Create New Deck
   const handleCreateDeck = async () => {
     if (!user) return;
@@ -462,6 +498,8 @@ export default function CardsScreen() {
         deck_id: targetDeckId,
         front_text: frontText.trim(),
         back_text: backText.trim(),
+        front_content: textToProseMirrorDoc(frontText.trim()),
+        back_content: textToProseMirrorDoc(backText.trim()),
         position: nextPosition,
         interval_days: 0,
         ease_factor: 2.5,
@@ -540,7 +578,7 @@ export default function CardsScreen() {
     if (!user) return;
     try {
       const { error } = await supabase.rpc("save_public_deck", {
-        p_deck_id: deckId,
+        p_source_deck_id: deckId,
       });
       if (error) throw error;
       triggerHaptic("notification");
@@ -635,27 +673,18 @@ export default function CardsScreen() {
       setStudyQueue(nextQueue);
     }
 
-    // Persist to database asynchronously: review event + review state
+    // Persist to database atomically via submit_flashcard_review RPC
     try {
-      await supabase.from("flashcard_review_events").insert({
-        user_id: user.id,
-        card_id: currentCard.id,
-        rating: rating === "again" ? "retry" : rating,
-        review_duration_ms: durationMs,
+      const { error: rpcErr } = await supabase.rpc("submit_flashcard_review", {
+        p_card_id: currentCard.id,
+        p_rating: rating === "again" ? "retry" : rating,
+        p_study_mode: studyMode === "srs" ? "standard" : "cram",
+        p_response_time_ms: durationMs,
+        p_deck_id: activeDeck?.id || currentCard.deck_id,
       });
-
-      await supabase.from("flashcard_review_states").upsert(
-        {
-          user_id: user.id,
-          card_id: currentCard.id,
-          repetition_number: result.repetitionNumber,
-          interval_days: result.intervalDays,
-          ease_factor: result.easeFactor,
-          due_date: result.nextReviewDate,
-          last_reviewed_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,card_id" },
-      );
+      if (rpcErr) {
+        console.error("submit_flashcard_review RPC error:", rpcErr);
+      }
     } catch (err) {
       console.error("Failed to persist review rating:", err);
     }
@@ -936,9 +965,26 @@ export default function CardsScreen() {
               )}
             </View>
           </View>
-          <Text style={styles.headerCounter}>
-            {queueIndex + 1}/{studyQueue.length}
-          </Text>
+          <View style={{ alignItems: "flex-end", gap: 2 }}>
+            <Text style={styles.headerCounter}>
+              {queueIndex + 1}/{studyQueue.length}
+            </Text>
+            {mobileTimer.isRunning && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                <Clock size={10} color="#10B981" />
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "700",
+                    color: "#10B981",
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {mobileTimer.timeStr}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Study Card Body */}
@@ -1467,6 +1513,143 @@ export default function CardsScreen() {
     );
   }
 
+  // ==================== DECK CARD RENDERER ====================
+
+  const renderDeckItem = (deck: DeckItem) => {
+    const isOwner = deck.user_id === user?.id;
+    const isSaved = savedDeckIds.has(deck.id);
+
+    return (
+      <View key={deck.id} style={styles.deckCard}>
+        <View style={styles.deckHeader}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.deckBadgeRow}>
+              {deck.courses?.code ? (
+                <View style={styles.courseBadge}>
+                  <Text style={styles.courseBadgeText}>
+                    {deck.courses.code}
+                  </Text>
+                </View>
+              ) : null}
+              {deck.is_public && (
+                <View style={styles.visibilityBadge}>
+                  <Globe size={10} color="#A1A1AA" />
+                  <Text style={styles.visibilityText}>Public</Text>
+                </View>
+              )}
+              {deck.isSaved && (
+                <View style={styles.savedBadge}>
+                  <Bookmark size={10} color="#A1A1AA" />
+                  <Text style={styles.visibilityText}>Saved</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.deckTitle}>{deck.title}</Text>
+            {deck.description ? (
+              <Text style={styles.deckDescSnippet} numberOfLines={1}>
+                {deck.description}
+              </Text>
+            ) : null}
+            <Text style={styles.deckMeta}>
+              {deck.cards.length} cards ·{" "}
+              <Text
+                style={
+                  deck.dueCount > 0 ? styles.dueTextHighlight : null
+                }
+              >
+                {deck.dueCount} due
+              </Text>
+            </Text>
+          </View>
+
+          {isOwner ? (
+            <Pressable
+              onPress={() => handleDeleteDeck(deck.id)}
+              hitSlop={8}
+              style={styles.trashBtn}
+            >
+              <Trash2 size={15} color="#52525B" />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Actions Row */}
+        <View style={styles.deckActionsRow}>
+          {activeTab === "discover" && !isOwner ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.saveCommunityBtn,
+                isSaved && styles.saveCommunityBtnActive,
+                pressed && styles.pressed,
+              ]}
+              disabled={isSaved}
+              onPress={() => handleSaveDeck(deck.id)}
+            >
+              {isSaved ? (
+                <>
+                  <Check size={14} color="#A1A1AA" />
+                  <Text style={styles.saveCommunityTextActive}>
+                    Saved
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Bookmark size={14} color="#000000" />
+                  <Text style={styles.saveCommunityText}>
+                    Save to Library
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
+
+          {deck.cards.length > 0 && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.reviewBtn,
+                deck.dueCount > 0
+                  ? styles.reviewBtnActive
+                  : styles.reviewBtnInactive,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => startStudySession(deck, "srs")}
+            >
+              <BookOpen
+                size={13}
+                color={deck.dueCount > 0 ? "#000000" : "#FFFFFF"}
+              />
+              <Text
+                style={
+                  deck.dueCount > 0
+                    ? styles.reviewBtnTextActive
+                    : styles.reviewBtnTextInactive
+                }
+              >
+                {deck.dueCount > 0
+                  ? `Study (${deck.dueCount})`
+                  : "Study"}
+              </Text>
+            </Pressable>
+          )}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.detailLinkBtn,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => {
+              setActiveDeck(deck);
+              setActiveView("deck_detail");
+            }}
+          >
+            <Text style={styles.detailLinkText}>Cards</Text>
+            <ChevronRight size={14} color="#A1A1AA" />
+          </Pressable>
+        </View>
+      </View>
+    );
+  };
+
   // ==================== RENDER: MAIN LIBRARY ====================
 
   return (
@@ -1478,7 +1661,7 @@ export default function CardsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#FFFFFF"
+            tintColor={theme.isDark ? "#FFFFFF" : "#09090B"}
           />
         }
       >
@@ -1666,141 +1849,65 @@ export default function CardsScreen() {
                     : "Create your first deck to start practicing active recall."}
               </Text>
             </View>
-          ) : (
-            displayedDecks.map((deck) => {
-              const isOwner = deck.user_id === user?.id;
-              const isSaved = savedDeckIds.has(deck.id);
-
-              return (
-                <View key={deck.id} style={styles.deckCard}>
-                  <View style={styles.deckHeader}>
-                    <View style={{ flex: 1 }}>
-                      <View style={styles.deckBadgeRow}>
-                        {deck.courses?.code ? (
-                          <View style={styles.courseBadge}>
-                            <Text style={styles.courseBadgeText}>
-                              {deck.courses.code}
-                            </Text>
-                          </View>
-                        ) : null}
-                        {deck.is_public && (
-                          <View style={styles.visibilityBadge}>
-                            <Globe size={10} color="#A1A1AA" />
-                            <Text style={styles.visibilityText}>Public</Text>
-                          </View>
-                        )}
-                        {deck.isSaved && (
-                          <View style={styles.savedBadge}>
-                            <Bookmark size={10} color="#A1A1AA" />
-                            <Text style={styles.visibilityText}>Saved</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.deckTitle}>{deck.title}</Text>
-                      {deck.description ? (
-                        <Text style={styles.deckDescSnippet} numberOfLines={1}>
-                          {deck.description}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.deckMeta}>
-                        {deck.cards.length} cards ·{" "}
-                        <Text
-                          style={
-                            deck.dueCount > 0 ? styles.dueTextHighlight : null
-                          }
-                        >
-                          {deck.dueCount} due
-                        </Text>
-                      </Text>
-                    </View>
-
-                    {isOwner ? (
-                      <Pressable
-                        onPress={() => handleDeleteDeck(deck.id)}
-                        hitSlop={8}
-                        style={styles.trashBtn}
-                      >
-                        <Trash2 size={15} color="#52525B" />
-                      </Pressable>
-                    ) : null}
-                  </View>
-
-                  {/* Actions Row */}
-                  <View style={styles.deckActionsRow}>
-                    {activeTab === "discover" && !isOwner ? (
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.saveCommunityBtn,
-                          isSaved && styles.saveCommunityBtnActive,
-                          pressed && styles.pressed,
-                        ]}
-                        disabled={isSaved}
-                        onPress={() => handleSaveDeck(deck.id)}
-                      >
-                        {isSaved ? (
-                          <>
-                            <Check size={14} color="#A1A1AA" />
-                            <Text style={styles.saveCommunityTextActive}>
-                              Saved
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Bookmark size={14} color="#000000" />
-                            <Text style={styles.saveCommunityText}>
-                              Save to Library
-                            </Text>
-                          </>
-                        )}
-                      </Pressable>
-                    ) : null}
-
-                    {deck.cards.length > 0 && (
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.reviewBtn,
-                          deck.dueCount > 0
-                            ? styles.reviewBtnActive
-                            : styles.reviewBtnInactive,
-                          pressed && styles.pressed,
-                        ]}
-                        onPress={() => startStudySession(deck, "srs")}
-                      >
-                        <BookOpen
-                          size={13}
-                          color={deck.dueCount > 0 ? "#000000" : "#FFFFFF"}
-                        />
-                        <Text
-                          style={
-                            deck.dueCount > 0
-                              ? styles.reviewBtnTextActive
-                              : styles.reviewBtnTextInactive
-                          }
-                        >
-                          {deck.dueCount > 0
-                            ? `Study (${deck.dueCount})`
-                            : "Study"}
-                        </Text>
-                      </Pressable>
-                    )}
-
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.detailLinkBtn,
-                        pressed && styles.pressed,
-                      ]}
-                      onPress={() => {
-                        setActiveDeck(deck);
-                        setActiveView("deck_detail");
+          ) : activeTab === "my_decks" &&
+            courseGroupedMyDecks &&
+            courses.length > 0 ? (
+            <View style={{ gap: 20 }}>
+              {courseGroupedMyDecks.courses.map((group) => (
+                <View key={group.course.id} style={{ gap: 10 }}>
+                  <View style={styles.courseGroupHeader}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
                       }}
                     >
-                      <Text style={styles.detailLinkText}>Cards</Text>
-                      <ChevronRight size={14} color="#A1A1AA" />
-                    </Pressable>
+                      <Text style={styles.courseGroupName}>
+                        {group.course.name}
+                      </Text>
+                      {group.course.code ? (
+                        <View style={styles.courseBadge}>
+                          <Text style={styles.courseBadgeText}>
+                            {group.course.code}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.courseGroupMeta}>
+                      {group.decks.length} decks · {group.totalCards} cards ·{" "}
+                      {group.totalDue} due
+                    </Text>
                   </View>
+
+                  {group.decks.length === 0 ? (
+                    <View style={styles.courseEmptySubCard}>
+                      <Text style={styles.courseEmptySubText}>
+                        No decks linked to this course yet.
+                      </Text>
+                    </View>
+                  ) : (
+                    group.decks.map(renderDeckItem)
+                  )}
                 </View>
-              );
-            })
+              ))}
+
+              {courseGroupedMyDecks.uncategorized.length > 0 ? (
+                <View style={{ gap: 10, marginTop: 6 }}>
+                  <View style={styles.courseGroupHeader}>
+                    <Text style={styles.courseGroupName}>
+                      General / Uncategorized Decks
+                    </Text>
+                    <Text style={styles.courseGroupMeta}>
+                      {courseGroupedMyDecks.uncategorized.length} decks
+                    </Text>
+                  </View>
+                  {courseGroupedMyDecks.uncategorized.map(renderDeckItem)}
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            displayedDecks.map(renderDeckItem)
           )}
         </View>
       </ScrollView>
@@ -2074,795 +2181,721 @@ export default function CardsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000000" },
-  content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 110 },
-  pressed: { transform: [{ scale: 0.97 }] },
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    content: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 110 },
+    pressed: { transform: [{ scale: 0.97 }] },
 
-  // Header
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: -0.4,
-  },
-  subtitle: { fontSize: 12, color: "#71717A", marginTop: 2 },
-  addDeckBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  addDeckBtnText: { color: "#000000", fontSize: 12, fontWeight: "700" },
+    // Header
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.textPrimary,
+      letterSpacing: -0.4,
+    },
+    subtitle: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+    addDeckBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: theme.buttonPrimaryBg,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 10,
+    },
+    addDeckBtnText: { color: theme.buttonPrimaryText, fontSize: 12, fontWeight: "700" },
 
-  // Tabs
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "#09090B",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 3,
-    marginBottom: 12,
-  },
-  tabItem: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: "center",
-    borderRadius: 9,
-  },
-  tabItemActive: {
-    backgroundColor: "#18181B",
-  },
-  tabItemText: {
-    color: "#71717A",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  tabItemTextActive: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-  },
+    // Tabs
+    tabBar: {
+      flexDirection: "row",
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 3,
+      marginBottom: 12,
+    },
+    tabItem: {
+      flex: 1,
+      paddingVertical: 7,
+      alignItems: "center",
+      borderRadius: 9,
+    },
+    tabItemActive: {
+      backgroundColor: theme.surfaceHover,
+    },
+    tabItemText: {
+      color: theme.textMuted,
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    tabItemTextActive: {
+      color: theme.textPrimary,
+      fontWeight: "700",
+    },
 
-  // Search
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#09090B",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: 12,
-    height: 40,
-    marginBottom: 12,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    color: "#FFFFFF",
-    fontSize: 13,
-  },
+    // Search
+    searchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.surface,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 12,
+      height: 40,
+      marginBottom: 12,
+      gap: 8,
+    },
+    searchInput: {
+      flex: 1,
+      color: theme.textPrimary,
+      fontSize: 13,
+    },
 
-  // Course Filter
-  coursesScroll: {
-    gap: 6,
-    marginBottom: 14,
-  },
-  courseChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  courseChipActive: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#FFFFFF",
-  },
-  courseChipText: {
-    color: "#71717A",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  courseChipTextActive: {
-    color: "#000000",
-    fontWeight: "700",
-  },
+    // Course Filter
+    coursesScroll: {
+      gap: 6,
+      marginBottom: 14,
+    },
+    courseChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    courseChipActive: {
+      backgroundColor: theme.buttonPrimaryBg,
+      borderColor: theme.buttonPrimaryBg,
+    },
+    courseChipText: {
+      color: theme.textSecondary,
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    courseChipTextActive: {
+      color: theme.buttonPrimaryText,
+      fontWeight: "700",
+    },
 
-  // Deck List
-  deckList: { gap: 12 },
-  deckCard: {
-    backgroundColor: "#09090B",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 16,
-    gap: 12,
-  },
-  deckHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  deckBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
-  },
-  courseBadge: {
-    backgroundColor: "#18181B",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  courseBadgeText: {
-    color: "#A1A1AA",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  visibilityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#18181B",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  savedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(59,130,246,0.1)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.2)",
-  },
-  visibilityText: {
-    color: "#A1A1AA",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  deckTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-  deckDescSnippet: { color: "#71717A", fontSize: 12, marginTop: 2 },
-  deckMeta: {
-    color: "#71717A",
-    fontSize: 11,
-    marginTop: 4,
-    fontVariant: ["tabular-nums"],
-  },
-  dueTextHighlight: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-  },
-  trashBtn: { padding: 4 },
-  deckActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  reviewBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  reviewBtnActive: {
-    backgroundColor: "#FFFFFF",
-  },
-  reviewBtnInactive: {
-    backgroundColor: "#18181B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  reviewBtnTextActive: {
-    color: "#000000",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  reviewBtnTextInactive: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  detailLinkBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#18181B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  detailLinkText: {
-    color: "#A1A1AA",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  saveCommunityBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  saveCommunityBtnActive: {
-    backgroundColor: "#18181B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  saveCommunityText: {
-    color: "#000000",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  saveCommunityTextActive: {
-    color: "#A1A1AA",
-    fontSize: 12,
-    fontWeight: "600",
-  },
+    // Deck List
+    deckList: { gap: 12 },
+    deckCard: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 16,
+      gap: 12,
+    },
+    deckHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    deckBadgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 6,
+    },
+    courseBadge: {
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: theme.borderSubtle,
+    },
+    courseBadgeText: {
+      color: theme.textSecondary,
+      fontSize: 10,
+      fontWeight: "700",
+    },
+    visibilityBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    savedBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: "rgba(59,130,246,0.1)",
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: "rgba(59,130,246,0.2)",
+    },
+    visibilityText: {
+      color: theme.textSecondary,
+      fontSize: 10,
+      fontWeight: "600",
+    },
+    deckTitle: {
+      color: theme.textPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+      letterSpacing: -0.2,
+    },
+    deckDescSnippet: { color: theme.textMuted, fontSize: 12, marginTop: 2 },
+    deckMeta: {
+      color: theme.textMuted,
+      fontSize: 11,
+      marginTop: 4,
+      fontVariant: ["tabular-nums"],
+    },
+    dueTextHighlight: {
+      color: theme.textPrimary,
+      fontWeight: "700",
+    },
+    trashBtn: { padding: 4 },
+    deckActionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 4,
+    },
+    reviewBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 9,
+      borderRadius: 10,
+    },
+    reviewBtnActive: {
+      backgroundColor: theme.buttonPrimaryBg,
+    },
+    reviewBtnInactive: {
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    reviewBtnTextActive: {
+      color: theme.buttonPrimaryText,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    reviewBtnTextInactive: {
+      color: theme.textPrimary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    detailLinkBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      borderRadius: 10,
+    },
+    detailLinkText: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    saveCommunityBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: theme.buttonPrimaryBg,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      borderRadius: 10,
+    },
+    saveCommunityBtnActive: {
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    saveCommunityText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    saveCommunityTextActive: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
 
-  // Empty State
-  emptyCard: {
-    alignItems: "center",
-    paddingVertical: 36,
-    gap: 6,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    backgroundColor: "rgba(9,9,11,0.5)",
-  },
-  emptyTitle: { color: "#A1A1AA", fontSize: 13, fontWeight: "600" },
-  emptySub: {
-    color: "#52525B",
-    fontSize: 11,
-    textAlign: "center",
-    maxWidth: 240,
-  },
+    // Empty State
+    emptyCard: {
+      alignItems: "center",
+      paddingVertical: 36,
+      gap: 6,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.border,
+      borderRadius: 14,
+      backgroundColor: theme.surfaceSubtle,
+    },
+    emptyTitle: { color: theme.textPrimary, fontSize: 13, fontWeight: "600" },
+    emptySub: {
+      color: theme.textMuted,
+      fontSize: 11,
+      textAlign: "center",
+      maxWidth: 240,
+    },
 
-  // Session / Detail Header
-  sessionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
-  },
-  backBtn: { padding: 4 },
-  headerCenter: { alignItems: "center", flex: 1, marginHorizontal: 10 },
-  headerDeckTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
-  headerBadgeRow: { flexDirection: "row", gap: 6, marginTop: 2 },
-  headerModeBadge: {
-    color: "#71717A",
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  headerRequeueBadge: {
-    color: "#EF4444",
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  headerCounter: {
-    color: "#71717A",
-    fontSize: 12,
-    fontWeight: "600",
-    fontVariant: ["tabular-nums"],
-  },
-  timerBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#18181B",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  timerText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
+    // Session / Detail Header
+    sessionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderSubtle,
+    },
+    backBtn: { padding: 4 },
+    headerCenter: { alignItems: "center", flex: 1, marginHorizontal: 10 },
+    headerDeckTitle: { color: theme.textPrimary, fontSize: 14, fontWeight: "700" },
+    headerBadgeRow: { flexDirection: "row", gap: 6, marginTop: 2 },
+    headerModeBadge: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: "700",
+      textTransform: "uppercase",
+    },
+    headerRequeueBadge: {
+      color: theme.errorText,
+      fontSize: 10,
+      fontWeight: "700",
+      textTransform: "uppercase",
+    },
+    headerCounter: {
+      color: theme.textMuted,
+      fontSize: 12,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
+    },
+    timerBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    timerText: {
+      color: theme.textPrimary,
+      fontSize: 12,
+      fontWeight: "700",
+      fontVariant: ["tabular-nums"],
+    },
 
-  // Study Player Body
-  studyContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-    justifyContent: "center",
-  },
-  tactileCard: {
-    backgroundColor: "#09090B",
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    padding: 24,
-    minHeight: 300,
-    maxHeight: 460,
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardRoleLabel: {
-    color: "#71717A",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  intervalHint: {
-    color: "#52525B",
-    fontSize: 11,
-    fontWeight: "500",
-  },
-  cardScroll: {
-    flexGrow: 0,
-    maxHeight: 300,
-    marginVertical: 14,
-  },
-  cardScrollContent: {
-    justifyContent: "center",
-    minHeight: 120,
-  },
-  cardText: {
-    color: "#FFFFFF",
-    fontSize: 19,
-    lineHeight: 28,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  cardFooterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  cardFooterText: { color: "#71717A", fontSize: 11 },
+    // Study Player Body
+    studyContent: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingBottom: 30,
+      justifyContent: "center",
+    },
+    tactileCard: {
+      backgroundColor: theme.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 24,
+      minHeight: 300,
+      justifyContent: "space-between",
+    },
+    cardFrontText: {
+      color: theme.textPrimary,
+      fontSize: 20,
+      fontWeight: "600",
+      textAlign: "center",
+      lineHeight: 28,
+    },
+    cardBackText: {
+      color: theme.textPrimary,
+      fontSize: 18,
+      fontWeight: "500",
+      textAlign: "center",
+      lineHeight: 26,
+    },
+    flipPrompt: {
+      color: theme.textMuted,
+      fontSize: 12,
+      textAlign: "center",
+      marginTop: 10,
+    },
 
-  // Rating Controls
-  ratingGrid: { flexDirection: "row", gap: 8 },
-  ratingBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 2,
-  },
-  rateRetry: {
-    backgroundColor: "#18181B",
-    borderColor: "#EF4444",
-  },
-  rateHard: {
-    backgroundColor: "#18181B",
-    borderColor: "#F59E0B",
-  },
-  rateGood: {
-    backgroundColor: "#18181B",
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  rateEasy: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#FFFFFF",
-  },
-  rateTitleRetry: { color: "#EF4444", fontSize: 13, fontWeight: "700" },
-  rateTitleHard: { color: "#F59E0B", fontSize: 13, fontWeight: "700" },
-  rateTitleGood: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  rateTitleEasy: { color: "#000000", fontSize: 13, fontWeight: "700" },
-  rateSubtitle: { color: "#71717A", fontSize: 9, fontWeight: "600" },
+    // Rating Bar
+    ratingRow: {
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+    },
+    rateBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
+    rateRetry: {
+      backgroundColor: "rgba(239,68,68,0.1)",
+      borderColor: "rgba(239,68,68,0.25)",
+    },
+    rateHard: {
+      backgroundColor: "rgba(245,158,11,0.1)",
+      borderColor: "rgba(245,158,11,0.25)",
+    },
+    rateGood: {
+      backgroundColor: "rgba(59,130,246,0.1)",
+      borderColor: "rgba(59,130,246,0.25)",
+    },
+    rateEasy: {
+      backgroundColor: "rgba(16,185,129,0.1)",
+      borderColor: "rgba(16,185,129,0.25)",
+    },
+    rateBtnLabel: {
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    rateRetryText: { color: "#EF4444" },
+    rateHardText: { color: "#F59E0B" },
+    rateGoodText: { color: "#3B82F6" },
+    rateEasyText: { color: "#10B981" },
 
-  showAnswerBtn: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 14,
-    alignItems: "center",
-    borderRadius: 14,
-  },
-  showAnswerText: { color: "#000000", fontSize: 14, fontWeight: "700" },
+    // Match Mode
+    matchScroll: { padding: 20, gap: 14 },
+    matchHintText: { color: theme.textMuted, fontSize: 12, textAlign: "center" },
+    matchNoticeText: {
+      color: theme.textMuted,
+      fontSize: 11,
+      textAlign: "center",
+      paddingHorizontal: 10,
+    },
+    matchGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      justifyContent: "space-between",
+    },
+    matchTile: {
+      width: "48%",
+      minHeight: 90,
+      backgroundColor: theme.card,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 12,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    matchTileSelected: {
+      borderColor: theme.textPrimary,
+      backgroundColor: theme.surfaceHover,
+    },
+    matchTileMismatched: {
+      borderColor: "#EF4444",
+      backgroundColor: "rgba(239,68,68,0.1)",
+    },
+    matchTileMatched: {
+      borderColor: "#10B981",
+      opacity: 0.35,
+    },
+    matchTileText: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: "600",
+      textAlign: "center",
+      lineHeight: 18,
+    },
+    matchTileTextMatched: {
+      color: "#10B981",
+    },
 
-  // Summary Screen
-  summaryContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 30,
-    gap: 20,
-  },
-  summaryBadge: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 8,
-    backgroundColor: "#09090B",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  summaryTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
-  summarySubtitle: {
-    color: "#71717A",
-    fontSize: 12,
-    textAlign: "center",
-    maxWidth: 280,
-    lineHeight: 18,
-  },
-  summaryMetricsRow: { flexDirection: "row", gap: 12 },
-  summaryMetricCard: {
-    flex: 1,
-    backgroundColor: "#09090B",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 16,
-    alignItems: "center",
-  },
-  summaryMetricValue: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-  summaryMetricLabel: {
-    color: "#71717A",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    marginTop: 4,
-  },
-  breakdownCard: {
-    backgroundColor: "#09090B",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 16,
-    gap: 12,
-  },
-  breakdownTitle: {
-    color: "#71717A",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  breakdownRow: { flexDirection: "row", gap: 8 },
-  breakdownItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  breakdownCount: {
-    fontSize: 16,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-  breakdownLabel: {
-    color: "#71717A",
-    fontSize: 10,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  summaryActionRow: { flexDirection: "row", gap: 10 },
-  studyAgainBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#18181B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  studyAgainText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
-  doneBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  doneBtnText: { color: "#000000", fontSize: 13, fontWeight: "700" },
+    // Deck Detail
+    detailScroll: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 100,
+      gap: 18,
+    },
+    deckBanner: {
+      backgroundColor: theme.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 18,
+      gap: 14,
+    },
+    bannerTitle: {
+      color: theme.textPrimary,
+      fontSize: 18,
+      fontWeight: "800",
+      letterSpacing: -0.3,
+    },
+    bannerDesc: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    statsRow: { flexDirection: "row", gap: 8 },
+    deckStatCard: {
+      flex: 1,
+      backgroundColor: theme.surfaceHover,
+      borderRadius: 10,
+      padding: 10,
+      alignItems: "center",
+      gap: 2,
+    },
+    deckStatValue: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    deckStatLabel: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: "600",
+    },
+    primaryStudyBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: theme.buttonPrimaryBg,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    primaryStudyBtnText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    subActionsRow: { flexDirection: "row", gap: 8 },
+    subActionButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingVertical: 10,
+      borderRadius: 10,
+    },
+    subActionText: { color: theme.textPrimary, fontSize: 12, fontWeight: "600" },
+    sectionHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    sectionTitle: { color: theme.textPrimary, fontSize: 15, fontWeight: "700" },
+    addCardMiniBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: theme.buttonPrimaryBg,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 8,
+    },
+    addCardMiniText: { color: theme.buttonPrimaryText, fontSize: 11, fontWeight: "700" },
+    cardItemCard: {
+      backgroundColor: theme.card,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.borderSubtle,
+      padding: 14,
+      gap: 6,
+    },
+    cardItemHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    cardNumberText: { color: theme.textMuted, fontSize: 11, fontWeight: "700" },
+    cardDueBadge: {
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    cardDueBadgeText: { color: theme.textPrimary, fontSize: 9, fontWeight: "700" },
+    cardItemPrompt: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: "600",
+      lineHeight: 20,
+    },
+    cardItemDivider: {
+      height: 1,
+      backgroundColor: theme.borderSubtle,
+      marginVertical: 2,
+    },
+    cardItemAnswer: { color: theme.textSecondary, fontSize: 13, lineHeight: 18 },
 
-  // Match Mode
-  matchScroll: { padding: 20, gap: 14 },
-  matchHintText: { color: "#71717A", fontSize: 12, textAlign: "center" },
-  matchNoticeText: {
-    color: "#71717A",
-    fontSize: 11,
-    textAlign: "center",
-    paddingHorizontal: 10,
-  },
-  matchGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    justifyContent: "space-between",
-  },
-  matchTile: {
-    width: (Dimensions.get("window").width - 50) / 2,
-    minHeight: 90,
-    backgroundColor: "#09090B",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  matchTileSelected: {
-    borderColor: "#FFFFFF",
-    backgroundColor: "#18181B",
-  },
-  matchTileMismatched: {
-    borderColor: "#EF4444",
-    backgroundColor: "rgba(239,68,68,0.1)",
-  },
-  matchTileMatched: {
-    borderColor: "#10B981",
-    opacity: 0.35,
-  },
-  matchTileText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  matchTileTextMatched: {
-    color: "#10B981",
-  },
+    // Modals
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      justifyContent: "flex-end",
+    },
+    keyboardAvoid: { width: "100%", justifyContent: "flex-end" },
+    modalCard: {
+      backgroundColor: theme.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 20,
+      maxHeight: "90%",
+    },
+    modalScrollContent: { gap: 14, paddingBottom: 20 },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    modalTitle: { color: theme.textPrimary, fontSize: 17, fontWeight: "700" },
+    modalErrorBox: {
+      backgroundColor: theme.errorBg,
+      borderRadius: 8,
+      padding: 8,
+    },
+    modalErrorText: { color: theme.errorText, fontSize: 11 },
+    modalField: { gap: 6 },
+    modalLabel: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 0.5,
+    },
+    modalInput: {
+      backgroundColor: theme.surfaceHover,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 12,
+      height: 44,
+      color: theme.textPrimary,
+      fontSize: 13,
+    },
+    multilineInput: { height: 74, textAlignVertical: "top", paddingTop: 10 },
+    visibilityToggleRow: { flexDirection: "row", gap: 8 },
+    visibilityOption: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: theme.surfaceHover,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingVertical: 10,
+    },
+    visibilityOptionActive: {
+      backgroundColor: theme.buttonPrimaryBg,
+      borderColor: theme.buttonPrimaryBg,
+    },
+    visibilityOptionText: { color: theme.textSecondary, fontSize: 11, fontWeight: "600" },
+    visibilityOptionTextActive: { color: theme.buttonPrimaryText, fontWeight: "700" },
+    cardActionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginTop: 6,
+    },
+    saveAnotherBtn: {
+      flex: 1,
+      minWidth: 140,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    saveAnotherText: { color: theme.textPrimary, fontSize: 12, fontWeight: "600" },
+    saveBtn: {
+      flex: 1,
+      minWidth: 120,
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 12,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    saveBtnRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    saveBtnText: { color: theme.buttonPrimaryText, fontSize: 13, fontWeight: "700" },
+    errorBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: theme.errorBg,
+      borderWidth: 1,
+      borderColor: theme.errorText,
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 16,
+    },
+    errorText: { color: theme.errorText, fontSize: 12 },
 
-  // Deck Detail
-  detailScroll: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 18,
-  },
-  deckBanner: {
-    backgroundColor: "#09090B",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 18,
-    gap: 10,
-  },
-  deckBannerMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
-  detailTitle: {
-    color: "#FFFFFF",
-    fontSize: 19,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  detailDescription: { color: "#A1A1AA", fontSize: 13, lineHeight: 18 },
-  detailStatsRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  detailStatText: {
-    color: "#71717A",
-    fontSize: 12,
-    fontVariant: ["tabular-nums"],
-  },
-  detailStatDot: { color: "#52525B" },
-  detailStatDue: { color: "#FFFFFF", fontWeight: "700" },
-  detailActionGrid: { gap: 8, marginTop: 4 },
-  mainStudyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  mainStudyText: { color: "#000000", fontSize: 13, fontWeight: "700" },
-  detailSubActionRow: { flexDirection: "row", gap: 8 },
-  subActionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#18181B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  subActionText: { color: "#FFFFFF", fontSize: 12, fontWeight: "600" },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sectionTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
-  addCardMiniBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  addCardMiniText: { color: "#000000", fontSize: 11, fontWeight: "700" },
-  cardItemCard: {
-    backgroundColor: "#09090B",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    padding: 14,
-    gap: 6,
-  },
-  cardItemHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardNumberText: { color: "#52525B", fontSize: 11, fontWeight: "700" },
-  cardDueBadge: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  cardDueBadgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "700" },
-  cardItemPrompt: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 20,
-  },
-  cardItemDivider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    marginVertical: 2,
-  },
-  cardItemAnswer: { color: "#A1A1AA", fontSize: 13, lineHeight: 18 },
-
-  // Modals
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
-    justifyContent: "flex-end",
-  },
-  keyboardAvoid: { width: "100%", justifyContent: "flex-end" },
-  modalCard: {
-    backgroundColor: "#09090B",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    padding: 20,
-    maxHeight: "90%",
-  },
-  modalScrollContent: { gap: 14, paddingBottom: 20 },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  modalTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
-  modalErrorBox: {
-    backgroundColor: "rgba(239,68,68,0.1)",
-    borderRadius: 8,
-    padding: 8,
-  },
-  modalErrorText: { color: "#EF4444", fontSize: 11 },
-  modalField: { gap: 6 },
-  modalLabel: {
-    color: "#71717A",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  modalInput: {
-    backgroundColor: "#000000",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 12,
-    height: 44,
-    color: "#FFFFFF",
-    fontSize: 13,
-  },
-  multilineInput: { height: 74, textAlignVertical: "top", paddingTop: 10 },
-  visibilityToggleRow: { flexDirection: "row", gap: 8 },
-  visibilityOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#000000",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingVertical: 10,
-  },
-  visibilityOptionActive: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#FFFFFF",
-  },
-  visibilityOptionText: { color: "#71717A", fontSize: 11, fontWeight: "600" },
-  visibilityOptionTextActive: { color: "#000000", fontWeight: "700" },
-  cardActionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 6,
-  },
-  saveAnotherBtn: {
-    flex: 1,
-    minWidth: 140,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "#18181B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  saveAnotherText: { color: "#FFFFFF", fontSize: 12, fontWeight: "600" },
-  saveBtn: {
-    flex: 1,
-    minWidth: 120,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveBtnRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  saveBtnText: { color: "#000000", fontSize: 13, fontWeight: "700" },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(239,68,68,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.2)",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  errorText: { color: "#EF4444", fontSize: 12 },
-});
+    // Course Grouping Hierarchy
+    courseGroupHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingBottom: 6,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    courseGroupName: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.textPrimary,
+    },
+    courseGroupMeta: {
+      fontSize: 11,
+      color: theme.textMuted,
+      fontVariant: ["tabular-nums"],
+    },
+    courseEmptySubCard: {
+      padding: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.border,
+      alignItems: "center",
+    },
+    courseEmptySubText: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+  });

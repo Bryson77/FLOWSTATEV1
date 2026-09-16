@@ -128,7 +128,7 @@ export default function HomePage() {
         coursesRes,
         tasksRes,
         assessmentsRes,
-        cardsRes,
+        cockpitRes,
         notificationsRes,
         sessionsRes,
       ] = await Promise.all([
@@ -156,11 +156,11 @@ export default function HomePage() {
           .eq("completed", false)
           .order("due_date", { ascending: true })
           .limit(5),
-        supabase
-          .from("flashcard_review_states")
-          .select("id")
-          .eq("user_id", user.id)
-          .lte("due_date", todayDateStr),
+        supabase.rpc("get_student_home_cockpit", {
+          p_timezone:
+            Intl.DateTimeFormat().resolvedOptions().timeZone ||
+            "Africa/Johannesburg",
+        }),
         supabase
           .from("notifications")
           .select("*")
@@ -192,13 +192,16 @@ export default function HomePage() {
           id: c.id,
           name: c.name,
           code: c.code,
-          color: c.color || "#3b82f6",
-          target_hours_per_week: c.target_hours_per_week || 0,
+          color: c.color || "bg-zinc-500",
         }),
       );
       setCourses(mappedCourses);
 
-      setCardsDueCount(cardsRes.data?.length || 0);
+      setCardsDueCount(
+        cockpitRes.data?.cards_due_today !== undefined
+          ? cockpitRes.data.cards_due_today
+          : 0
+      );
 
       const mappedNotifications: NotificationItem[] = (
         notificationsRes.data || []
@@ -322,7 +325,7 @@ export default function HomePage() {
           prio: newTaskPrio,
           course_id: newTaskCourseId || null,
           done: false,
-          due: new Date().toISOString().split("T")[0],
+          due: getLocalISODate(),
         })
         .select("*, courses(name)")
         .single();

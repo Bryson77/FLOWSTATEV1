@@ -28,6 +28,8 @@ import { router } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/auth-context";
 import { getSafeErrorMessage } from "../../lib/errors";
+import { useThemeColors, type ThemeColors } from "../../lib/theme";
+import { getLocalISODate } from "@saktus/study-engine";
 
 interface NextClass {
   name: string;
@@ -60,6 +62,8 @@ interface CourseItem {
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
+  const theme = useThemeColors();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
   const [nextClass, setNextClass] = useState<NextClass | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [assessments, setAssessments] = useState<AssessmentItem[]>([]);
@@ -84,14 +88,14 @@ export default function HomeScreen() {
 
       const today = new Date();
       const currentDayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
-      const todayDateStr = today.toISOString().split("T")[0];
+      const todayDateStr = getLocalISODate(today);
 
       const [
         classesRes,
         coursesRes,
         tasksRes,
         assessmentsRes,
-        cardsRes,
+        cockpitRes,
         sessionsRes,
       ] = await Promise.all([
         supabase
@@ -117,11 +121,11 @@ export default function HomeScreen() {
           .eq("completed", false)
           .order("due_date", { ascending: true })
           .limit(4),
-        supabase
-          .from("flashcard_review_states")
-          .select("card_id")
-          .eq("user_id", user.id)
-          .lte("due_date", todayDateStr),
+        supabase.rpc("get_student_home_cockpit", {
+          p_timezone:
+            Intl.DateTimeFormat().resolvedOptions().timeZone ||
+            "Africa/Johannesburg",
+        }),
         supabase
           .from("study_sessions")
           .select("duration_seconds, completed_at")
@@ -130,7 +134,11 @@ export default function HomeScreen() {
       ]);
 
       setCourses(coursesRes.data || []);
-      setCardsDueCount(cardsRes.data?.length || 0);
+      setCardsDueCount(
+        cockpitRes.data?.cards_due_today !== undefined
+          ? cockpitRes.data.cards_due_today
+          : 0,
+      );
 
       const totalSecs = (sessionsRes.data || []).reduce(
         (acc: number, s: any) => acc + (Number(s.duration_seconds) || 0),
@@ -228,7 +236,7 @@ export default function HomeScreen() {
           text: newTaskText.trim(),
           prio: "normal",
           done: false,
-          due: new Date().toISOString().split("T")[0],
+          due: getLocalISODate(),
         })
         .select()
         .single();
@@ -294,7 +302,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#FFFFFF"
+            tintColor={theme.isDark ? "#FFFFFF" : "#09090B"}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -361,7 +369,10 @@ export default function HomeScreen() {
 
         {/* Analytics & Metrics Cards Grid */}
         <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
+          <Pressable
+            style={styles.metricCard}
+            onPress={() => router.push("/timer")}
+          >
             <View style={styles.metricHeader}>
               <Clock size={13} color="#3B82F6" />
               <Text style={styles.metricLabel}>STUDY TIME</Text>
@@ -390,7 +401,7 @@ export default function HomeScreen() {
                 ]}
               />
             </View>
-          </View>
+          </Pressable>
 
           <View style={styles.metricCard}>
             <View style={styles.metricHeader}>
@@ -431,6 +442,27 @@ export default function HomeScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Quick Focus Session Launcher Card */}
+        <Pressable
+          style={styles.quickTimerCard}
+          onPress={() => router.push("/timer")}
+        >
+          <View style={styles.quickTimerLeft}>
+            <View style={styles.quickTimerIconWrap}>
+              <Clock size={16} color={theme.textPrimary} />
+            </View>
+            <View>
+              <Text style={styles.quickTimerTitle}>Focus Timer</Text>
+              <Text style={styles.quickTimerSub}>
+                Pomodoro timer with course tracking
+              </Text>
+            </View>
+          </View>
+          <View style={styles.quickTimerPlayBtn}>
+            <Play size={12} color={theme.buttonPrimaryText} fill={theme.buttonPrimaryText} />
+          </View>
+        </Pressable>
 
         {/* Flashcards Due (Active Recall) - Open Cards Button */}
         <Pressable style={styles.srsCard} onPress={() => router.push("/cards")}>
@@ -600,295 +632,309 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Floating Focus Timer Trigger */}
-      <Pressable
-        style={styles.floatingTimer}
-        onPress={() => router.push("/timer")}
-      >
-        <Text style={styles.timerLabel}>Focus Timer · Track Study Time</Text>
-        <Play size={14} color="#000000" fill="#000000" />
-      </Pressable>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000000" },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 100 },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  brandImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-  },
-  greeting: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-  },
-  subGreeting: { fontSize: 12, color: "#71717A", marginTop: 2 },
-  streakBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  streakText: { color: "#FFFFFF", fontSize: 12, fontWeight: "600" },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(239,68,68,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.2)",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  errorText: { color: "#EF4444", fontSize: 12 },
-  card: {
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 18,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-  },
-  cardTag: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#10B981",
-    letterSpacing: 0.5,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginBottom: 4,
-  },
-  cardSubtitle: { fontSize: 12, color: "#71717A" },
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
-  },
-  metricCard: {
-    width: "48%",
-    flexGrow: 1,
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 14,
-    padding: 14,
-  },
-  metricHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#71717A",
-    letterSpacing: 0.5,
-  },
-  metricValueRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-    marginBottom: 6,
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontVariant: ["tabular-nums"],
-  },
-  metricTarget: {
-    fontSize: 11,
-    color: "#71717A",
-  },
-  metricSub: {
-    fontSize: 11,
-    color: "#71717A",
-    marginTop: 4,
-  },
-  progressBarTrack: {
-    height: 4,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    borderRadius: 2,
-  },
-  section: { marginBottom: 22 },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
-  sectionMeta: { fontSize: 11, color: "#71717A" },
-  sectionLink: { fontSize: 12, color: "#A0A0A0", fontWeight: "500" },
-  quickAddRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
-  quickInput: {
-    flex: 1,
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: "#FFFFFF",
-    fontSize: 12,
-  },
-  quickAddButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  taskList: { gap: 6 },
-  taskRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    padding: 12,
-  },
-  taskDone: { opacity: 0.4 },
-  checkButton: { marginRight: 10 },
-  taskText: { flex: 1, color: "#FFFFFF", fontSize: 12 },
-  taskStrike: { textDecorationLine: "line-through", color: "#71717A" },
-  trashBtn: { padding: 4 },
-  emptyText: {
-    color: "#71717A",
-    fontSize: 12,
-    textAlign: "center",
-    paddingVertical: 10,
-  },
-  assessmentRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 6,
-  },
-  examTitle: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
-  examSub: { fontSize: 11, color: "#71717A", marginTop: 2 },
-  daysPill: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  daysPillUrgent: {
-    backgroundColor: "rgba(245,158,11,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.3)",
-  },
-  daysText: { fontSize: 11, fontWeight: "600", color: "#A0A0A0" },
-  daysTextUrgent: { color: "#F59E0B" },
-  srsCard: {
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(168,85,247,0.2)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 22,
-  },
-  srsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  srsTitle: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
-  srsRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 8,
-    marginBottom: 12,
-  },
-  srsCount: { fontSize: 26, fontWeight: "700", color: "#FFFFFF" },
-  srsSub: { fontSize: 12, color: "#71717A" },
-  srsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    paddingVertical: 8,
-  },
-  srsButtonText: { fontSize: 12, fontWeight: "600", color: "#000000" },
-  courseRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#09090B",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 6,
-  },
-  courseName: { fontSize: 13, fontWeight: "600", color: "#FFFFFF" },
-  courseCode: { fontSize: 11, color: "#71717A", marginTop: 2 },
-  courseTarget: { fontSize: 11, color: "#A0A0A0" },
-  floatingTimer: {
-    position: "absolute",
-    bottom: 16,
-    left: 20,
-    right: 20,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  timerLabel: { color: "#000000", fontSize: 12, fontWeight: "700" },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 100 },
+    headerRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 18,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    brandImage: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+    },
+    greeting: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: theme.textPrimary,
+      letterSpacing: -0.3,
+    },
+    subGreeting: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
+    streakBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
+    streakText: { color: theme.textPrimary, fontSize: 12, fontWeight: "600" },
+    errorBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: theme.errorBg,
+      borderWidth: 1,
+      borderColor: theme.errorText,
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 16,
+    },
+    errorText: { color: theme.errorText, fontSize: 12 },
+    card: {
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 18,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 6,
+    },
+    cardTag: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#10B981",
+      letterSpacing: 0.5,
+    },
+    cardTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: theme.textPrimary,
+      marginBottom: 4,
+    },
+    cardSubtitle: { fontSize: 12, color: theme.textMuted },
+    metricsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 20,
+    },
+    metricCard: {
+      width: "48%",
+      flexGrow: 1,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      padding: 14,
+    },
+    metricHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 8,
+    },
+    metricLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+    },
+    metricValueRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 4,
+      marginBottom: 6,
+    },
+    metricValue: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.textPrimary,
+      fontVariant: ["tabular-nums"],
+    },
+    metricTarget: {
+      fontSize: 11,
+      color: theme.textMuted,
+    },
+    metricSub: {
+      fontSize: 11,
+      color: theme.textMuted,
+      marginTop: 4,
+    },
+    progressBarTrack: {
+      height: 4,
+      backgroundColor: theme.borderSubtle,
+      borderRadius: 2,
+      overflow: "hidden",
+    },
+    progressBarFill: {
+      height: "100%",
+      borderRadius: 2,
+    },
+    section: { marginBottom: 22 },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    sectionTitle: { fontSize: 13, fontWeight: "700", color: theme.textPrimary },
+    sectionMeta: { fontSize: 11, color: theme.textMuted },
+    sectionLink: { fontSize: 12, color: theme.textSecondary, fontWeight: "500" },
+    quickAddRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
+    quickInput: {
+      flex: 1,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      color: theme.textPrimary,
+      fontSize: 12,
+    },
+    quickAddButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: theme.buttonPrimaryBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    taskList: { gap: 6 },
+    taskRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      padding: 12,
+    },
+    taskDone: { opacity: 0.4 },
+    checkButton: { marginRight: 10 },
+    taskText: { flex: 1, color: theme.textPrimary, fontSize: 12 },
+    taskStrike: { textDecorationLine: "line-through", color: theme.textMuted },
+    trashBtn: { padding: 4 },
+    emptyText: {
+      color: theme.textMuted,
+      fontSize: 12,
+      textAlign: "center",
+      paddingVertical: 10,
+    },
+    assessmentRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 6,
+    },
+    examTitle: { fontSize: 13, fontWeight: "600", color: theme.textPrimary },
+    examSub: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    daysPill: {
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    daysPillUrgent: {
+      backgroundColor: "rgba(245,158,11,0.15)",
+      borderWidth: 1,
+      borderColor: "rgba(245,158,11,0.3)",
+    },
+    daysText: { fontSize: 11, fontWeight: "600", color: theme.textSecondary },
+    daysTextUrgent: { color: "#F59E0B" },
+    srsCard: {
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 22,
+    },
+    srsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 8,
+    },
+    srsTitle: { fontSize: 13, fontWeight: "600", color: theme.textPrimary },
+    srsRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 8,
+      marginBottom: 12,
+    },
+    srsCount: { fontSize: 26, fontWeight: "700", color: theme.textPrimary },
+    srsSub: { fontSize: 12, color: theme.textMuted },
+    srsButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 10,
+      paddingVertical: 8,
+    },
+    srsButtonText: { fontSize: 12, fontWeight: "600", color: theme.buttonPrimaryText },
+    courseRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 6,
+    },
+    courseName: { fontSize: 13, fontWeight: "600", color: theme.textPrimary },
+    courseCode: { fontSize: 11, color: theme.textMuted, marginTop: 2 },
+    quickTimerCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 20,
+    },
+    quickTimerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    quickTimerIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: theme.surfaceHover,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    quickTimerTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: theme.textPrimary,
+    },
+    quickTimerSub: {
+      fontSize: 11,
+      color: theme.textMuted,
+      marginTop: 2,
+    },
+    quickTimerPlayBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.buttonPrimaryBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });

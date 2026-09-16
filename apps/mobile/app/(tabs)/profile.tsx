@@ -29,9 +29,12 @@ import {
 import { useAuth } from '../../lib/auth-context';
 import { supabase } from '../../lib/supabase';
 import { getSafeErrorMessage } from '../../lib/errors';
+import { useThemeColors, type ThemeColors } from '../../lib/theme';
 
 export default function ProfileScreen() {
   const { user, profile, refreshProfile, signOut } = useAuth();
+  const theme = useThemeColors();
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -167,7 +170,7 @@ export default function ProfileScreen() {
             style={({ pressed }) => [styles.editIconBtn, pressed && styles.pressed]}
             onPress={openEditModal}
           >
-            <Edit3 size={16} color="#FFFFFF" />
+            <Edit3 size={16} color={theme.textPrimary} />
           </Pressable>
         </View>
 
@@ -189,7 +192,7 @@ export default function ProfileScreen() {
               </Pressable>
             )}
             <View style={styles.tierPill}>
-              <Sparkles size={10} color="#A1A1AA" />
+              <Sparkles size={10} color={theme.textMuted} />
               <Text style={styles.tierText}>
                 {profile?.tier ? `${profile.tier.toUpperCase()} PLAN` : 'FREE PLAN'}
               </Text>
@@ -224,7 +227,7 @@ export default function ProfileScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <Clock size={16} color="#71717A" />
+              <Clock size={16} color={theme.textMuted} />
               <View>
                 <Text style={styles.settingTitle}>Daily Study Goal</Text>
                 <Text style={styles.settingSub}>
@@ -241,7 +244,7 @@ export default function ProfileScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <Globe size={16} color="#71717A" />
+              <Globe size={16} color={theme.textMuted} />
               <View>
                 <Text style={styles.settingTitle}>Timezone</Text>
                 <Text style={styles.settingSub}>
@@ -261,7 +264,7 @@ export default function ProfileScreen() {
             onPress={handleSignOut}
           >
             <View style={styles.settingLeft}>
-              <LogOut size={16} color="#FFFFFF" />
+              <LogOut size={16} color={theme.textPrimary} />
               <Text style={styles.actionText}>Sign Out</Text>
             </View>
           </Pressable>
@@ -296,7 +299,7 @@ export default function ProfileScreen() {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Edit Profile</Text>
                 <Pressable onPress={() => setIsEditModalOpen(false)} hitSlop={8}>
-                  <X size={20} color="#71717A" />
+                  <X size={20} color={theme.textMuted} />
                 </Pressable>
               </View>
 
@@ -319,7 +322,7 @@ export default function ProfileScreen() {
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="e.g. Alex Ndlovu"
-                    placeholderTextColor="#52525B"
+                    placeholderTextColor={theme.textMuted}
                   />
                 </View>
 
@@ -330,7 +333,7 @@ export default function ProfileScreen() {
                     value={editUsername}
                     onChangeText={(val) => setEditUsername(val.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     placeholder="e.g. alex_dev"
-                    placeholderTextColor="#52525B"
+                    placeholderTextColor={theme.textMuted}
                     autoCapitalize="none"
                   />
                 </View>
@@ -342,7 +345,7 @@ export default function ProfileScreen() {
                     value={editDegree}
                     onChangeText={setEditDegree}
                     placeholder="e.g. BSc Computer Science"
-                    placeholderTextColor="#52525B"
+                    placeholderTextColor={theme.textMuted}
                   />
                 </View>
 
@@ -353,7 +356,7 @@ export default function ProfileScreen() {
                     value={editDailyGoal}
                     onChangeText={setEditDailyGoal}
                     placeholder="120"
-                    placeholderTextColor="#52525B"
+                    placeholderTextColor={theme.textMuted}
                     keyboardType="numeric"
                   />
                 </View>
@@ -364,10 +367,10 @@ export default function ProfileScreen() {
                   disabled={saving}
                 >
                   {saving ? (
-                    <ActivityIndicator size="small" color="#000000" />
+                    <ActivityIndicator size="small" color={theme.buttonPrimaryText} />
                   ) : (
                     <View style={styles.saveBtnRow}>
-                      <Check size={16} color="#000000" />
+                      <Check size={16} color={theme.buttonPrimaryText} />
                       <Text style={styles.saveBtnText}>Save Profile</Text>
                     </View>
                   )}
@@ -381,288 +384,286 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  editIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#09090B',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    transform: [{ scale: 0.97 }],
-  },
-  profileCard: {
-    backgroundColor: '#09090B',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#000000',
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  identityDetails: {
-    flex: 1,
-    gap: 3,
-  },
-  fullName: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  username: {
-    color: '#A1A1AA',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  degreeText: {
-    color: '#71717A',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  addDegreeLink: {
-    color: '#3B82F6',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  tierPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginTop: 4,
-  },
-  tierText: {
-    color: '#A1A1AA',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#09090B',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: 16,
-    gap: 4,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statValue: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  statSub: {
-    color: '#52525B',
-    fontSize: 11,
-  },
-  sectionCard: {
-    backgroundColor: '#09090B',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    padding: 16,
-    gap: 12,
-  },
-  sectionHeading: {
-    color: '#71717A',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  settingTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  settingSub: {
-    color: '#71717A',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  settingActionBtn: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  settingActionText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  actionRow: {
-    paddingVertical: 4,
-  },
-  actionText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  dangerActionText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 4,
-  },
-  footerText: {
-    color: '#52525B',
-    fontSize: 12,
-  },
-  footerSubText: {
-    color: '#3F3F46',
-    fontSize: 11,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'flex-end',
-  },
-  keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: '#09090B',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    padding: 20,
-    maxHeight: '90%',
-  },
-  modalScrollContent: {
-    gap: 14,
-    paddingBottom: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  modalTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalErrorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderRadius: 8,
-    padding: 10,
-  },
-  modalErrorText: {
-    color: '#EF4444',
-    fontSize: 12,
-  },
-  modalField: {
-    gap: 6,
-  },
-  modalLabel: {
-    color: '#71717A',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  modalInput: {
-    backgroundColor: '#000000',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 14,
-    height: 44,
-    color: '#FFFFFF',
-    fontSize: 13,
-  },
-  saveBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    height: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  saveBtnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  saveBtnText: {
-    color: '#000000',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
+const createStyles = (theme: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 100,
+      gap: 16,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: '700',
+      color: theme.textPrimary,
+      letterSpacing: -0.5,
+    },
+    editIconBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pressed: {
+      transform: [{ scale: 0.97 }],
+    },
+    profileCard: {
+      backgroundColor: theme.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
+    },
+    avatar: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: theme.buttonPrimaryBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 22,
+      fontWeight: '800',
+    },
+    identityDetails: {
+      flex: 1,
+      gap: 3,
+    },
+    fullName: {
+      color: theme.textPrimary,
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    username: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    degreeText: {
+      color: theme.textMuted,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    addDegreeLink: {
+      color: '#3B82F6',
+      fontSize: 12,
+      marginTop: 2,
+    },
+    tierPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      alignSelf: 'flex-start',
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+      marginTop: 4,
+    },
+    tierText: {
+      color: theme.textSecondary,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 16,
+      gap: 4,
+    },
+    statHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 4,
+    },
+    statLabel: {
+      color: theme.textMuted,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    statValue: {
+      color: theme.textPrimary,
+      fontSize: 24,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+    },
+    statSub: {
+      color: theme.textMuted,
+      fontSize: 11,
+    },
+    sectionCard: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 16,
+      gap: 12,
+    },
+    sectionHeading: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.8,
+    },
+    settingRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    settingLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    settingTitle: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    settingSub: {
+      color: theme.textMuted,
+      fontSize: 11,
+      marginTop: 2,
+    },
+    settingActionBtn: {
+      backgroundColor: theme.surfaceHover,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    settingActionText: {
+      color: theme.textPrimary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.borderSubtle,
+    },
+    actionRow: {
+      paddingVertical: 4,
+    },
+    actionText: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    dangerActionText: {
+      color: '#EF4444',
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    footer: {
+      alignItems: 'center',
+      paddingVertical: 20,
+      gap: 4,
+    },
+    footerText: {
+      color: theme.textMuted,
+      fontSize: 12,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      justifyContent: 'flex-end',
+    },
+    keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
+    modalCard: {
+      backgroundColor: theme.card,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 20,
+      maxHeight: '90%',
+    },
+    modalScrollContent: {
+      gap: 14,
+      paddingBottom: 20,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    modalTitle: {
+      color: theme.textPrimary,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    modalErrorBox: {
+      backgroundColor: theme.errorBg,
+      borderRadius: 8,
+      padding: 10,
+    },
+    modalErrorText: {
+      color: theme.errorText,
+      fontSize: 12,
+    },
+    modalField: {
+      gap: 6,
+    },
+    modalLabel: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    modalInput: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 14,
+      height: 44,
+      color: theme.textPrimary,
+      fontSize: 13,
+    },
+    saveBtn: {
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 12,
+      height: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    saveBtnRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    saveBtnText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+  });
