@@ -19,6 +19,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/toast';
 import { useTheme } from '@/components/theme-provider';
+import { usePersistentTimer } from '@/components/timer-context';
 
 interface CourseItem {
   id: string;
