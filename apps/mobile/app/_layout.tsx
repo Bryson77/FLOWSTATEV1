@@ -39,6 +39,7 @@ function NavigationGuard({ children }: { children: React.ReactNode }) {
 }
 
 import { TimerProvider } from '../lib/timer-context';
+import { RebrandingModal } from '../components/RebrandingModal';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -60,6 +61,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
           </Stack>
         </NavigationGuard>
+        <RebrandingModal />
       </TimerProvider>
     </AuthProvider>
   );

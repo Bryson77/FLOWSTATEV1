@@ -9,13 +9,43 @@ import {
   CheckCircle2,
   Flame,
   Clock,
-  Play
+  Play,
+  Sparkles
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LandingPage() {
   return (
     <div className="relative min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black overflow-hidden font-sans transition-colors duration-150">
+      {/* Top Rebranding Announcement Banner */}
+      <aside
+        aria-label="Rebranding Notice"
+        className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/90 dark:bg-zinc-950 px-4 py-2.5 transition-colors"
+      >
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-900 dark:bg-white px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase text-white dark:text-black">
+              <Sparkles className="h-3 w-3" />
+              We&apos;re rebranding!
+            </span>
+            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+              We&apos;re rebranding. From Flowstateproductivity to Saktus.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+            <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">flowstateproductivity.xyz</span>
+            <span className="text-zinc-300 dark:text-zinc-700">·</span>
+            <Link
+              href="/login"
+              className="font-medium text-zinc-900 dark:text-white hover:underline underline-offset-2 flex items-center gap-1 btn-press"
+            >
+              Sign In (app.flowstateproductivity.xyz/login)
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+      </aside>
+
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black px-6 py-4 transition-colors">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -25,7 +55,10 @@ export default function LandingPage() {
               alt="Saktus Logo"
               className="h-8 w-8 rounded-xl object-contain shadow-xs transition-transform hover:scale-105 btn-press"
             />
-            <span className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-white">Saktus</span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-xl font-bold tracking-tight text-zinc-900 dark:text-white">Saktus</span>
+              <span className="hidden sm:inline text-xs text-zinc-400 dark:text-zinc-500 font-medium">formerly Flowstateproductivity</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -47,7 +80,15 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <main className="relative z-10 max-w-5xl mx-auto px-6 pt-20 pb-24 text-center space-y-12">
+      <main className="relative z-10 max-w-5xl mx-auto px-6 pt-16 pb-24 text-center space-y-10">
+        {/* Rebranding Hero Badge */}
+        <div className="inline-flex items-center gap-2 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-4 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 shadow-2xs">
+          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="font-semibold text-zinc-900 dark:text-white">We&apos;re rebranding!</span>
+          <span className="text-zinc-400 dark:text-zinc-600">·</span>
+          <span>From Flowstateproductivity to Saktus</span>
+        </div>
+
         <div className="space-y-4 max-w-3xl mx-auto">
           <h1 className="font-display text-5xl sm:text-7xl font-bold tracking-tight text-zinc-900 dark:text-white leading-[1.08]">
             One app for your whole semester.
@@ -75,8 +116,30 @@ export default function LandingPage() {
           </Link>
         </div>
 
+        {/* Prominent Rebranding Announcement Card */}
+        <div className="pt-2 max-w-3xl mx-auto text-left">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-6 sm:p-7 transition-colors space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-black px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                  We&apos;re rebranding!
+                </span>
+                <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
+                  We&apos;re rebranding. From Flowstateproductivity to Saktus
+                </h2>
+              </div>
+              <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                flowstateproductivity.xyz
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              We&apos;re rebranding. From Flowstateproductivity to Saktus. We are operating on our current domain (<code className="rounded bg-zinc-200/80 dark:bg-zinc-800 px-1.5 py-0.5 text-zinc-900 dark:text-zinc-200 font-mono text-xs">flowstateproductivity.xyz</code>) while our domain transition is ongoing. All student accounts, timetables, flashcards, focus timers, and sign in at <Link href="/login" className="font-mono underline text-zinc-900 dark:text-white hover:text-zinc-700 dark:hover:text-zinc-300">app.flowstateproductivity.xyz/login</Link> remain fully operational.
+            </p>
+          </div>
+        </div>
+
         {/* Positioning Card */}
-        <div className="pt-6 max-w-3xl mx-auto">
+        <div className="pt-2 max-w-3xl mx-auto">
           <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-6 sm:p-8 text-left transition-colors">
             <p className="text-sm sm:text-base text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
               You&apos;re using four apps to manage one semester. A calendar for classes, a flashcard app for exams, a timer for focus, a group chat for your study group. Saktus replaces all four.

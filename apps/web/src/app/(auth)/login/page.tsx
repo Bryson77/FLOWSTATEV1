@@ -120,6 +120,10 @@ export default function LoginPage() {
               Saktus
             </span>
           </Link>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400">
+            <span className="font-semibold text-zinc-900 dark:text-white">We&apos;re rebranding!</span>
+            <span>Flowstateproductivity → Saktus</span>
+          </div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white tracking-tight">
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </h2>

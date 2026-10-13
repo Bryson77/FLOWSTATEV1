@@ -23,6 +23,7 @@ import {
   BookOpen,
   Clock,
   Calendar,
+  Sparkles,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { supabase } from "../../lib/supabase";
@@ -30,6 +31,7 @@ import { useAuth } from "../../lib/auth-context";
 import { getSafeErrorMessage } from "../../lib/errors";
 import { useThemeColors, type ThemeColors } from "../../lib/theme";
 import { getLocalISODate } from "@saktus/study-engine";
+import { RebrandingModal } from "../../components/RebrandingModal";
 
 interface NextClass {
   name: string;
@@ -73,6 +75,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showRebrandModal, setShowRebrandModal] = useState(false);
 
   // Quick task add
   const [newTaskText, setNewTaskText] = useState("");
@@ -323,7 +326,7 @@ export default function HomeScreen() {
                   : ""}
               </Text>
               <Text style={styles.subGreeting}>
-                {profile?.username ? `@${profile.username} · ` : ""}Saktus
+                {profile?.username ? `@${profile.username} · ` : ""}Saktus (formerly Flowstate)
               </Text>
             </View>
           </View>
@@ -335,6 +338,20 @@ export default function HomeScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Rebranding Notice Chip */}
+        <Pressable
+          onPress={() => setShowRebrandModal(true)}
+          style={({ pressed }) => [
+            styles.rebrandChip,
+            pressed && { transform: [{ scale: 0.98 }], opacity: 0.85 },
+          ]}
+        >
+          <Sparkles size={13} color={theme.textPrimary} />
+          <Text style={styles.rebrandChipText}>
+            We&apos;re rebranding! Flowstateproductivity → Saktus
+          </Text>
+        </Pressable>
 
         {/* Error Notice */}
         {errorMsg && (
@@ -632,6 +649,13 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      {showRebrandModal && (
+        <RebrandingModal
+          visible={showRebrandModal}
+          onClose={() => setShowRebrandModal(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -640,6 +664,23 @@ const createStyles = (theme: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     scrollContent: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 100 },
+    rebrandChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      marginBottom: 16,
+    },
+    rebrandChipText: {
+      color: theme.textPrimary,
+      fontSize: 11,
+      fontWeight: "600",
+    },
     headerRow: {
       flexDirection: "row",
       justifyContent: "space-between",

@@ -46,6 +46,19 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/analytics') ||
     request.nextUrl.pathname.startsWith('/settings');
 
+  const host = request.headers.get('host') || '';
+  const isAppSubdomain = host.startsWith('app.');
+
+  // If user visits root of app subdomain (e.g. app.flowstateproductivity.xyz/), route to dashboard if logged in, else login
+  if (isAppSubdomain && request.nextUrl.pathname === '/') {
+    const destination = user ? '/home' : '/login';
+    const redirectResponse = NextResponse.redirect(new URL(destination, request.url));
+    response.cookies.getAll().forEach((cookie: any) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
+  }
+
   // If user is not authenticated and trying to access dashboard routes, redirect to login preserving destination
   if (!user && isDashboardPage) {
     const redirectUrl = new URL('/login', request.url);

@@ -11,11 +11,12 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AtSign } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AtSign, Sparkles } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getSafeErrorMessage } from '../lib/errors';
 import { useThemeColors, type ThemeColors } from '../lib/theme';
+import { RebrandingModal } from '../components/RebrandingModal';
 
 export default function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -29,6 +30,7 @@ export default function MobileLoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showRebrandingDetails, setShowRebrandingDetails] = useState(false);
 
   const sanitizeUsername = (val: string) => {
     return val.toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -152,6 +154,20 @@ export default function MobileLoginScreen() {
               resizeMode="contain"
             />
             <Text style={styles.brandTitle}>Saktus</Text>
+
+            {/* Rebranding Notice Badge */}
+            <Pressable
+              onPress={() => setShowRebrandingDetails(true)}
+              style={({ pressed }) => [
+                styles.rebrandBadge,
+                pressed && { transform: [{ scale: 0.97 }], opacity: 0.85 },
+              ]}
+            >
+              <Sparkles size={12} color={theme.textPrimary} />
+              <Text style={styles.rebrandBadgeText}>We&apos;re rebranding!</Text>
+              <Text style={styles.rebrandBadgeSub}>Flowstateproductivity → Saktus</Text>
+            </Pressable>
+
             <Text style={styles.brandSubtitle}>
               {isSignUp ? 'Create your student account' : 'Productivity app for students'}
             </Text>
@@ -294,6 +310,13 @@ export default function MobileLoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {showRebrandingDetails && (
+        <RebrandingModal
+          visible={showRebrandingDetails}
+          onClose={() => setShowRebrandingDetails(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -324,6 +347,29 @@ const createStyles = (theme: ThemeColors) =>
       fontSize: 26,
       fontWeight: '700',
       letterSpacing: -0.5,
+    },
+    rebrandBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 100,
+      marginTop: 2,
+      marginBottom: 4,
+    },
+    rebrandBadgeText: {
+      color: theme.textPrimary,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    rebrandBadgeSub: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: '500',
     },
     brandSubtitle: {
       color: theme.textPrimary,
