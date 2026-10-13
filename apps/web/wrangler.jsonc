@@ -12,19 +12,5 @@
   },
   "observability": {
     "enabled": true
-  },
-  "routes": [
-    {
-      "pattern": "flowstateproductivity.xyz",
-      "custom_domain": true
-    },
-    {
-      "pattern": "www.flowstateproductivity.xyz",
-      "custom_domain": true
-    },
-    {
-      "pattern": "app.flowstateproductivity.xyz",
-      "custom_domain": true
-    }
-  ]
+  }
 }
