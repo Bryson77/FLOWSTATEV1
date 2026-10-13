@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Saktus — Productivity app for students</title>
-  <meta name="description" content="Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.">
-  <link rel="canonical" href="https://saktus.app/">
+  <title>Saktus — One app for your whole semester</title>
+  <meta name="description" content="We're rebranding. From Flowstateproductivity to Saktus. Timetable, flashcards, focus timer, and study rooms in one place.">
+  <link rel="canonical" href="https://flowstateproductivity.xyz/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Saktus — Productivity app for students">
-  <meta property="og:description" content="Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.">
-  <meta property="og:url" content="https://saktus.app">
-  <meta property="og:image" content="https://saktus.app/icon.png">
+  <meta property="og:title" content="Saktus — We're rebranding from Flowstateproductivity">
+  <meta property="og:description" content="One app for your whole semester. Timetable, spaced repetition flashcards, and focus timer.">
+  <meta property="og:url" content="https://flowstateproductivity.xyz">
+  <meta property="og:image" content="https://flowstateproductivity.xyz/icon.png">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Saktus — Productivity app for students">
-  <meta name="twitter:description" content="Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.">
-  <meta name="twitter:image" content="https://saktus.app/icon.png">
+  <meta name="twitter:title" content="Saktus — We're rebranding from Flowstateproductivity">
+  <meta name="twitter:description" content="One app for your whole semester. Timetable, flashcards, focus timer.">
+  <meta name="twitter:image" content="https://flowstateproductivity.xyz/icon.png">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after {
       margin: 0;
@@ -30,219 +30,229 @@
     }
 
     :root {
-      --bg-base: #FAFAF9;
-      --bg-surface: rgba(255, 255, 255, 0.82);
-      --bg-elevated: #FFFFFF;
-      --border-subtle: rgba(0, 0, 0, 0.08);
-      --border-strong: rgba(0, 0, 0, 0.15);
-      --text-primary: #09090B;
-      --text-secondary: #64748B;
-      --text-muted: #94A3B8;
-      --accent-primary: #09090B;
-      --accent-text: #FFFFFF;
-      --accent-blue: #0071E3;
-      --accent-emerald: #10B981;
       --ease-spring: cubic-bezier(0.2, 0, 0, 1);
       --ease-apple-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
     }
 
-    body.dark {
+    /* Blacked Out OLED Theme (Default) */
+    body.dark, body {
       --bg-base: #000000;
       --bg-surface: #09090B;
       --bg-elevated: #121215;
+      --bg-card: #09090B;
       --border-subtle: rgba(255, 255, 255, 0.08);
       --border-strong: rgba(255, 255, 255, 0.16);
       --text-primary: #FFFFFF;
-      --text-secondary: #A0A0A0;
-      --text-muted: #52525B;
+      --text-secondary: #A1A1AA;
+      --text-muted: #71717A;
       --accent-primary: #FFFFFF;
       --accent-text: #000000;
-      background-color: #000000;
+      --accent-emerald: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-blue: #3B82F6;
+      --selection-bg: #FFFFFF;
+      --selection-text: #000000;
+    }
+
+    /* Pure White Light Theme (Tactile Toggle) */
+    body.light {
+      --bg-base: #FFFFFF;
+      --bg-surface: #FAFAF9;
+      --bg-elevated: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --border-subtle: rgba(0, 0, 0, 0.08);
+      --border-strong: rgba(0, 0, 0, 0.16);
+      --text-primary: #09090B;
+      --text-secondary: #52525B;
+      --text-muted: #71717A;
+      --accent-primary: #09090B;
+      --accent-text: #FFFFFF;
+      --accent-emerald: #059669;
+      --accent-amber: #D97706;
+      --accent-blue: #2563EB;
+      --selection-bg: #09090B;
+      --selection-text: #FFFFFF;
+    }
+
+    ::selection {
+      background: var(--selection-bg);
+      color: var(--selection-text);
     }
 
     body {
       min-height: 100vh;
       background-color: var(--bg-base);
       color: var(--text-primary);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+      font-family: var(--font-sans);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
       position: relative;
       overflow-x: hidden;
-      transition: background-color 200ms ease, color 200ms ease;
+      line-height: 1.5;
+      transition: background-color 160ms ease, color 160ms ease;
     }
 
+    .tnum {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+
+    /* Subtle Architectural Grid Canvas */
     .bg-grid {
       position: fixed;
       inset: 0;
-      background-image: linear-gradient(to right, rgba(0,0,0,0.02) 1px, transparent 1px),
-                        linear-gradient(to bottom, rgba(0,0,0,0.02) 1px, transparent 1px);
-      background-size: 32px 32px;
+      background-image:
+        linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+      background-size: 40px 40px;
       pointer-events: none;
       z-index: 0;
+      mask-image: radial-gradient(ellipse 90% 70% at 50% 10%, black 40%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 10%, black 40%, transparent 100%);
     }
 
-    body.dark .bg-grid {
-      background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-                        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
-    }
-
-    .main-wrapper {
-      position: relative;
-      z-index: 10;
+    /* Top Rebranding Announcement Bar */
+    .rebrand-bar {
+      position: sticky;
+      top: 0;
       width: 100%;
-      max-width: 680px;
-      margin: 0 auto;
+      z-index: 50;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 9px 16px;
+      font-size: 12px;
+      transition: background-color 160ms ease, border-color 160ms ease;
     }
 
-    /* Top Nav Row */
-    .top-row {
+    .rebrand-bar-inner {
+      max-width: 1080px;
+      margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 2rem;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .rebrand-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rebrand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 9999px;
+    }
+
+    .rebrand-text {
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .rebrand-domain-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .rebrand-login-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-primary);
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 12px;
+      transition: opacity 140ms ease;
+    }
+
+    .rebrand-login-link:hover {
+      text-decoration: underline;
+      opacity: 0.85;
+    }
+
+    /* Main Container */
+    .page-wrapper {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 20px 80px 20px;
+    }
+
+    /* Navigation Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 0 16px 0;
+      margin-bottom: 24px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      object-fit: contain;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .brand-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: var(--text-primary);
+      line-height: 1.15;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
       gap: 12px;
     }
 
-    /* Floating Dynamic Island Badge */
-    .island-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px 6px 10px;
-      border-radius: 9999px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      transition: all 200ms var(--ease-apple-out);
-    }
-
-    .island-badge:hover {
-      border-color: var(--border-strong);
-      transform: translateY(-1px);
-    }
-
-    .status-dot-wrap {
-      position: relative;
-      width: 8px;
-      height: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent-emerald);
-    }
-
-    .status-ping {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: var(--accent-emerald);
-      opacity: 0.75;
-      animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-    }
-
-    @keyframes ping {
-      75%, 100% {
-        transform: scale(2.4);
-        opacity: 0;
-      }
-    }
-
-    /* Dark mode toggle button */
-    .theme-toggle-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 9999px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 2px 6px -1px rgba(0,0,0,0.04);
-      transition: all 160ms var(--ease-apple-out);
-    }
-
-    .theme-toggle-btn:hover {
-      border-color: var(--border-strong);
-      color: var(--text-primary);
-    }
-
-    /* Solid Tactile Card (No Glassmorphism Slop) */
-    .main-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 28px;
-      padding: 3rem 2.5rem;
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      transition: background 200ms ease, border-color 200ms ease;
-    }
-
-    body.dark .main-card {
-      box-shadow: none;
-    }
-
-    .logo-container {
-      margin: 0 auto 1.75rem auto;
-      width: 64px;
-      height: 64px;
-      border-radius: 18px;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
-      transition: transform 240ms var(--ease-spring);
-    }
-
-    .logo-container:hover {
-      transform: scale(1.05) rotate(-2deg);
-    }
-
-    .logo-svg {
-      width: 32px;
-      height: 32px;
-      fill: var(--text-primary);
-    }
-
-    h1 {
-      font-size: clamp(2rem, 5vw, 2.75rem);
-      font-weight: 700;
-      letter-spacing: -0.035em;
-      line-height: 1.12;
-      color: var(--text-primary);
-      margin-bottom: 1rem;
-    }
-
-    .subtitle {
-      font-size: 15px;
-      line-height: 1.6;
-      color: var(--text-secondary);
-      max-width: 480px;
-      margin: 0 auto 2rem auto;
-    }
-
-    /* Emil Kowalski Button Craft */
+    /* Emil Kowalski Button Physics */
     .btn-press {
-      transition: transform 140ms var(--ease-apple-out), background-color 150ms ease, box-shadow 150ms ease;
+      transition: transform 140ms var(--ease-apple-out), background-color 140ms ease, border-color 140ms ease;
       will-change: transform;
       cursor: pointer;
     }
@@ -251,322 +261,861 @@
       transform: scale(0.97);
     }
 
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 2.5rem;
-    }
-
-    .btn-primary {
+    .theme-toggle {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
+      gap: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background-clip: padding-box;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .btn-nav-login {
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 6px 10px;
+      transition: color 140ms ease;
+    }
+
+    .btn-nav-login:hover {
+      color: var(--text-primary);
+    }
+
+    .btn-nav-open {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       background: var(--accent-primary);
       color: var(--accent-text);
-      border-radius: 9999px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 9999px;
       text-decoration: none;
-      box-shadow: 0 4px 14px -3px rgba(15, 23, 42, 0.25);
       border: 1px solid transparent;
     }
 
-    .btn-primary:hover {
-      opacity: 0.92;
-      box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.35);
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 40px 0 32px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
     }
 
-    .btn-secondary {
+    .hero-badge-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 12px 22px;
-      background: var(--bg-elevated);
-      color: var(--text-primary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
       border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+      padding: 6px 14px 6px 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
     }
 
-    .btn-secondary:hover {
-      border-color: var(--border-strong);
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
     }
 
-    /* Core Modules Feature Grid */
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 12px;
-      text-align: left;
-      margin-top: 2rem;
-      padding-top: 2rem;
-      border-top: 1px solid var(--border-subtle);
+    .hero-badge-bold {
+      color: var(--text-primary);
+      font-weight: 700;
     }
 
-    .feature-pill {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      padding: 14px 16px;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      transition: all 180ms ease;
+    h1.hero-title {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--text-primary);
+      max-width: 820px;
     }
 
-    .feature-pill:hover {
-      border-color: var(--border-strong);
-      box-shadow: 0 4px 12px -2px rgba(0,0,0,0.04);
-      transform: translateY(-1px);
+    p.hero-desc {
+      font-size: clamp(15px, 2.2vw, 18px);
+      color: var(--text-secondary);
+      max-width: 580px;
+      line-height: 1.55;
     }
 
-    .feature-icon-box {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      background: rgba(0,0,0,0.04);
+    .hero-cta-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
-      color: var(--text-primary);
+      gap: 12px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      width: 100%;
     }
 
-    body.dark .feature-icon-box {
-      background: rgba(255,255,255,0.08);
-    }
-
-    .feature-title {
-      font-size: 12px;
+    .btn-hero-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      font-size: 14px;
       font-weight: 600;
+      padding: 13px 26px;
+      border-radius: 9999px;
+      text-decoration: none;
+      box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-hero-primary:hover {
+      opacity: 0.93;
+    }
+
+    .btn-hero-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-surface);
       color: var(--text-primary);
-      margin-bottom: 2px;
+      border: 1px solid var(--border-subtle);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 13px 24px;
+      border-radius: 9999px;
+      text-decoration: none;
     }
 
-    .feature-desc {
-      font-size: 11px;
-      color: var(--text-secondary);
-      line-height: 1.4;
+    .btn-hero-secondary:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-elevated);
     }
 
-    /* Waitlist Input Box */
-    .waitlist-wrap {
-      max-width: 400px;
-      margin: 0 auto;
+    /* Prominent Rebranding Banner Card */
+    .rebrand-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 24px 28px;
+      margin: 32px auto 0 auto;
+      max-width: 860px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 160ms ease, background-color 160ms ease;
     }
 
-    .waitlist-form {
+    .rebrand-card-header {
       display: flex;
       align-items: center;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-subtle);
-      border-radius: 9999px;
-      padding: 4px 4px 4px 16px;
-      box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
-      transition: border-color 150ms ease, box-shadow 150ms ease;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    .waitlist-form:focus-within {
-      border-color: var(--text-primary);
-      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+    .rebrand-card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .waitlist-input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 13px;
+    .rebrand-tag {
+      font-size: 10px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      letter-spacing: 0.05em;
+    }
+
+    .rebrand-card-h2 {
+      font-size: 16px;
+      font-weight: 700;
       color: var(--text-primary);
-      background: transparent;
-      font-family: inherit;
+      letter-spacing: -0.02em;
     }
 
-    .waitlist-input::placeholder {
+    .rebrand-card-domain {
+      font-family: var(--font-mono);
+      font-size: 12px;
       color: var(--text-muted);
     }
 
-    .waitlist-btn {
-      border: none;
-      background: var(--accent-primary);
-      color: var(--accent-text);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 10px 18px;
-      border-radius: 9999px;
-      cursor: pointer;
+    .rebrand-card-body {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
     }
 
-    .waitlist-success {
-      display: none;
+    .rebrand-card-body code {
+      font-family: var(--font-mono);
       font-size: 12px;
-      font-weight: 500;
-      color: var(--accent-emerald);
-      padding: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: var(--text-primary);
+    }
+
+    .rebrand-card-body a {
+      color: var(--text-primary);
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Tactile Interactive Showcase Section */
+    .showcase-section {
+      margin-top: 48px;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .section-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .section-heading {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+    }
+
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .interactive-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: border-color 160ms ease;
+    }
+
+    .interactive-card:hover {
+      border-color: var(--border-strong);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .card-pill-status {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+    }
+
+    /* Demo: Interactive Focus Timer */
+    .timer-display {
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--text-primary);
+      text-align: center;
+      padding: 12px 0 4px 0;
+    }
+
+    .timer-presets {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .timer-preset-btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+    }
+
+    .timer-preset-btn.active {
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      border-color: transparent;
+    }
+
+    .timer-action-btn {
+      width: 100%;
+      background: var(--accent-primary);
+      color: var(--accent-text);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 11px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
     }
 
-    /* Footer Metadata */
-    footer {
-      margin-top: 2rem;
+    /* Demo: Interactive Flashcard */
+    .flashcard-box {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 18px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .flashcard-subject {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--accent-blue);
+      font-weight: 600;
+    }
+
+    .flashcard-prompt {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+
+    .flashcard-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .srs-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .srs-btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 7px 4px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .srs-interval {
+      font-size: 9px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Demo: Live Timetable Card */
+    .timetable-item {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      width: 100%;
+      gap: 12px;
+    }
+
+    .class-info-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .class-info-detail {
       font-size: 11px;
       color: var(--text-muted);
-      padding: 0 8px;
-      font-family: 'JetBrains Mono', monospace;
+      margin-top: 2px;
     }
 
-    .tabular-nums {
-      font-variant-numeric: tabular-nums;
+    .class-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.25);
     }
 
-    @media (max-width: 600px) {
-      .glass-card {
-        padding: 2rem 1.5rem;
-        border-radius: 24px;
+    /* Features Grid */
+    .features-section {
+      margin-top: 54px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 160ms ease;
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-strong);
+    }
+
+    .feature-card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-primary);
+    }
+
+    .feature-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .feature-card-body {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    /* Bottom CTA Card */
+    .bottom-cta {
+      margin-top: 54px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 44px 28px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .bottom-cta-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+    }
+
+    .bottom-cta-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      max-width: 480px;
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 140ms ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-primary);
+    }
+
+    @media (max-width: 640px) {
+      .page-wrapper {
+        padding: 0 16px 60px 16px;
       }
-      .actions {
+      .hero {
+        padding: 24px 0 20px 0;
+      }
+      .hero-cta-row {
         flex-direction: column;
-        width: 100%;
       }
-      .btn-primary, .btn-secondary {
+      .btn-hero-primary, .btn-hero-secondary {
         width: 100%;
         justify-content: center;
       }
       footer {
         flex-direction: column;
-        gap: 8px;
+        align-items: center;
         text-align: center;
       }
     }
   </style>
 </head>
-<body>
+<body class="dark">
   <div class="bg-grid"></div>
 
-  <div class="main-wrapper">
-    <div class="top-row" style="justify-content: flex-end;">
-      <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn btn-press" title="Toggle Pure White / Pure Black">
-        <svg id="themeIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <span id="themeLabel">Dark Mode</span>
-      </button>
-    </div>
-
-    <div class="main-card">
-      <div class="logo-container">
-        <img src="apple-touch-icon.png" alt="Saktus Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 17px;">
+  <!-- Top Sticky Rebranding Announcement Bar -->
+  <aside class="rebrand-bar" aria-label="Rebranding Notice">
+    <div class="rebrand-bar-inner">
+      <div class="rebrand-left">
+        <span class="rebrand-badge">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+          </svg>
+          We&apos;re rebranding!
+        </span>
+        <span class="rebrand-text">We&apos;re rebranding. From Flowstateproductivity to Saktus.</span>
       </div>
-
-      <h1>One app for your whole semester.</h1>
-      <p class="subtitle">
-        Timetable. Flashcards. Focus timer. Study group. Saktus runs all of it.
-      </p>
-
-      <div class="actions">
-        <a href="/login" class="btn-primary btn-press">
-          Start studying
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="rebrand-domain-pill">flowstateproductivity.xyz</span>
+        <a href="https://app.flowstateproductivity.xyz/login" class="rebrand-login-link btn-press">
+          Sign In
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
         </a>
-        <a href="/timer" class="btn-secondary btn-press">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          Focus Timer
-        </a>
-      </div>
-
-      <div style="margin-bottom: 2rem; padding: 1.25rem 1.5rem; border-radius: 18px; border: 1px solid var(--border-subtle); background: var(--bg-elevated); text-align: left; font-size: 13px; line-height: 1.6; color: var(--text-secondary);">
-        You're using four apps to manage one semester. A calendar for classes, a flashcard app for exams, a timer for focus, a group chat for your study group. Saktus replaces all four.
-      </div>
-
-      <div class="feature-grid">
-        <div class="feature-pill">
-          <div class="feature-icon-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-          </div>
-          <div>
-            <div class="feature-title">Built for a semester</div>
-            <div class="feature-desc">Add your classes once, including the ones that repeat every week. Track assignment deadlines and exam dates in the same view. No setup beyond the first ten minutes.</div>
-          </div>
-        </div>
-
-        <div class="feature-pill">
-          <div class="feature-icon-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-              <polyline points="2 17 12 22 22 17"></polyline>
-              <polyline points="2 12 12 17 22 12"></polyline>
-            </svg>
-          </div>
-          <div>
-            <div class="feature-title">Spaced repetition, done properly</div>
-            <div class="feature-desc">Saktus schedules your reviews using the same spacing model researchers use to test memory retention. Tag your cards by subject and study whatever's actually due today.</div>
-          </div>
-        </div>
-
-        <div class="feature-pill">
-          <div class="feature-icon-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </div>
-          <div>
-            <div class="feature-title">Time you can actually see</div>
-            <div class="feature-desc">Start a session. Saktus logs it. Check your total hours for the day, the week, the month. That's the whole feature.</div>
-          </div>
-        </div>
-
-        <div class="feature-pill">
-          <div class="feature-icon-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-          </div>
-          <div>
-            <div class="feature-title">Study with people, on your terms</div>
-            <div class="feature-desc">Join a live study room with friends when you want company. Keep a streak going without a guilt notification. Check the leaderboard against people you know, not strangers on the internet.</div>
-          </div>
-        </div>
       </div>
     </div>
+  </aside>
 
+  <div class="page-wrapper">
+    <!-- Navigation Header -->
+    <header>
+      <a href="/" class="brand-group">
+        <img src="apple-touch-icon.png" alt="Saktus Logo" class="brand-icon">
+        <div class="brand-meta">
+          <span class="brand-title">Saktus</span>
+          <span class="brand-sub">formerly Flowstateproductivity</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle btn-press" title="Toggle OLED Black / Pure White">
+          <svg id="themeIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <span id="themeLabel">Light Mode</span>
+        </button>
+
+        <a href="https://app.flowstateproductivity.xyz/login" class="btn-nav-login btn-press">Sign In</a>
+        <a href="https://app.flowstateproductivity.xyz/login" class="btn-nav-open btn-press">Open App</a>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main>
+      <section class="hero">
+        <div class="hero-badge-pill">
+          <span class="status-dot"></span>
+          <span class="hero-badge-bold">We&apos;re rebranding!</span>
+          <span style="opacity: 0.4;">·</span>
+          <span>From Flowstateproductivity to Saktus</span>
+        </div>
+
+        <h1 class="hero-title">One app for your whole semester.</h1>
+
+        <p class="hero-desc">
+          Timetable. Spaced repetition flashcards. Focus timer. Study groups. Saktus manages all of it in one place.
+        </p>
+
+        <div class="hero-cta-row">
+          <a href="https://app.flowstateproductivity.xyz/login" class="btn-hero-primary btn-press">
+            Start studying
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </a>
+          <a href="/timer" class="btn-hero-secondary btn-press">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Focus Timer
+          </a>
+        </div>
+      </section>
+
+      <!-- Prominent Rebranding Notice Card -->
+      <section class="rebrand-card" aria-label="Brand Transition Details">
+        <div class="rebrand-card-header">
+          <div class="rebrand-card-title-group">
+            <span class="rebrand-tag">Notice</span>
+            <h2 class="rebrand-card-h2">We&apos;re rebranding. From Flowstateproductivity to Saktus</h2>
+          </div>
+          <span class="rebrand-card-domain">flowstateproductivity.xyz</span>
+        </div>
+        <p class="rebrand-card-body">
+          Flowstateproductivity is evolving into Saktus. We are operating on our current domain (<code>flowstateproductivity.xyz</code>) while our domain setup continues. All student accounts, courses, timetables, active flashcards, and sign-in at <a href="https://app.flowstateproductivity.xyz/login">app.flowstateproductivity.xyz/login</a> continue without interruption.
+        </p>
+      </section>
+
+      <!-- Tactile Interactive Product Showcase -->
+      <section class="showcase-section">
+        <div class="section-header">
+          <span class="section-tag">Interactive Tools</span>
+          <h2 class="section-heading">Built specifically for coursework</h2>
+        </div>
+
+        <div class="showcase-grid">
+          <!-- 1. Interactive Focus Timer -->
+          <div class="interactive-card">
+            <div class="card-top">
+              <span class="card-label">Focus Session</span>
+              <span class="card-pill-status tnum" id="sessionStatus">Ready</span>
+            </div>
+
+            <div class="timer-display tnum" id="timerClock">25:00</div>
+
+            <div class="timer-presets">
+              <button class="timer-preset-btn active btn-press" onclick="setTimerPreset(25, this)">25m</button>
+              <button class="timer-preset-btn btn-press" onclick="setTimerPreset(50, this)">50m</button>
+              <button class="timer-preset-btn btn-press" onclick="setTimerPreset(90, this)">90m</button>
+            </div>
+
+            <button class="timer-action-btn btn-press" id="timerBtn" onclick="toggleTimer()">
+              <svg id="timerBtnIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span id="timerBtnText">Start Focus</span>
+            </button>
+          </div>
+
+          <!-- 2. Interactive Flashcard (SM-2 Spaced Repetition) -->
+          <div class="interactive-card">
+            <div class="card-top">
+              <span class="card-label">Active Recall</span>
+              <span class="card-pill-status">SM-2 Spacing</span>
+            </div>
+
+            <div class="flashcard-box btn-press" id="flashcardBox" onclick="flipFlashcard()">
+              <span class="flashcard-subject">CSC2001F · Algorithms</span>
+              <p class="flashcard-prompt" id="flashcardText">What is the average time complexity of QuickSort?</p>
+              <span class="flashcard-hint" id="flashcardHint">Tap card to reveal answer</span>
+            </div>
+
+            <div class="srs-buttons">
+              <button class="srs-btn btn-press" onclick="rateFlashcard('Again')">Again<span class="srs-interval">1d</span></button>
+              <button class="srs-btn btn-press" onclick="rateFlashcard('Hard')">Hard<span class="srs-interval">3d</span></button>
+              <button class="srs-btn btn-press" onclick="rateFlashcard('Good')">Good<span class="srs-interval">6d</span></button>
+              <button class="srs-btn btn-press" onclick="rateFlashcard('Easy')">Easy<span class="srs-interval">14d</span></button>
+            </div>
+          </div>
+
+          <!-- 3. Real Timetable Engine -->
+          <div class="interactive-card">
+            <div class="card-top">
+              <span class="card-label">Next Class</span>
+              <span class="card-pill-status">Today</span>
+            </div>
+
+            <div class="timetable-item">
+              <div>
+                <div class="class-info-name">Software Engineering</div>
+                <div class="class-info-detail">10:00 - 11:30 · Room ENG-204</div>
+              </div>
+              <span class="class-badge">In 20m</span>
+            </div>
+
+            <div class="timetable-item">
+              <div>
+                <div class="class-info-name">Computer Systems</div>
+                <div class="class-info-detail">14:00 - 15:30 · Lab West A</div>
+              </div>
+              <span class="class-badge" style="background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--border-subtle);">Later</span>
+            </div>
+
+            <a href="https://app.flowstateproductivity.xyz/login" class="rebrand-login-link" style="justify-content: center; padding-top: 4px;">
+              View full weekly timetable
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature Grid -->
+      <section class="features-section">
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-card-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </div>
+            <h3 class="feature-card-title">Recurring Timetable</h3>
+            <p class="feature-card-body">Add your classes once. Saktus arranges your repeating lectures, tutorials, deadlines, and exams into a unified weekly view.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+            </div>
+            <h3 class="feature-card-title">Spaced Repetition</h3>
+            <p class="feature-card-body">SuperMemo SM-2 spacing algorithm calculates exact review intervals based on difficulty, preventing last-minute cramming.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <h3 class="feature-card-title">Deep Focus Timer</h3>
+            <p class="feature-card-body">Logs completed hours automatically per course. View clean daily, weekly, and semester study totals without manual tracking.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-card-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h3 class="feature-card-title">Study With Peers</h3>
+            <p class="feature-card-body">Study in live rooms with classmates. Keep streaks alive and compare study hours against real friends, not strangers.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bottom CTA Card -->
+      <section class="bottom-cta">
+        <h2 class="bottom-cta-title">Built for students, by a student</h2>
+        <p class="bottom-cta-desc">
+          No advertisements. No tracking you didn&apos;t agree to. Just pure tools for finishing your semester cleanly.
+        </p>
+        <a href="https://app.flowstateproductivity.xyz/login" class="btn-hero-primary btn-press" style="margin-top: 6px;">
+          Get started with Saktus
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+      </section>
+    </main>
+
+    <!-- Footer -->
     <footer>
-      <span>&copy; Saktus</span>
-      <span class="tabular-nums" id="liveClock">--:--:--</span>
-      <span>One app for your whole semester</span>
+      <div>
+        &copy; Saktus · Formerly Flowstateproductivity
+      </div>
+      <div class="tnum" id="liveUtcClock">--:--:-- UTC</div>
+      <div class="footer-links">
+        <a href="https://app.flowstateproductivity.xyz/login">Sign In</a>
+        <a href="/timer">Timer</a>
+        <a href="mailto:contact@flowstateproductivity.xyz">Support</a>
+      </div>
     </footer>
   </div>
 
   <script>
+    // Live Tabular Clock
     function updateClock() {
       const now = new Date();
-      const el = document.getElementById('liveClock');
+      const el = document.getElementById('liveUtcClock');
       if (el) {
         el.textContent = now.toTimeString().split(' ')[0] + ' UTC';
       }
@@ -574,43 +1123,128 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    // Theme Switcher (OLED Dark Default <-> Pure White)
     function toggleTheme() {
-      const isDark = document.body.classList.toggle('dark');
-      try {
-        localStorage.setItem('saktus_html_theme', isDark ? 'dark' : 'light');
-      } catch(e) {}
-      updateThemeUI(isDark);
+      const isLight = document.body.classList.toggle('light');
+      if (isLight) {
+        document.body.classList.remove('dark');
+        localStorage.setItem('saktus_theme_pref', 'light');
+      } else {
+        document.body.classList.add('dark');
+        localStorage.setItem('saktus_theme_pref', 'dark');
+      }
+      updateThemeUI(isLight);
     }
 
-    function updateThemeUI(isDark) {
+    function updateThemeUI(isLight) {
       const label = document.getElementById('themeLabel');
       const icon = document.getElementById('themeIcon');
-      if (isDark) {
-        label.textContent = 'Light Mode';
-        icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-      } else {
+      if (isLight) {
         label.textContent = 'Dark Mode';
         icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+      } else {
+        label.textContent = 'Light Mode';
+        icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
       }
     }
 
-    // Initialize from storage or preference
+    // Initialize Theme: Dark mode by default
     try {
-      if (localStorage.getItem('saktus_html_theme') === 'dark') {
-        document.body.classList.add('dark');
+      const stored = localStorage.getItem('saktus_theme_pref');
+      if (stored === 'light') {
+        document.body.classList.remove('dark');
+        document.body.classList.add('light');
         updateThemeUI(true);
+      } else {
+        document.body.classList.add('dark');
+        document.body.classList.remove('light');
+        updateThemeUI(false);
       }
     } catch(e) {}
 
-    function handleWaitlist(e) {
-      e.preventDefault();
-      const email = document.getElementById('emailInput').value;
-      if (!email) return;
-      try {
-        localStorage.setItem('saktus_waitlist_email', email);
-      } catch(e) {}
-      document.getElementById('waitlistForm').style.display = 'none';
-      document.getElementById('waitlistSuccess').style.display = 'inline-flex';
+    // Interactive Focus Timer Demo
+    let timerDuration = 25 * 60;
+    let timerRemaining = timerDuration;
+    let timerInterval = null;
+    let isRunning = false;
+
+    function formatTime(secs) {
+      const m = Math.floor(secs / 60).toString().padStart(2, '0');
+      const s = (secs % 60).toString().padStart(2, '0');
+      return m + ':' + s;
+    }
+
+    function setTimerPreset(mins, btn) {
+      if (isRunning) toggleTimer();
+      timerDuration = mins * 60;
+      timerRemaining = timerDuration;
+      document.getElementById('timerClock').textContent = formatTime(timerRemaining);
+      document.querySelectorAll('.timer-preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('sessionStatus').textContent = 'Ready';
+    }
+
+    function toggleTimer() {
+      const btnText = document.getElementById('timerBtnText');
+      const status = document.getElementById('sessionStatus');
+      const clock = document.getElementById('timerClock');
+
+      if (isRunning) {
+        clearInterval(timerInterval);
+        isRunning = false;
+        btnText.textContent = 'Resume Focus';
+        status.textContent = 'Paused';
+      } else {
+        isRunning = true;
+        btnText.textContent = 'Pause';
+        status.textContent = 'Focusing';
+        timerInterval = setInterval(() => {
+          if (timerRemaining > 0) {
+            timerRemaining--;
+            clock.textContent = formatTime(timerRemaining);
+          } else {
+            clearInterval(timerInterval);
+            isRunning = false;
+            status.textContent = 'Complete';
+            btnText.textContent = 'Restart';
+            timerRemaining = timerDuration;
+          }
+        }, 1000);
+      }
+    }
+
+    // Interactive Flashcard Demo
+    let isFlipped = false;
+    const cardData = [
+      { q: "What is the average time complexity of QuickSort?", a: "O(n log n). Worst-case is O(n²) when unbalanced pivot chosen." },
+      { q: "What is Spaced Repetition (SuperMemo SM-2)?", a: "An algorithm that exponentially increases interval length after successful recall." },
+      { q: "What is the primary benefit of the Pomodoro technique?", a: "Reduces cognitive friction by dividing high-effort sessions into fixed 25-50m intervals." }
+    ];
+    let cardIdx = 0;
+
+    function flipFlashcard() {
+      isFlipped = !isFlipped;
+      const text = document.getElementById('flashcardText');
+      const hint = document.getElementById('flashcardHint');
+      if (isFlipped) {
+        text.textContent = cardData[cardIdx].a;
+        text.style.color = 'var(--accent-emerald)';
+        hint.textContent = 'Answer revealed · Rate memory retention below';
+      } else {
+        text.textContent = cardData[cardIdx].q;
+        text.style.color = 'var(--text-primary)';
+        hint.textContent = 'Tap card to reveal answer';
+      }
+    }
+
+    function rateFlashcard(rating) {
+      cardIdx = (cardIdx + 1) % cardData.length;
+      isFlipped = false;
+      const text = document.getElementById('flashcardText');
+      const hint = document.getElementById('flashcardHint');
+      text.textContent = cardData[cardIdx].q;
+      text.style.color = 'var(--text-primary)';
+      hint.textContent = 'Card scheduled (' + rating + ') · Tap to reveal';
     }
   </script>
 </body>
