@@ -64,7 +64,7 @@ interface CourseItem {
   name: string;
   code: string;
   color: string | null;
-  target_hours_per_week: number | null;
+  target_hours_per_week?: number | null;
 }
 
 interface NotificationItem {
@@ -197,9 +197,10 @@ export default function HomePage() {
       );
       setCourses(mappedCourses);
 
+      const cockpitData = cockpitRes.data as any;
       setCardsDueCount(
-        cockpitRes.data?.cards_due_today !== undefined
-          ? cockpitRes.data.cards_due_today
+        cockpitData?.cards_due_today !== undefined
+          ? cockpitData.cards_due_today
           : 0
       );
 

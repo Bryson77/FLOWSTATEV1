@@ -35,7 +35,7 @@ interface CourseItem {
   id: string;
   name: string;
   code: string;
-  color: string;
+  color: string | null;
 }
 
 const COLOR_OPTIONS = [

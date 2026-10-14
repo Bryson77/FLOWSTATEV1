@@ -71,31 +71,18 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         completed_at: new Date().toISOString(),
       });
 
-      // Update streaks
-      const today = getLocalISODate();
-      const { data: profile } = await supabase
+      // Update streaks via authoritative RPC
+      await (supabase.rpc as any)('record_study_activity', {
+        p_user_id: user.id,
+        p_activity_type: 'session',
+      });
+
+      await supabase
         .from('profiles')
-        .select('study_streak_days, last_study_date, longest_streak_days')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profile) {
-        const isNewDay = profile.last_study_date !== today;
-        const newStreak = isNewDay
-          ? (profile.study_streak_days || 0) + 1
-          : profile.study_streak_days || 1;
-        const longest = Math.max(newStreak, profile.longest_streak_days || 0);
-
-        await supabase
-          .from('profiles')
-          .update({
-            study_streak_days: newStreak,
-            longest_streak_days: longest,
-            last_study_date: today,
-            is_studying_now: false,
-          })
-          .eq('id', user.id);
-      }
+        .update({
+          is_studying_now: false,
+        })
+        .eq('id', user.id);
 
       Alert.alert(
         'Session Completed',

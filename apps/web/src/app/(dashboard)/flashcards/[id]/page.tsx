@@ -159,7 +159,7 @@ export default function DeckCommandCenterPage() {
 
   const handleOpenEditCard = (card: EnhancedCard) => {
     setEditingCardId(card.id);
-    setCardType(card.card_type || "standard");
+    setCardType((card.card_type as "standard" | "true_false" | "multiple_choice") || "standard");
     setCardFront(card.front_text || "");
     setCardBack(card.back_text || "");
     if (card.card_type === "multiple_choice" && card.options) {
@@ -209,8 +209,8 @@ export default function DeckCommandCenterPage() {
           .update({
             front_text: cardFront.trim(),
             back_text: cardBack.trim(),
-            front_content: textToProseMirrorDoc(cardFront.trim()),
-            back_content: textToProseMirrorDoc(cardBack.trim()),
+            front_content: textToProseMirrorDoc(cardFront.trim()) as any,
+            back_content: textToProseMirrorDoc(cardBack.trim()) as any,
             card_type: cardType,
             options: optionsPayload,
             correct_answer: correctAnswer,
@@ -228,8 +228,8 @@ export default function DeckCommandCenterPage() {
           position: currentCount,
           front_text: cardFront.trim(),
           back_text: cardBack.trim(),
-          front_content: textToProseMirrorDoc(cardFront.trim()),
-          back_content: textToProseMirrorDoc(cardBack.trim()),
+          front_content: textToProseMirrorDoc(cardFront.trim()) as any,
+          back_content: textToProseMirrorDoc(cardBack.trim()) as any,
           card_type: cardType,
           options: optionsPayload,
           correct_answer: correctAnswer,
@@ -269,10 +269,10 @@ export default function DeckCommandCenterPage() {
         user_id: currentUserId,
         deck_id: activeDeck.id,
         position: (activeDeck.cards?.length || 0) + 1,
-        front_text: `${card.front_text} (Copy)`,
-        back_text: card.back_text,
-        front_content: textToProseMirrorDoc(`${card.front_text} (Copy)`),
-        back_content: textToProseMirrorDoc(card.back_text || ""),
+        front_text: `${card.front_text || ""} (Copy)`,
+        back_text: card.back_text || "",
+        front_content: textToProseMirrorDoc(`${card.front_text || ""} (Copy)`) as any,
+        back_content: textToProseMirrorDoc(card.back_text || "") as any,
         card_type: card.card_type,
         options: card.options,
         correct_answer: card.correct_answer,

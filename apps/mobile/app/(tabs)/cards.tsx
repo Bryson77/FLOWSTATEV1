@@ -51,7 +51,7 @@ import {
   getLocalISODate,
   type ReviewRating,
 } from "@saktus/study-engine";
-import { textToProseMirrorDoc, groupDecksByCourse } from "@saktus/shared";
+import { textToProseMirrorDoc, groupDecksByCourse, getSafeErrorMessage } from "@saktus/shared";
 import { useThemeColors, type ThemeColors } from "../../lib/theme";
 import { useMobileTimer } from "../../lib/timer-context";
 
@@ -498,8 +498,8 @@ export default function CardsScreen() {
         deck_id: targetDeckId,
         front_text: frontText.trim(),
         back_text: backText.trim(),
-        front_content: textToProseMirrorDoc(frontText.trim()),
-        back_content: textToProseMirrorDoc(backText.trim()),
+        front_content: textToProseMirrorDoc(frontText.trim()) as any,
+        back_content: textToProseMirrorDoc(backText.trim()) as any,
         position: nextPosition,
         interval_days: 0,
         ease_factor: 2.5,
@@ -675,7 +675,7 @@ export default function CardsScreen() {
 
     // Persist to database atomically via submit_flashcard_review RPC
     try {
-      const { error: rpcErr } = await supabase.rpc("submit_flashcard_review", {
+      const { error: rpcErr } = await (supabase.rpc as any)("submit_flashcard_review", {
         p_card_id: currentCard.id,
         p_rating: rating === "again" ? "retry" : rating,
         p_study_mode: studyMode === "srs" ? "standard" : "cram",
@@ -2897,5 +2897,274 @@ const createStyles = (theme: ThemeColors) =>
     courseEmptySubText: {
       fontSize: 12,
       color: theme.textMuted,
+    },
+    doneBtn: {
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+    },
+    doneBtnText: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    deckBannerMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 8,
+    },
+    detailTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: theme.textPrimary,
+      marginBottom: 4,
+    },
+    detailDescription: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      lineHeight: 18,
+      marginBottom: 10,
+    },
+    detailStatsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 16,
+    },
+    detailStatText: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    detailStatDot: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    detailStatDue: {
+      color: "#F59E0B",
+      fontWeight: "600",
+    },
+    ratingGrid: {
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+    },
+    ratingBtn: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+    },
+    rateTitleRetry: { color: "#EF4444", fontSize: 13, fontWeight: "700" },
+    rateTitleHard: { color: "#F59E0B", fontSize: 13, fontWeight: "700" },
+    rateTitleGood: { color: "#3B82F6", fontSize: 13, fontWeight: "700" },
+    rateTitleEasy: { color: "#10B981", fontSize: 13, fontWeight: "700" },
+    rateSubtitle: { color: theme.textMuted, fontSize: 10, marginTop: 2 },
+    showAnswerBtn: {
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 12,
+      paddingVertical: 14,
+      marginHorizontal: 20,
+      marginBottom: 20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    showAnswerText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    summaryContainer: {
+      flex: 1,
+      padding: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 20,
+    },
+    summaryBadge: {
+      alignItems: "center",
+      gap: 8,
+    },
+    summaryTitle: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: theme.textPrimary,
+    },
+    summarySubtitle: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      textAlign: "center",
+    },
+    summaryMetricsRow: {
+      flexDirection: "row",
+      gap: 12,
+      width: "100%",
+    },
+    summaryMetricCard: {
+      flex: 1,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      padding: 16,
+      alignItems: "center",
+      gap: 4,
+    },
+    summaryMetricValue: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: theme.textPrimary,
+      fontVariant: ["tabular-nums"],
+    },
+    summaryMetricLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+    },
+    summaryActionRow: {
+      flexDirection: "row",
+      gap: 12,
+      width: "100%",
+    },
+    studyAgainBtn: {
+      flex: 1,
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 12,
+      paddingVertical: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    studyAgainText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    detailActionGrid: {
+      gap: 10,
+    },
+    mainStudyBtn: {
+      backgroundColor: theme.buttonPrimaryBg,
+      borderRadius: 12,
+      paddingVertical: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    mainStudyText: {
+      color: theme.buttonPrimaryText,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    detailSubActionRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    subActionBtn: {
+      flex: 1,
+      backgroundColor: theme.surfaceHover,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 12,
+      paddingVertical: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    },
+    breakdownCard: {
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 14,
+      padding: 16,
+      gap: 12,
+      width: "100%",
+    },
+    breakdownTitle: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+    },
+    breakdownRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    breakdownItem: {
+      flex: 1,
+      backgroundColor: theme.surfaceHover,
+      borderRadius: 10,
+      borderWidth: 1,
+      padding: 10,
+      alignItems: "center",
+      gap: 2,
+    },
+    breakdownCount: {
+      fontSize: 16,
+      fontWeight: "800",
+      fontVariant: ["tabular-nums"],
+    },
+    breakdownLabel: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: theme.textMuted,
+    },
+    cardTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    cardRoleLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: theme.textMuted,
+      letterSpacing: 0.5,
+    },
+    intervalHint: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: theme.textSecondary,
+    },
+    cardScroll: {
+      flex: 1,
+    },
+    cardScrollContent: {
+      flexGrow: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 10,
+    },
+    cardText: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: theme.textPrimary,
+      textAlign: "center",
+      lineHeight: 26,
+    },
+    cardFooterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 12,
+    },
+    cardFooterText: {
+      fontSize: 11,
+      color: theme.textMuted,
+      fontWeight: "500",
     },
   });

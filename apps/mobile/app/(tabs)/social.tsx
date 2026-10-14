@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import {
   UserPlus,
   Zap,
   Flame,
+  Coffee,
+  ThumbsUp,
   Radio,
   Share2,
   Plus,
@@ -29,12 +31,23 @@ import {
   Copy,
   Clock,
   KeyRound,
-  Sparkles,
+  Play,
+  Pause,
+  LogOut,
+  ArrowRight,
 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth-context';
 import { getSafeErrorMessage } from '../../lib/errors';
 import { useThemeColors, type ThemeColors } from '../../lib/theme';
+import {
+  calculateRemainingSeconds,
+  type StudyRoomClockState,
+  type CheerIconType,
+  type RoomCheerPayload,
+  type RoomPresenceState,
+} from '@saktus/shared';
 
 interface StudentProfile {
   id: string;
@@ -52,12 +65,31 @@ interface StudyRoomItem {
   name: string;
   code: string;
   duration_seconds: number;
+  elapsed_seconds_at_pause: number;
+  status: 'active' | 'paused' | 'completed';
+  last_resumed_at: string | null;
   host_id: string;
   host_name?: string;
+  member_count?: number;
 }
 
+interface ActiveCheerToast {
+  id: string;
+  icon: CheerIconType;
+  sender_name: string;
+}
+
+type TabFilter = 'all' | 'mutual' | 'sprints';
+
+const CHEER_BUTTONS: { key: CheerIconType; label: string; icon: any; color: string }[] = [
+  { key: 'Zap', label: 'Energy', icon: Zap, color: '#F59E0B' },
+  { key: 'Flame', label: 'Fire', icon: Flame, color: '#EF4444' },
+  { key: 'Coffee', label: 'Break', icon: Coffee, color: '#D97706' },
+  { key: 'ThumbsUp', label: 'Solid', icon: ThumbsUp, color: '#10B981' },
+];
+
 export default function SocialScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -67,11 +99,18 @@ export default function SocialScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Segmented Control Filter
+  const [activeTab, setActiveTab] = useState<TabFilter>('all');
+
   // Active Joined Room
   const [joinedRoom, setJoinedRoom] = useState<StudyRoomItem | null>(null);
   const [roomTimeRemaining, setRoomTimeRemaining] = useState(25 * 60);
+  const [roomPresenceCount, setRoomPresenceCount] = useState<number>(1);
+  const [activeCheer, setActiveCheer] = useState<ActiveCheerToast | null>(null);
 
-  // Find Friends Modal
+  const channelRef = useRef<any>(null);
+
+  // Find Classmates Modal
   const [isFindModalOpen, setIsFindModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<StudentProfile[]>([]);
@@ -89,6 +128,7 @@ export default function SocialScreen() {
   const [joiningRoom, setJoiningRoom] = useState(false);
   const [joinError, setJoinError] = useState('');
 
+  // Load Data
   const loadData = useCallback(async () => {
     setErrorMsg(null);
     try {
@@ -137,13 +177,16 @@ export default function SocialScreen() {
         name: r.name,
         code: r.code,
         duration_seconds: r.duration_seconds || 1500,
+        elapsed_seconds_at_pause: r.elapsed_seconds_at_pause || 0,
+        status: r.status || 'active',
+        last_resumed_at: r.last_resumed_at,
         host_id: r.host_id,
         host_name: r.profiles?.full_name || 'Host',
       }));
       setStudyRooms(mappedRooms);
     } catch (e: any) {
       console.error('Social load error:', e);
-      setErrorMsg(getSafeErrorMessage(e, 'Failed to load friends. Something went wrong.'));
+      setErrorMsg(getSafeErrorMessage(e, 'Failed to load social sprints. Something went wrong.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -159,9 +202,212 @@ export default function SocialScreen() {
     loadData();
   };
 
+  // Delta-Resilient Clock Countdown Loop
+  useEffect(() => {
+    if (!joinedRoom) return;
+
+    const tick = () => {
+      const state: StudyRoomClockState = {
+        durationSeconds: joinedRoom.duration_seconds,
+        elapsedSecondsAtPause: joinedRoom.elapsed_seconds_at_pause,
+        lastResumedAt: joinedRoom.last_resumed_at,
+        status: joinedRoom.status,
+      };
+
+      const rem = calculateRemainingSeconds(state);
+      setRoomTimeRemaining(rem);
+
+      if (rem === 0 && joinedRoom.status === 'active') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        Alert.alert('Sprint Complete', '25 minutes logged to your course total. Take a 5-minute break.');
+        setJoinedRoom((prev) => (prev ? { ...prev, status: 'completed' } : null));
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [joinedRoom]);
+
+  // Supabase Realtime Broadcast & Presence
+  useEffect(() => {
+    if (!joinedRoom || !user) return;
+
+    const channelName = `study_room:${joinedRoom.id}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { self: false },
+        presence: { key: user.id },
+      },
+    });
+
+    channelRef.current = channel;
+
+    channel.on('broadcast', { event: 'room_start' }, ({ payload }: { payload: { last_resumed_at: string } }) => {
+      setJoinedRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'active',
+              last_resumed_at: payload.last_resumed_at,
+            }
+          : null
+      );
+    });
+
+    channel.on('broadcast', { event: 'room_pause' }, ({ payload }: { payload: { elapsed_seconds: number } }) => {
+      setJoinedRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'paused',
+              elapsed_seconds_at_pause: payload.elapsed_seconds,
+              last_resumed_at: null,
+            }
+          : null
+      );
+    });
+
+    channel.on('broadcast', { event: 'cheer' }, ({ payload }: { payload: RoomCheerPayload }) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      const cheerItem: ActiveCheerToast = {
+        id: `${payload.sender_id}-${Date.now()}`,
+        icon: payload.icon,
+        sender_name: payload.sender_name,
+      };
+      setActiveCheer(cheerItem);
+      setTimeout(() => {
+        setActiveCheer((curr) => (curr?.id === cheerItem.id ? null : curr));
+      }, 1200);
+    });
+
+    channel.on('presence', { event: 'sync' }, () => {
+      const presenceState = channel.presenceState();
+      const count = Object.keys(presenceState).length;
+      setRoomPresenceCount(Math.max(1, count));
+    });
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({
+          user_id: user.id,
+          name: profile?.full_name || 'Classmate',
+          is_studying: true,
+        });
+      }
+    });
+
+    return () => {
+      channel.unsubscribe();
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [joinedRoom?.id, user, profile]);
+
+  // Trigger Haptic Cheer
+  const handleSendCheer = async (icon: CheerIconType) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    if (!channelRef.current || !user) return;
+
+    const senderName = profile?.full_name || 'Classmate';
+    const payload: RoomCheerPayload = {
+      icon,
+      sender_name: senderName,
+      sender_id: user.id,
+      timestamp: new Date().toISOString(),
+    };
+
+    await channelRef.current.send({
+      type: 'broadcast',
+      event: 'cheer',
+      payload,
+    });
+
+    const cheerItem: ActiveCheerToast = {
+      id: `self-${Date.now()}`,
+      icon,
+      sender_name: 'You',
+    };
+    setActiveCheer(cheerItem);
+    setTimeout(() => {
+      setActiveCheer((curr) => (curr?.id === cheerItem.id ? null : curr));
+    }, 1200);
+  };
+
+  // Host Action: Pause / Resume Sprint
+  const handleToggleSprintTimer = async () => {
+    if (!joinedRoom || joinedRoom.host_id !== user?.id) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+
+    const isPausing = joinedRoom.status === 'active';
+
+    if (isPausing) {
+      const nowMs = Date.now();
+      const resumedMs = joinedRoom.last_resumed_at ? new Date(joinedRoom.last_resumed_at).getTime() : nowMs;
+      const currentRunSeconds = Math.max(0, Math.floor((nowMs - resumedMs) / 1000));
+      const newElapsed = joinedRoom.elapsed_seconds_at_pause + currentRunSeconds;
+
+      setJoinedRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'paused',
+              elapsed_seconds_at_pause: newElapsed,
+              last_resumed_at: null,
+            }
+          : null
+      );
+
+      await supabase
+        .from('study_rooms')
+        .update({
+          status: 'paused',
+          elapsed_seconds_at_pause: newElapsed,
+          last_resumed_at: null,
+        })
+        .eq('id', joinedRoom.id);
+
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'room_pause',
+          payload: { elapsed_seconds: newElapsed },
+        });
+      }
+    } else {
+      const nowIso = new Date().toISOString();
+      setJoinedRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'active',
+              last_resumed_at: nowIso,
+            }
+          : null
+      );
+
+      await supabase
+        .from('study_rooms')
+        .update({
+          status: 'active',
+          last_resumed_at: nowIso,
+        })
+        .eq('id', joinedRoom.id);
+
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'room_start',
+          payload: { last_resumed_at: nowIso },
+        });
+      }
+    }
+  };
+
   // Follow / Unfollow Action
   const handleToggleFollow = async (student: StudentProfile) => {
     if (!user) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     const newFollowing = !student.isFollowing;
     setStudents((prev: StudentProfile[]) =>
@@ -188,7 +434,7 @@ export default function SocialScreen() {
     }
   };
 
-  // Search Students by Name or @username
+  // Search Students
   const handleSearchStudents = async (query: string) => {
     setSearchQuery(query);
     if (!query.trim() || !user) {
@@ -232,18 +478,20 @@ export default function SocialScreen() {
     }
   };
 
-  // Create Study Room
+  // Create Study Sprint
   const handleCreateRoom = async () => {
     if (!roomName.trim()) {
       Alert.alert('Notice', 'Fill this in: Room name is required.');
       return;
     }
     if (!user) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setCreatingRoom(true);
 
     try {
       const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       const durationSec = roomDuration * 60;
+      const nowIso = new Date().toISOString();
 
       const { data, error } = await supabase
         .from('study_rooms')
@@ -254,7 +502,7 @@ export default function SocialScreen() {
           duration_seconds: durationSec,
           elapsed_seconds_at_pause: 0,
           status: 'active',
-          last_resumed_at: new Date().toISOString(),
+          last_resumed_at: nowIso,
         })
         .select()
         .single();
@@ -271,6 +519,9 @@ export default function SocialScreen() {
         name: data.name,
         code: data.code,
         duration_seconds: data.duration_seconds ?? durationSec,
+        elapsed_seconds_at_pause: 0,
+        status: 'active',
+        last_resumed_at: nowIso,
         host_id: data.host_id,
         host_name: 'You',
       });
@@ -290,10 +541,11 @@ export default function SocialScreen() {
   // Join Room by Code
   const handleJoinWithCode = async () => {
     if (!joinCodeInput.trim()) {
-      setJoinError('Fill this in: Please enter a room code.');
+      setJoinError('Fill this in: Please enter a 6-digit sprint code.');
       return;
     }
     if (!user) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setJoiningRoom(true);
     setJoinError('');
 
@@ -316,15 +568,27 @@ export default function SocialScreen() {
         .from('study_room_members')
         .upsert({ room_id: room.id, user_id: user.id });
 
-      setJoinedRoom({
+      const newJoinedRoom: StudyRoomItem = {
         id: room.id,
         name: room.name,
         code: room.code,
         duration_seconds: room.duration_seconds || 1500,
+        elapsed_seconds_at_pause: room.elapsed_seconds_at_pause || 0,
+        status: (room.status as 'active' | 'paused' | 'completed') || 'active',
+        last_resumed_at: room.last_resumed_at,
         host_id: room.host_id,
         host_name: room.profiles?.full_name || 'Host',
-      });
-      setRoomTimeRemaining(room.duration_seconds || 1500);
+      };
+
+      setJoinedRoom(newJoinedRoom);
+      setRoomTimeRemaining(
+        calculateRemainingSeconds({
+          durationSeconds: newJoinedRoom.duration_seconds,
+          elapsedSecondsAtPause: newJoinedRoom.elapsed_seconds_at_pause,
+          lastResumedAt: newJoinedRoom.last_resumed_at,
+          status: newJoinedRoom.status,
+        })
+      );
 
       setIsJoinCodeOpen(false);
       setJoinCodeInput('');
@@ -338,14 +602,16 @@ export default function SocialScreen() {
   };
 
   const handleShareCode = async (code: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       await Share.share({
-        message: `Join my study room on Saktus! Room code: ${code}`,
+        message: `Join my focus sprint on Saktus! Room code: ${code}`,
       });
     } catch {}
   };
 
   const followedFriends = students.filter((s: StudentProfile) => s.isFollowing);
+  const mutualFriends = students.filter((s: StudentProfile) => s.isMutual);
   const rankedStudents = [...students].sort((a: StudentProfile, b: StudentProfile) => b.streak - a.streak);
 
   return (
@@ -354,25 +620,30 @@ export default function SocialScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.isDark ? '#FFFFFF' : '#09090B'}
+          />
         }
       >
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Friends & Study Rooms</Text>
-            <Text style={styles.subtitle}>Study together and track streaks</Text>
+            <Text style={styles.title}>Social Study</Text>
+            <Text style={styles.subtitle}>Synchronized focus sprints with classmates</Text>
           </View>
           <Pressable
             style={({ pressed }: { pressed: boolean }) => [styles.findFriendsBtn, pressed && styles.pressed]}
             onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               setSearchQuery('');
               setSearchResults([]);
               setIsFindModalOpen(true);
             }}
           >
-            <UserPlus size={15} color="#000000" />
-            <Text style={styles.findFriendsText}>Find Friends</Text>
+            <UserPlus size={14} color={theme.buttonPrimaryText} />
+            <Text style={styles.findFriendsText}>Find Classmates</Text>
           </Pressable>
         </View>
 
@@ -385,141 +656,287 @@ export default function SocialScreen() {
         {/* Active Study Room HUD */}
         {joinedRoom && (
           <View style={styles.activeRoomCard}>
+            {/* Realtime Cheer Floating Pill */}
+            {activeCheer && (
+              <View style={styles.cheerFloatingBadge}>
+                <Text style={styles.cheerFloatingText}>
+                  {activeCheer.sender_name} cheered with {activeCheer.icon}!
+                </Text>
+              </View>
+            )}
+
             <View style={styles.activeRoomHeader}>
               <View style={styles.liveIndicator}>
                 <View style={styles.liveDot} />
-                <Text style={styles.liveLabel}>IN STUDY ROOM</Text>
+                <Text style={styles.liveLabel}>LIVE SPRINT · {joinedRoom.status.toUpperCase()}</Text>
               </View>
               <Pressable
-                style={styles.copyCodePill}
+                style={({ pressed }: { pressed: boolean }) => [styles.copyCodePill, pressed && styles.pressed]}
                 onPress={() => handleShareCode(joinedRoom.code)}
               >
                 <Text style={styles.copyCodeText}>CODE: {joinedRoom.code}</Text>
-                <Share2 size={12} color="#FFFFFF" />
+                <Share2 size={12} color={theme.textPrimary} />
               </Pressable>
             </View>
+
+            <View style={styles.clockRow}>
+              <Text style={styles.countdownTimer}>
+                {Math.floor(roomTimeRemaining / 60)
+                  .toString()
+                  .padStart(2, '0')}
+                :{(roomTimeRemaining % 60).toString().padStart(2, '0')}
+              </Text>
+              <View style={styles.memberCountPill}>
+                <Users size={12} color="#10B981" />
+                <Text style={styles.memberCountText}>{roomPresenceCount} studying</Text>
+              </View>
+            </View>
+
             <Text style={styles.activeRoomTitle}>{joinedRoom.name}</Text>
             <Text style={styles.activeRoomHost}>Host: {joinedRoom.host_name}</Text>
 
+            {/* Haptic Cheer Action Bar */}
+            <View style={styles.cheerSection}>
+              <Text style={styles.cheerSectionTitle}>SEND TACTILE CHEER</Text>
+              <View style={styles.cheerButtonsRow}>
+                {CHEER_BUTTONS.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Pressable
+                      key={item.key}
+                      style={({ pressed }: { pressed: boolean }) => [
+                        styles.cheerBtn,
+                        pressed && styles.pressed,
+                      ]}
+                      onPress={() => handleSendCheer(item.key)}
+                    >
+                      <Icon size={16} color={item.color} />
+                      <Text style={styles.cheerBtnLabel}>{item.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Room Actions */}
             <View style={styles.activeRoomActions}>
+              {joinedRoom.host_id === user?.id && (
+                <Pressable
+                  style={({ pressed }: { pressed: boolean }) => [styles.hostControlBtn, pressed && styles.pressed]}
+                  onPress={handleToggleSprintTimer}
+                >
+                  {joinedRoom.status === 'active' ? (
+                    <>
+                      <Pause size={12} color={theme.textPrimary} />
+                      <Text style={styles.hostControlText}>Pause Sprint</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={12} color={theme.textPrimary} />
+                      <Text style={styles.hostControlText}>Resume Sprint</Text>
+                    </>
+                  )}
+                </Pressable>
+              )}
+
               <Pressable
-                style={styles.leaveRoomBtn}
-                onPress={() => setJoinedRoom(null)}
+                style={({ pressed }: { pressed: boolean }) => [styles.leaveRoomBtn, pressed && styles.pressed]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setJoinedRoom(null);
+                }}
               >
-                <Text style={styles.leaveRoomText}>Leave Room</Text>
+                <LogOut size={12} color="#EF4444" />
+                <Text style={styles.leaveRoomText}>Leave Sprint</Text>
               </Pressable>
             </View>
           </View>
         )}
 
-        {/* Study Rooms Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Live Study Rooms</Text>
-            <View style={styles.roomHeaderBtns}>
-              <Pressable
-                style={styles.roomHeaderAction}
-                onPress={() => {
-                  setJoinError('');
-                  setIsJoinCodeOpen(true);
-                }}
-              >
-                <KeyRound size={12} color="#A1A1AA" />
-                <Text style={styles.roomHeaderActionText}>Join with Code</Text>
-              </Pressable>
-              <Pressable
-                style={styles.launchRoomBtn}
-                onPress={() => setIsCreateRoomOpen(true)}
-              >
-                <Plus size={12} color="#000000" />
-                <Text style={styles.launchRoomText}>Launch Room</Text>
-              </Pressable>
-            </View>
-          </View>
+        {/* Segmented Filter Control (Section 5.2) */}
+        <View style={styles.segmentedControl}>
+          <Pressable
+            style={[styles.segmentBtn, activeTab === 'all' && styles.segmentBtnActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setActiveTab('all');
+            }}
+          >
+            <Text style={[styles.segmentText, activeTab === 'all' && styles.segmentTextActive]}>
+              All ({students.length})
+            </Text>
+          </Pressable>
 
-          {studyRooms.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Radio size={24} color="#52525B" />
-              <Text style={styles.emptyTitle}>No active study rooms</Text>
-              <Text style={styles.emptySub}>
-                Tap "Launch Room" above or enter a 6-character squad code.
-              </Text>
-            </View>
-          ) : (
-            studyRooms.map((room: any) => (
-              <View key={room.id} style={styles.roomCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.roomName}>{room.name}</Text>
-                  <Text style={styles.roomHost}>
-                    Host: {room.host_name} · {Math.floor(room.duration_seconds / 60)} min
-                  </Text>
-                </View>
+          <Pressable
+            style={[styles.segmentBtn, activeTab === 'mutual' && styles.segmentBtnActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setActiveTab('mutual');
+            }}
+          >
+            <Text style={[styles.segmentText, activeTab === 'mutual' && styles.segmentTextActive]}>
+              Mutual ({mutualFriends.length})
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.segmentBtn, activeTab === 'sprints' && styles.segmentBtnActive]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setActiveTab('sprints');
+            }}
+          >
+            <Text style={[styles.segmentText, activeTab === 'sprints' && styles.segmentTextActive]}>
+              Sprints ({studyRooms.length})
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Study Sprints Section */}
+        {(activeTab === 'all' || activeTab === 'sprints') && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Study Sprints</Text>
+              <View style={styles.roomHeaderBtns}>
                 <Pressable
-                  style={styles.joinRoomBtn}
+                  style={({ pressed }: { pressed: boolean }) => [styles.roomHeaderAction, pressed && styles.pressed]}
                   onPress={() => {
-                    setJoinedRoom(room);
-                    setRoomTimeRemaining(room.duration_seconds);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setJoinError('');
+                    setIsJoinCodeOpen(true);
                   }}
                 >
-                  <Text style={styles.joinRoomBtnText}>Join</Text>
+                  <KeyRound size={12} color={theme.textSecondary} />
+                  <Text style={styles.roomHeaderActionText}>Join by Code</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }: { pressed: boolean }) => [styles.launchRoomBtn, pressed && styles.pressed]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setIsCreateRoomOpen(true);
+                  }}
+                >
+                  <Plus size={12} color={theme.buttonPrimaryText} />
+                  <Text style={styles.launchRoomText}>Create Sprint</Text>
                 </Pressable>
               </View>
-            ))
-          )}
-        </View>
+            </View>
 
-        {/* Followed Friends Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              Friends You Follow ({followedFriends.length})
-            </Text>
+            {studyRooms.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Radio size={24} color={theme.textMuted} />
+                <Text style={styles.emptyTitle}>No active study sprints.</Text>
+                <Text style={styles.emptySub}>
+                  Start a synchronized sprint or share a 6-digit room code with classmates.
+                </Text>
+              </View>
+            ) : (
+              studyRooms.map((room) => (
+                <View key={room.id} style={styles.roomCard}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.roomTopRow}>
+                      <View style={styles.liveSprintPill}>
+                        <View style={styles.liveSprintDot} />
+                        <Text style={styles.liveSprintText}>LIVE</Text>
+                      </View>
+                      <Text style={styles.roomHostText}>Hosted by {room.host_name}</Text>
+                    </View>
+                    <Text style={styles.roomName}>{room.name}</Text>
+                    <View style={styles.roomMetaRow}>
+                      <Clock size={11} color={theme.textMuted} />
+                      <Text style={styles.roomDurationText}>
+                        {Math.floor(room.duration_seconds / 60)}m focus
+                      </Text>
+                    </View>
+                  </View>
+                  <Pressable
+                    style={({ pressed }: { pressed: boolean }) => [styles.joinRoomBtn, pressed && styles.pressed]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      setJoinedRoom(room);
+                      setRoomTimeRemaining(
+                        calculateRemainingSeconds({
+                          durationSeconds: room.duration_seconds,
+                          elapsedSecondsAtPause: room.elapsed_seconds_at_pause,
+                          lastResumedAt: room.last_resumed_at,
+                          status: room.status,
+                        })
+                      );
+                    }}
+                  >
+                    <Text style={styles.joinRoomBtnText}>Join Sprint</Text>
+                  </Pressable>
+                </View>
+              ))
+            )}
           </View>
+        )}
 
-          {followedFriends.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Users size={24} color="#52525B" />
-              <Text style={styles.emptyTitle}>You're not following anyone yet</Text>
-              <Text style={styles.emptySub}>
-                Tap "Find Friends" above to search by name or @username.
+        {/* Classmates Section */}
+        {(activeTab === 'all' || activeTab === 'mutual') && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {activeTab === 'mutual' ? 'Mutual Friends' : 'Classmates You Follow'}
               </Text>
             </View>
-          ) : (
-            followedFriends.map((s: StudentProfile) => (
-              <View key={s.id} style={styles.friendCard}>
-                <View style={styles.friendLeft}>
-                  <View style={styles.avatarMini}>
-                    <Text style={styles.avatarMiniText}>
-                      {s.name.substring(0, 1).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.friendName} numberOfLines={1}>{s.name}</Text>
-                      {s.isMutual && (
-                        <View style={styles.mutualBadge}>
-                          <Text style={styles.mutualText}>Mutual</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={styles.friendSub} numberOfLines={1}>
-                      {s.username ? `@${s.username} · ` : ''}
-                      {s.streak}d streak
-                      {s.isStudying ? ' · Studying Now' : ''}
-                    </Text>
-                  </View>
-                </View>
 
+            {(activeTab === 'mutual' ? mutualFriends : followedFriends).length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Users size={24} color={theme.textMuted} />
+                <Text style={styles.emptyTitle}>No students followed yet.</Text>
+                <Text style={styles.emptySub}>
+                  Follow classmates from your course to view their active study sessions and join co-working sprints.
+                </Text>
                 <Pressable
-                  style={styles.followingBtn}
-                  onPress={() => handleToggleFollow(s)}
+                  style={({ pressed }: { pressed: boolean }) => [styles.emptyActionBtn, pressed && styles.pressed]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setIsFindModalOpen(true);
+                  }}
                 >
-                  <Text style={styles.followingBtnText}>Following</Text>
+                  <Text style={styles.emptyActionText}>Find Classmates</Text>
                 </Pressable>
               </View>
-            ))
-          )}
-        </View>
+            ) : (
+              (activeTab === 'mutual' ? mutualFriends : followedFriends).map((s: StudentProfile) => (
+                <View key={s.id} style={styles.friendCard}>
+                  <View style={styles.friendLeft}>
+                    <View style={styles.avatarMini}>
+                      <Text style={styles.avatarMiniText}>
+                        {s.name.substring(0, 1).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.friendName} numberOfLines={1}>
+                          {s.name}
+                        </Text>
+                        {s.isMutual && (
+                          <View style={styles.mutualBadge}>
+                            <Text style={styles.mutualText}>Mutual</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.friendSub} numberOfLines={1}>
+                        {s.username ? `@${s.username} · ` : ''}
+                        {s.streak}d streak
+                        {s.isStudying ? ' · Studying Now' : ''}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={({ pressed }: { pressed: boolean }) => [styles.followingBtn, pressed && styles.pressed]}
+                    onPress={() => handleToggleFollow(s)}
+                  >
+                    <Text style={styles.followingBtnText}>Following</Text>
+                  </Pressable>
+                </View>
+              ))
+            )}
+          </View>
+        )}
 
         {/* Streak Leaderboard */}
         <View style={styles.section}>
@@ -533,7 +950,9 @@ export default function SocialScreen() {
                 {idx + 1}
               </Text>
               <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                <Text style={styles.lbName} numberOfLines={1}>{s.name}</Text>
+                <Text style={styles.lbName} numberOfLines={1}>
+                  {s.name}
+                </Text>
                 <Text style={styles.lbSub} numberOfLines={1}>
                   {s.username ? `@${s.username}` : s.degree || 'Student'}
                 </Text>
@@ -547,7 +966,7 @@ export default function SocialScreen() {
         </View>
       </ScrollView>
 
-      {/* Find Friends Search Modal */}
+      {/* Find Classmates Modal */}
       <Modal visible={isFindModalOpen} animationType="slide" transparent onRequestClose={() => setIsFindModalOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
           <KeyboardAvoidingView
@@ -556,19 +975,21 @@ export default function SocialScreen() {
           >
             <View style={[styles.modalCard, { height: '80%' }]}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Find Friends</Text>
-                <Pressable onPress={() => setIsFindModalOpen(false)} hitSlop={8}>
-                  <X size={20} color="#71717A" />
+                <Text style={styles.modalTitle}>Find Classmates</Text>
+                <Pressable
+                  onPress={() => setIsFindModalOpen(false)}
+                  hitSlop={8}
+                >
+                  <X size={20} color={theme.textMuted} />
                 </Pressable>
               </View>
 
-              {/* Search Input */}
               <View style={styles.searchBar}>
-                <Search size={16} color="#71717A" />
+                <Search size={16} color={theme.textMuted} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search by name or @username..."
-                  placeholderTextColor="#52525B"
+                  placeholderTextColor={theme.textMuted}
                   value={searchQuery}
                   onChangeText={handleSearchStudents}
                   autoCapitalize="none"
@@ -577,7 +998,7 @@ export default function SocialScreen() {
               </View>
 
               {searching ? (
-                <ActivityIndicator style={{ marginTop: 20 }} color="#FFFFFF" />
+                <ActivityIndicator style={{ marginTop: 20 }} color={theme.textPrimary} />
               ) : (
                 <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                   {searchResults.length === 0 && searchQuery ? (
@@ -594,7 +1015,9 @@ export default function SocialScreen() {
                             </Text>
                           </View>
                           <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                            <Text style={styles.friendName} numberOfLines={1}>{s.name}</Text>
+                            <Text style={styles.friendName} numberOfLines={1}>
+                              {s.name}
+                            </Text>
                             <Text style={styles.friendSub} numberOfLines={1}>
                               {s.username ? `@${s.username}` : ''}
                               {s.streak > 0 ? ` · ${s.streak}d streak` : ''}
@@ -603,7 +1026,11 @@ export default function SocialScreen() {
                         </View>
 
                         <Pressable
-                          style={[styles.followActionBtn, s.isFollowing && styles.followActionBtnActive]}
+                          style={({ pressed }: { pressed: boolean }) => [
+                            styles.followActionBtn,
+                            s.isFollowing && styles.followActionBtnActive,
+                            pressed && styles.pressed,
+                          ]}
                           onPress={() => handleToggleFollow(s)}
                         >
                           <Text
@@ -634,9 +1061,9 @@ export default function SocialScreen() {
           >
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Launch Study Room</Text>
+                <Text style={styles.modalTitle}>Create Study Sprint</Text>
                 <Pressable onPress={() => setIsCreateRoomOpen(false)} hitSlop={8}>
-                  <X size={20} color="#71717A" />
+                  <X size={20} color={theme.textMuted} />
                 </Pressable>
               </View>
 
@@ -647,11 +1074,11 @@ export default function SocialScreen() {
                 contentContainerStyle={styles.modalScrollContent}
               >
                 <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>ROOM NAME</Text>
+                  <Text style={styles.modalLabel}>SPRINT NAME</Text>
                   <TextInput
                     style={styles.modalInput}
-                    placeholder="e.g. Late Night Problem Set"
-                    placeholderTextColor="#52525B"
+                    placeholder="e.g. Linear Algebra Proofs"
+                    placeholderTextColor={theme.textMuted}
                     value={roomName}
                     onChangeText={setRoomName}
                   />
@@ -667,7 +1094,10 @@ export default function SocialScreen() {
                           styles.durationBtn,
                           roomDuration === mins && styles.durationBtnActive,
                         ]}
-                        onPress={() => setRoomDuration(mins)}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                          setRoomDuration(mins);
+                        }}
                       >
                         <Text
                           style={[
@@ -688,9 +1118,9 @@ export default function SocialScreen() {
                   disabled={creatingRoom}
                 >
                   {creatingRoom ? (
-                    <ActivityIndicator size="small" color="#000000" />
+                    <ActivityIndicator size="small" color={theme.buttonPrimaryText} />
                   ) : (
-                    <Text style={styles.saveBtnText}>Launch & Generate Code</Text>
+                    <Text style={styles.saveBtnText}>Launch Sprint & Generate Code</Text>
                   )}
                 </Pressable>
               </ScrollView>
@@ -699,7 +1129,7 @@ export default function SocialScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Join Room with Code Modal */}
+      {/* Join Room with Code Modal (Section 6 Micro-Copy Matrix) */}
       <Modal visible={isJoinCodeOpen} animationType="slide" transparent onRequestClose={() => setIsJoinCodeOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
           <KeyboardAvoidingView
@@ -708,9 +1138,9 @@ export default function SocialScreen() {
           >
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Join with Squad Code</Text>
+                <Text style={styles.modalTitle}>Join with Room Code</Text>
                 <Pressable onPress={() => setIsJoinCodeOpen(false)} hitSlop={8}>
-                  <X size={20} color="#71717A" />
+                  <X size={20} color={theme.textMuted} />
                 </Pressable>
               </View>
 
@@ -727,16 +1157,19 @@ export default function SocialScreen() {
                 ) : null}
 
                 <View style={styles.modalField}>
-                  <Text style={styles.modalLabel}>6-CHARACTER ROOM CODE</Text>
+                  <Text style={styles.modalLabel}>ENTER 6-DIGIT SPRINT CODE</Text>
                   <TextInput
                     style={[styles.modalInput, styles.codeInput]}
-                    placeholder="e.g. X7K9P2"
-                    placeholderTextColor="#52525B"
+                    placeholder="e.g. 849-201"
+                    placeholderTextColor={theme.textMuted}
                     value={joinCodeInput}
                     onChangeText={(val: string) => setJoinCodeInput(val.toUpperCase())}
                     autoCapitalize="characters"
                     maxLength={6}
                   />
+                  <Text style={styles.modalHelperText}>
+                    Room codes are shared directly by the sprint host.
+                  </Text>
                 </View>
 
                 <Pressable
@@ -745,9 +1178,9 @@ export default function SocialScreen() {
                   disabled={joiningRoom}
                 >
                   {joiningRoom ? (
-                    <ActivityIndicator size="small" color="#000000" />
+                    <ActivityIndicator size="small" color={theme.buttonPrimaryText} />
                   ) : (
-                    <Text style={styles.saveBtnText}>Join Study Room</Text>
+                    <Text style={styles.saveBtnText}>Join Sprint</Text>
                   )}
                 </Pressable>
               </ScrollView>
@@ -767,9 +1200,9 @@ function createStyles(theme: ThemeColors) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 18,
+      marginBottom: 16,
     },
-    title: { fontSize: 20, fontWeight: '700', color: theme.textPrimary, letterSpacing: -0.4 },
+    title: { fontSize: 22, fontWeight: '700', color: theme.textPrimary, letterSpacing: -0.4 },
     subtitle: { fontSize: 12, color: theme.textMuted, marginTop: 2 },
     findFriendsBtn: {
       flexDirection: 'row',
@@ -796,7 +1229,20 @@ function createStyles(theme: ThemeColors) {
       borderColor: 'rgba(16,185,129,0.3)',
       padding: 16,
       marginBottom: 20,
-      gap: 8,
+      gap: 10,
+    },
+    cheerFloatingBadge: {
+      backgroundColor: theme.isDark ? '#FFFFFF' : '#09090B',
+      borderRadius: 20,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      alignSelf: 'center',
+      marginBottom: 4,
+    },
+    cheerFloatingText: {
+      color: theme.isDark ? '#000000' : '#FFFFFF',
+      fontSize: 11,
+      fontWeight: '700',
     },
     activeRoomHeader: {
       flexDirection: 'row',
@@ -815,19 +1261,143 @@ function createStyles(theme: ThemeColors) {
       paddingVertical: 4,
       borderRadius: 8,
     },
-    copyCodeText: { color: theme.textPrimary, fontSize: 11, fontWeight: '700', fontFamily: 'monospace' },
+    copyCodeText: {
+      color: theme.textPrimary,
+      fontSize: 11,
+      fontWeight: '700',
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontVariant: ['tabular-nums'],
+    },
+    clockRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      marginTop: 2,
+    },
+    countdownTimer: {
+      color: theme.textPrimary,
+      fontSize: 40,
+      fontWeight: '800',
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+      fontVariant: ['tabular-nums'],
+      letterSpacing: -1,
+    },
+    memberCountPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(16,185,129,0.1)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    memberCountText: {
+      color: '#10B981',
+      fontSize: 11,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+    },
     activeRoomTitle: { color: theme.textPrimary, fontSize: 16, fontWeight: '700' },
     activeRoomHost: { color: theme.textMuted, fontSize: 12 },
-    activeRoomActions: { flexDirection: 'row', marginTop: 4 },
+    cheerSection: {
+      marginTop: 6,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderSubtle,
+      gap: 8,
+    },
+    cheerSectionTitle: {
+      color: theme.textMuted,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    cheerButtonsRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    cheerBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      backgroundColor: theme.surfaceSubtle,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    cheerBtnLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.textPrimary,
+    },
+    activeRoomActions: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 6,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderSubtle,
+    },
+    hostControlBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    hostControlText: { color: theme.textPrimary, fontSize: 11, fontWeight: '600' },
     leaveRoomBtn: {
-      backgroundColor: 'rgba(239,68,68,0.15)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(239,68,68,0.12)',
       borderWidth: 1,
       borderColor: 'rgba(239,68,68,0.3)',
-      paddingHorizontal: 14,
+      paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 8,
     },
     leaveRoomText: { color: '#EF4444', fontSize: 11, fontWeight: '600' },
+    segmentedControl: {
+      flexDirection: 'row',
+      backgroundColor: theme.surfaceSubtle,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 3,
+      marginBottom: 20,
+    },
+    segmentBtn: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: 'center',
+      borderRadius: 8,
+    },
+    segmentBtnActive: {
+      backgroundColor: theme.surface,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    segmentText: {
+      color: theme.textMuted,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    segmentTextActive: {
+      color: theme.textPrimary,
+      fontWeight: '700',
+    },
     section: { marginBottom: 24 },
     sectionHeader: {
       flexDirection: 'row',
@@ -835,7 +1405,7 @@ function createStyles(theme: ThemeColors) {
       alignItems: 'center',
       marginBottom: 12,
     },
-    sectionTitle: { fontSize: 13, fontWeight: '700', color: theme.textPrimary },
+    sectionTitle: { fontSize: 14, fontWeight: '700', color: theme.textPrimary },
     roomHeaderBtns: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     roomHeaderAction: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 },
     roomHeaderActionText: { color: theme.textSecondary, fontSize: 11, fontWeight: '500' },
@@ -851,7 +1421,8 @@ function createStyles(theme: ThemeColors) {
     launchRoomText: { color: theme.buttonPrimaryText, fontSize: 11, fontWeight: '700' },
     emptyCard: {
       alignItems: 'center',
-      paddingVertical: 32,
+      paddingVertical: 28,
+      paddingHorizontal: 16,
       gap: 6,
       borderWidth: 1,
       borderStyle: 'dashed',
@@ -859,8 +1430,16 @@ function createStyles(theme: ThemeColors) {
       borderRadius: 14,
       backgroundColor: theme.surfaceSubtle,
     },
-    emptyTitle: { color: theme.textSecondary, fontSize: 13, fontWeight: '600' },
-    emptySub: { color: theme.textMuted, fontSize: 11, textAlign: 'center', maxWidth: 260 },
+    emptyTitle: { color: theme.textPrimary, fontSize: 13, fontWeight: '600' },
+    emptySub: { color: theme.textMuted, fontSize: 11, textAlign: 'center', maxWidth: 280 },
+    emptyActionBtn: {
+      marginTop: 8,
+      backgroundColor: theme.buttonPrimaryBg,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 8,
+    },
+    emptyActionText: { color: theme.buttonPrimaryText, fontSize: 11, fontWeight: '700' },
     roomCard: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -872,15 +1451,29 @@ function createStyles(theme: ThemeColors) {
       padding: 14,
       marginBottom: 8,
     },
-    roomName: { color: theme.textPrimary, fontSize: 13, fontWeight: '600' },
-    roomHost: { color: theme.textMuted, fontSize: 11, marginTop: 3 },
+    roomTopRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+    liveSprintPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(16,185,129,0.12)',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    liveSprintDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#10B981' },
+    liveSprintText: { color: '#10B981', fontSize: 9, fontWeight: '800' },
+    roomHostText: { color: theme.textMuted, fontSize: 10 },
+    roomName: { color: theme.textPrimary, fontSize: 14, fontWeight: '700' },
+    roomMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    roomDurationText: { color: theme.textMuted, fontSize: 11, fontVariant: ['tabular-nums'] },
     joinRoomBtn: {
       backgroundColor: theme.buttonPrimaryBg,
-      paddingHorizontal: 14,
+      paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 8,
     },
-    joinRoomBtnText: { color: theme.buttonPrimaryText, fontSize: 12, fontWeight: '700' },
+    joinRoomBtnText: { color: theme.buttonPrimaryText, fontSize: 11, fontWeight: '700' },
     friendCard: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -932,7 +1525,14 @@ function createStyles(theme: ThemeColors) {
       marginBottom: 6,
       gap: 12,
     },
-    rankNum: { color: theme.textMuted, fontSize: 13, fontWeight: '700', width: 20, textAlign: 'center' },
+    rankNum: {
+      color: theme.textMuted,
+      fontSize: 13,
+      fontWeight: '700',
+      width: 20,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
     rankNumFirst: { color: '#F59E0B' },
     lbName: { color: theme.textPrimary, fontSize: 13, fontWeight: '600' },
     lbSub: { color: theme.textMuted, fontSize: 11, marginTop: 2 },
@@ -945,7 +1545,7 @@ function createStyles(theme: ThemeColors) {
       paddingVertical: 4,
       borderRadius: 10,
     },
-    streakPillText: { color: '#F59E0B', fontSize: 11, fontWeight: '700' },
+    streakPillText: { color: '#F59E0B', fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     keyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
     modalCard: {
@@ -1001,6 +1601,7 @@ function createStyles(theme: ThemeColors) {
     followActionTextActive: { color: theme.textSecondary },
     modalField: { gap: 6 },
     modalLabel: { color: theme.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+    modalHelperText: { color: theme.textMuted, fontSize: 11, marginTop: 2 },
     modalInput: {
       backgroundColor: theme.surfaceSubtle,
       borderRadius: 12,
@@ -1016,7 +1617,7 @@ function createStyles(theme: ThemeColors) {
       letterSpacing: 4,
       fontSize: 18,
       fontWeight: '700',
-      fontFamily: 'monospace',
+      fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
     durationPillsRow: { flexDirection: 'row', gap: 8 },
     durationBtn: {

@@ -33,16 +33,17 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://saktus.app'),
   title: {
-    default: 'Saktus — Productivity app for students',
+    default: 'Saktus — Study Better, Together',
     template: '%s | Saktus',
   },
-  description: 'Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.',
+  description:
+    'Plan your study day, practise with flashcards, focus with a timer, and study alongside friends. Saktus is a free study platform made by a student, for students.',
   keywords: [
-    'student productivity',
-    'study app',
+    'student study platform',
+    'study better together',
+    'social study rooms',
     'spaced repetition',
     'pomodoro focus timer',
-    'exam countdown',
     'university timetable',
     'SM-2 flashcards',
   ],
@@ -54,8 +55,9 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Saktus — Productivity app for students',
-    description: 'Weekly schedule, exams, flashcards, focus timer, and study rooms in one place.',
+    title: 'Saktus — Study Better, Together',
+    description:
+      'Plan your study day, practise with flashcards, focus with a timer, and study alongside friends. Saktus is a free study platform made by a student, for students.',
     url: 'https://saktus.app',
     siteName: 'Saktus',
     images: [

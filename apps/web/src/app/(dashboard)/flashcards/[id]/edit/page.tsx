@@ -58,7 +58,7 @@ export default function RapidCardEditorPage() {
 
       setDeck(deckData);
 
-      const sorted = (deckData.flashcards || [])
+      const sorted: RapidCardRow[] = (deckData.flashcards || [])
         .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
         .map((c: any) => ({
           id: c.id,
@@ -132,15 +132,15 @@ export default function RapidCardEditorPage() {
     setIsSaving(true);
     try {
       // 1. Update existing cards
-      const updates = validCards.filter((c) => c.id && !c.isNew);
+      const updates = validCards.filter((c): c is RapidCardRow & { id: string } => Boolean(c.id && !c.isNew));
       for (const u of updates) {
         const { error: upErr } = await supabase
           .from("flashcards")
           .update({
             front_text: u.front.trim(),
             back_text: u.back.trim(),
-            front_content: textToProseMirrorDoc(u.front.trim()),
-            back_content: textToProseMirrorDoc(u.back.trim()),
+            front_content: textToProseMirrorDoc(u.front.trim()) as any,
+            back_content: textToProseMirrorDoc(u.back.trim()) as any,
             updated_at: new Date().toISOString(),
           })
           .eq("id", u.id);

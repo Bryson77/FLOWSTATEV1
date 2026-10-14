@@ -223,7 +223,7 @@ export default function MatchGamePage() {
           </p>
           <div className="pt-2 flex justify-center gap-3">
             <button
-              onClick={() => startNewGame(deck.flashcards)}
+              onClick={() => startNewGame(deck.flashcards || [])}
               className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-semibold btn-press flex items-center gap-1.5"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Play Again

@@ -158,7 +158,7 @@ export default function StudyPlayerPage() {
       }));
 
       // Commit review via atomic RPC
-      const { data: rpcResult, error: rpcErr } = await supabase.rpc(
+      const { data: rpcResult, error: rpcErr } = await (supabase.rpc as any)(
         "submit_flashcard_review",
         {
           p_card_id: currentCard.id,
@@ -171,14 +171,16 @@ export default function StudyPlayerPage() {
 
       if (rpcErr) throw rpcErr;
 
+      const resData = rpcResult as any;
+
       // In-session Retry Requeue
-      if (rpcRating === "retry" || rpcResult?.in_session_requeue) {
+      if (rpcRating === "retry" || resData?.in_session_requeue) {
         setStudyQueue((prev) => [...prev, currentCard]);
       }
 
       // Check daily study streak notification if milestone reached
-      if (rpcResult?.new_streak && rpcResult?.streak_incremented) {
-        toast(`Daily streak active: ${rpcResult.new_streak} days!`, "success");
+      if (resData?.new_streak && resData?.streak_incremented) {
+        toast(`Daily streak active: ${resData.new_streak} days!`, "success");
       }
 
       // Move to next card or complete
@@ -362,7 +364,7 @@ export default function StudyPlayerPage() {
             currentCard?.card_type === "multiple_choice" &&
             currentCard.options && (
               <div className="grid grid-cols-1 gap-2 pt-3 text-left max-w-md mx-auto">
-                {currentCard.options.map((opt, i) => (
+                {currentCard.options.map((opt: any, i: number) => (
                   <button
                     key={i}
                     onClick={(e) => {

@@ -1,8 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr';
 import type { Database } from '@saktus/shared';
 
-const DEFAULT_SUPABASE_URL = 'https://maftkhcqxhjhhmkkgmpi.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1hZnRraGNxeGhqaGhta2tnbXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzAwMDMsImV4cCI6MjEwNDgwNjAwM30.HU1g_pzl6oZ_UM4HbwdBdGKelWan3WAFxoHEmhTGLi0';
+const DEFAULT_SUPABASE_URL = 'https://tyvwwgigdgcnpjceiavq.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5dnd3Z2lnZGdjbnBqY2VpYXZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTkwNDcsImV4cCI6MjA4ODgzNTA0N30.Audya4V6ysi38dxBEDDCkAswVO60g5Q4X1iJcXQu7QI';
 
 let client: ReturnType<typeof createBrowserClient<Database>> | undefined;
 

@@ -137,9 +137,10 @@ export default function HomeScreen() {
       ]);
 
       setCourses(coursesRes.data || []);
+      const cockpitData = cockpitRes.data as any;
       setCardsDueCount(
-        cockpitRes.data?.cards_due_today !== undefined
-          ? cockpitRes.data.cards_due_today
+        cockpitData?.cards_due_today !== undefined
+          ? cockpitData.cards_due_today
           : 0,
       );
 
@@ -977,5 +978,10 @@ const createStyles = (theme: ThemeColors) =>
       backgroundColor: theme.buttonPrimaryBg,
       alignItems: "center",
       justifyContent: "center",
+    },
+    courseTarget: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: theme.textSecondary,
     },
   });

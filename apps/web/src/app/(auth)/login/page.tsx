@@ -29,6 +29,9 @@ export default function LoginPage() {
       if (urlErr) {
         setErrorMsg(getSafeErrorMessage(urlErr, 'Authentication failed. Something went wrong.'));
       }
+      if (params.get('mode') === 'signup' || params.get('signup') === 'true') {
+        setIsSignUp(true);
+      }
     }
   }, []);
 

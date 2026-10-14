@@ -211,7 +211,7 @@ export default function TimetablePage() {
 
       if (error) throw error;
       setClasses(prev => prev.filter(c => c.id !== classId));
-      toast('Class removed.', 'default');
+      toast('Class removed.', 'info');
     } catch (err: any) {
       console.error('Delete class error:', err);
       toast(getSafeErrorMessage(err, 'Failed to remove class. Something went wrong.'), 'error');
